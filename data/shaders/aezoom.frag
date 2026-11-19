@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The zoom smooth: the frame added to itself eight times, each at a
 // slightly tighter crop about the centre of the band -- so a pixel is

@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The depth-blur pass. The world's geometry is drawn a second time
 // through a 256 by 1 ramp of blur-amount-per-depth, and only the

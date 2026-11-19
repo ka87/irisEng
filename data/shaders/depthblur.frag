@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The blur amount at this pixel's depth, written to alpha and nowhere
 // else. The colour write is off for this pass, so the first three

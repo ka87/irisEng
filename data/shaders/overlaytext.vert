@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The same as overlay.vert with a texture coordinate carried through.
 // It is a separate program rather than a branch, because the two

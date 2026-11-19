@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // Glyphs. The atlas is single-channel coverage, so the colour comes
 // entirely from the vertex and the texture decides only how much of

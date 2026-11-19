@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The overlay's flat quads. Positions arrive in pixels, with the
 // origin at the top left, because that is what the engine's 2D code

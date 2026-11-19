@@ -242,6 +242,12 @@ static const GLubyte* GL_APIENTRY MK_glGetString(GLenum name)
     return (const GLubyte*)"mock";
 }
 
+static const GLubyte* GL_APIENTRY MK_glGetStringi(GLenum name, GLuint index)
+{
+    WG_Record("glGetStringi", 2, (long long)name, (long long)index);
+    return (const GLubyte*)"GL_MOCK_extension";
+}
+
 static void GL_APIENTRY MK_glDebugMessageCallback(GL_pfn_DebugProc proc, const void* user)
 {
     (void)proc;
@@ -928,6 +934,7 @@ static void WG_AimThePointers(void)
     GLFN_glFlush = MK_glFlush;
     GLFN_glGetError = MK_glGetError;
     GLFN_glGetString = MK_glGetString;
+    GLFN_glGetStringi = MK_glGetStringi;
     GLFN_glDebugMessageCallback = MK_glDebugMessageCallback;
     GLFN_glDebugMessageControl = MK_glDebugMessageControl;
 }

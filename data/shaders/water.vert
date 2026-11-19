@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The water surface: a grid the simulation builds, drawn once a frame
 // with the reflection projected onto it.

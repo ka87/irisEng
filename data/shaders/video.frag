@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // A movie frame, stretched onto the screen. The vertex stage is the
 // glyphs' one -- it already maps pixel coordinates to clip space and

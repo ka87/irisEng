@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 in vec2 vTap0;
 in vec2 vTap1;

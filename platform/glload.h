@@ -30,9 +30,15 @@ typedef void* (*GL_pfn_GetProc)(const char* name);
 void* GL_p_Resolve(const char* name, GL_pfn_GetProc fromContext,
                    GL_pfn_GetProc fromModule);
 
-/* Fills every pointer in glcore.h's list.
+/* Fills every pointer in glcore.h's lists.
 
-   Returns the number that could not be resolved, so zero is success,
+   The optional list is filled too, and a pointer there that cannot be
+   resolved is left NULL rather than counted: those are entry points
+   the renderer can do without, and a context that lacks them is still
+   a context worth having.
+
+   Returns the number of *required* ones that could not be resolved,
+   so zero is success,
    and writes the first missing name into `missing` when that is not
    NULL -- one name is what a log line wants, and a driver short of
    one entry point is usually short of a family. */

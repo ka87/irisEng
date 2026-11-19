@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The fade: a frozen copy of the picture dissolving into the live one.
 //

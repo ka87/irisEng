@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The end of the depth blur: the sharp frame and the blurred copy of
 // it, mixed per pixel by the sharp frame's own alpha.

@@ -137,15 +137,22 @@ int EGLH_b_Open(void)
         EGL_DEPTH_SIZE, 24,
         EGL_NONE
     };
-    /* 4.5 core and nothing less, which is what the renderer asks a
-       real driver for. A context that came up on 3.3 would compile
+    /* The same two the renderer asks a real driver for, best first.
+       Nothing below 4.1: a context that came up on 3.3 would compile
        the shaders and then differ somewhere further away. */
-    static const EGLint ctxAttr[] = {
+    static EGLint ctxAttr45[] = {
         EGL_CONTEXT_MAJOR_VERSION, 4,
         EGL_CONTEXT_MINOR_VERSION, 5,
         EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
         EGL_NONE
     };
+    static EGLint ctxAttr41[] = {
+        EGL_CONTEXT_MAJOR_VERSION, 4,
+        EGL_CONTEXT_MINOR_VERSION, 1,
+        EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+        EGL_NONE
+    };
+    static const EGLint* const ctxAttrs[] = { ctxAttr45, ctxAttr41 };
     /* The surface is incidental: everything is drawn into a
        framebuffer object. It exists because a context has to be made
        current against something on drivers without the surfaceless
@@ -196,11 +203,20 @@ int EGLH_b_Open(void)
         EGLH_Close();
         return 0;
     }
-    eglh_context = eglh_CreateContext(eglh_display, cfg, EGL_NO_CONTEXT,
-                                      ctxAttr);
+    {
+        size_t a;
+
+        for (a = 0; a < sizeof(ctxAttrs) / sizeof(ctxAttrs[0]); a++)
+        {
+            eglh_context = eglh_CreateContext(eglh_display, cfg, EGL_NO_CONTEXT,
+                                              ctxAttrs[a]);
+            if (eglh_context != EGL_NO_CONTEXT)
+                break;
+        }
+    }
     if (eglh_context == EGL_NO_CONTEXT)
     {
-        EGLH_why = "no OpenGL 4.5 core context here";
+        EGLH_why = "no OpenGL 4.5 or 4.1 core context here";
         EGLH_Close();
         return 0;
     }

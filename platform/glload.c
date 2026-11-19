@@ -6,6 +6,7 @@
 /* The pointers themselves, one per entry in the list. */
 #define GL_DEFINE(ret, name, params, args) ret (GL_APIENTRY *GLFN_##name) params;
 GL_FUNCTION_LIST(GL_DEFINE)
+GL_FUNCTION_LIST_OPTIONAL(GL_DEFINE)
 #undef GL_DEFINE
 
 void* GL_p_Resolve(const char* name, GL_pfn_GetProc fromContext,
@@ -54,6 +55,14 @@ int GL_i_LoadFunctions(GL_pfn_GetProc fromContext, GL_pfn_GetProc fromModule,
     GL_FUNCTION_LIST(GL_LOAD)
 #undef GL_LOAD
 
+    /* The same, without the counting: a context that does not have
+       these is not a context to refuse. */
+#define GL_LOAD_OPTIONAL(ret, name, params, args)                             \
+    GLFN_##name = (ret(GL_APIENTRY *) params)GL_p_Resolve(#name, fromContext,  \
+                                                         fromModule);
+    GL_FUNCTION_LIST_OPTIONAL(GL_LOAD_OPTIONAL)
+#undef GL_LOAD_OPTIONAL
+
     if (first && missing && missingSize)
     {
         size_t n = strlen(first);
@@ -70,6 +79,7 @@ void GL_ForgetFunctions(void)
 {
 #define GL_CLEAR(ret, name, params, args) GLFN_##name = NULL;
     GL_FUNCTION_LIST(GL_CLEAR)
+    GL_FUNCTION_LIST_OPTIONAL(GL_CLEAR)
 #undef GL_CLEAR
 }
 

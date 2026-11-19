@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The remanence: the sharp frame with a wide blur of it added on top.
 //

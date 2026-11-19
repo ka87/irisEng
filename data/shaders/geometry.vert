@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The world's geometry. One matrix, because the engine hands over a
 // view and a projection and the renderer multiplies them before they

@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The vertex stage every after-effect pass shares.
 //

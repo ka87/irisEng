@@ -11,7 +11,7 @@
  * alpha -- went through that harness untouched.
  *
  * So this one asks a real driver. tests/eglheadless.c brings up an
- * OpenGL 4.5 core context with no window, the renderer's own pointers
+ * OpenGL 4.5 or 4.1 core context with no window, the renderer's own pointers
  * are aimed at it, and the drawing goes through platform/glrender.c's own
  * entry points -- the same ones the engine calls. The result is read
  * back a pixel at a time.
@@ -6910,7 +6910,7 @@ int main(void)
     if (!EGLH_b_Open())
     {
         printf("  skipped: %s\n", EGLH_why);
-        printf("  (this test needs a software OpenGL 4.5; the rest of the"
+        printf("  (this test needs a software OpenGL 4.5 or 4.1; the rest of the"
                " renderer's tests do not)\n");
         return 0;
     }
