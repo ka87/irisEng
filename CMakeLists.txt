@@ -169,20 +169,61 @@ endif()
 
 # ---------------------------------------------------------------- ffmpeg
 #
-# Prebuilt, unlike everything else here: the import libraries and the
-# DLLs are in the tree and are what the video playback links against.
+# Two sources, because there is only one of them to be had on each
+# side. The Windows libraries are in the tree, prebuilt, with the
+# headers they belong to; off Windows the distribution's ffmpeg is
+# used, headers and all.
+#
+# The two are not the same version and the headers have to travel with
+# the libraries, so the vendored include directory is Windows' alone.
+# Mixing them -- this tree's headers against a distribution's
+# libraries -- would compile and then misbehave at run time, which is
+# the worst of the three outcomes.
+#
+# What that costs is that video.c has to build against whatever
+# version is installed. Its calls are the AVChannelLayout generation
+# of the API and nothing newer, so the floor below is where it sits;
+# a version under it fails here rather than at the first unresolved
+# symbol.
 
 add_library(irisEngFFmpeg INTERFACE)
-target_include_directories(irisEngFFmpeg INTERFACE thirdparty/ffmpeg/include)
-foreach(lib avcodec avformat avutil swscale swresample)
-    if(MSVC)
-        target_link_libraries(irisEngFFmpeg INTERFACE
-            "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/${lib}.lib")
-    else()
-        target_link_libraries(irisEngFFmpeg INTERFACE
-            "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/lib${lib}.dll.a")
+
+if(WIN32)
+    target_include_directories(irisEngFFmpeg INTERFACE thirdparty/ffmpeg/include)
+    foreach(lib avcodec avformat avutil swscale swresample)
+        if(MSVC)
+            target_link_libraries(irisEngFFmpeg INTERFACE
+                "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/${lib}.lib")
+        else()
+            target_link_libraries(irisEngFFmpeg INTERFACE
+                "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/lib${lib}.dll.a")
+        endif()
+    endforeach()
+else()
+    find_package(PkgConfig REQUIRED)
+    # libavutil 57.28 is ffmpeg 5.1, which is where AVChannelLayout and
+    # swr_alloc_set_opts2 arrive. video.c uses both.
+    pkg_check_modules(IRIS_FFMPEG IMPORTED_TARGET
+        libavcodec libavformat "libavutil>=57.28" libswscale libswresample)
+    if(NOT IRIS_FFMPEG_FOUND)
+        message(FATAL_ERROR
+            "ffmpeg's development files were not found for this "
+            "architecture. On a 32-bit build of a 64-bit Debian or "
+            "Ubuntu they are the i386 ones, and the runtime packages "
+            "are not enough -- the .pc files and the headers come "
+            "with -dev:\n"
+            "  sudo apt install libavcodec-dev:i386 "
+            "libavformat-dev:i386 libavutil-dev:i386 "
+            "libswscale-dev:i386 libswresample-dev:i386\n"
+            "\n"
+            "Build with --toolchain cmake/linux-i386.cmake, which "
+            "points pkg-config at the i386 directory. Without it the "
+            "64-bit ones are found here and the link fails later. "
+            "ffmpeg 5.1 or newer is needed, for AVChannelLayout.")
     endif()
-endforeach()
+    target_link_libraries(irisEngFFmpeg INTERFACE PkgConfig::IRIS_FFMPEG)
+    message(STATUS "ffmpeg: the distribution's, libavutil ${IRIS_FFMPEG_libavutil_VERSION}")
+endif()
 
 # ------------------------------------------------------------ the engine
 
@@ -195,9 +236,10 @@ add_executable(irisEng WIN32 ${IRIS_ENGINE_SOURCES})
 # reaches the engine's instead, and the engine's reaches back into
 # common.h while common.h is still being read. Every engine include is
 # quoted and relative, so none of them needs this.
+# ffmpeg is not here: its headers come with its libraries, through
+# irisEngFFmpeg, because which ones they are depends on the platform.
 target_include_directories(irisEng PRIVATE
     thirdparty/SDL3/include
-    thirdparty/ffmpeg/include
     thirdparty/freetype/include
     thirdparty/zlib
     thirdparty/libpng

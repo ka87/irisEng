@@ -1096,7 +1096,15 @@ struct jpeg_color_quantizer { long dummy; };
 #endif
 
 // hax - andras
-char* ucJADE_JPEG_INPOUT_FILE;
-size_t lJADE_JPEG_INPOUT_FILE_LENGTH;
+/* The buffer the engine is reading a jpeg out of or writing one
+   into, and how much of it is left. Shared between the source and
+   destination managers here and the engine above them.
+
+   extern, with the storage in jmemjade.c: these used to be written
+   without it, which gives every file that includes this header one
+   of its own and leaves the linker to merge them. It did until
+   -fno-common became the default. */
+extern char* ucJADE_JPEG_INPOUT_FILE;
+extern size_t lJADE_JPEG_INPOUT_FILE_LENGTH;
 
 #endif /* JPEGLIB_H */

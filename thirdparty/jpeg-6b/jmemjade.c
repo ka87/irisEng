@@ -18,6 +18,12 @@
 #include "jmemsys.h"		/* import the system-dependent declarations */
 #include "../../memory.h"
 
+/* The jpeg buffer the engine hands in and out -- declared in
+   jpeglib.h, kept here because this is the file of the three that
+   is this engine's rather than upstream's. */
+char* ucJADE_JPEG_INPOUT_FILE;
+size_t lJADE_JPEG_INPOUT_FILE_LENGTH;
+
 #ifndef HAVE_STDLIB_H		/* <stdlib.h> should declare malloc(),free() */
 extern void * malloc JPP((size_t size));
 extern void free JPP((void *ptr));
