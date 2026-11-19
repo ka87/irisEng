@@ -7,12 +7,13 @@
 # program, it would be a broken one. The check below refuses rather
 # than letting that be discovered at run time.
 #
-# What this builds today is the Windows game, which is what there is:
-# the engine still asks for the registry, a dialog, the Win32 heap and
-# a WGL context, and Direct3D is one of its two renderers. What it
-# would take to build elsewhere is written down rather than guessed at
-# -- see the Windows map in the notes -- and the OpenGL renderer is the
-# half that can leave once the window and the input do.
+# What this links today is the Windows game. Off Windows it compiles
+# all but the Direct3D renderer and the files that include its headers
+# -- 157 of 179 -- and links nothing, because gdi.c names that renderer
+# in three places. What is left is written down rather than guessed at,
+# in the warning at the foot of this file and in the notes; the window,
+# the input, the paths, the file reads and the clocks have all left
+# Windows already.
 #
 #   cmake -S . -B build -A Win32            Visual Studio, 32-bit
 #   cmake --build build --config Release
@@ -156,8 +157,14 @@ endforeach()
 
 add_executable(irisEng WIN32 ${IRIS_ENGINE_SOURCES})
 
+# The source directory is deliberately NOT here, and the project file
+# does not have it either. The engine keeps a header called strings.h,
+# which is a name POSIX owns: with the source directory on the include
+# path, the C library's own string.h -- which includes <strings.h> --
+# reaches the engine's instead, and the engine's reaches back into
+# common.h while common.h is still being read. Every engine include is
+# quoted and relative, so none of them needs this.
 target_include_directories(irisEng PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}"
     thirdparty/SDL3/include
     thirdparty/ffmpeg/include
     thirdparty/freetype/include
@@ -186,13 +193,14 @@ else()
     target_compile_definitions(irisEng PRIVATE _FILE_OFFSET_BITS=64)
 
     message(WARNING
-        "This is not a Windows build. Every source compiles, but the "
-        "engine does not link off Windows yet: it asks for the Win32 "
-        "heap, a directory walk, Win32 file reads, a free-space query, "
-        "the key state, a WGL context and DirectInput, and one of its "
-        "two renderers is Direct3D. The configuration below is here so "
-        "that the work of answering those has somewhere to land, not "
-        "because it links.")
+        "This is not a Windows build. 157 of the 179 engine sources "
+        "compile; the other 22 all reach a Direct3D header, either "
+        "being the Direct3D renderer itself or including "
+        "platform/d3drender.h for a declaration. Nothing links yet: "
+        "gdi.c fills the renderer table with the Direct3D entries "
+        "unconditionally, keeps the after-effect fade's timer in that "
+        "renderer's own parameter block, and calls its begin-scene by "
+        "name. Those three and the header includes are what is left.")
 endif()
 
 if(MSVC)

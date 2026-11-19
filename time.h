@@ -1,7 +1,11 @@
 #pragma once
 #include "common.h"
-#include <intrin.h>
-#include <timeapi.h>
+/* Neither the cycle counter's header nor winmm's is wanted here: this
+   header declares globals and prototypes and names nothing out of
+   either. time.c asks for the counter itself, under whichever of the
+   two names the compiler keeps it, and the millisecond timer is
+   declared with the rest of what the two libraries spell differently,
+   in platform/syscompat.h, which common.h above has already read. */
 
 unsigned int TIM_gul_TicksPerSecond;
 unsigned int TIM_SystemTimeMsAtAppStart;
