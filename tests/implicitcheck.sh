@@ -12,10 +12,14 @@
 # on its own, without -w, and reads only the one diagnostic out of the
 # noise.
 #
-# The baseline below is what the tree carries now. Every entry is in a
-# file that has not had its cleanup pass yet, except strings.c's
-# isdigit, which wants <ctype.h>. The check fails on any count that
-# rises and on any file that appears and is not listed.
+# The baseline below is what the tree carries now: one entry, which is
+# strings.c's isdigit wanting <ctype.h>. The check fails on any count
+# that rises and on any file that appears and is not listed.
+#
+# engine.c and sound.c were here with 1 each, both _strnicmp -- the
+# CRT's name for a case-insensitive compare of a bounded length. The
+# engine asks for that by a name of its own now and each platform
+# answers, so the two came off together.
 #
 # proceduraltextures.c was here with 2, for BinkSetMemory and
 # BinkSetIOSize. Its pass added them to tests/stub/bink.h, so it is
@@ -58,9 +62,7 @@ CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # reports no implicit declarations -- see UNSWEEPABLE below
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
-BASELINE="engine.c 1
-sound.c 1
-strings.c 1"
+BASELINE="strings.c 1"
 
 # Files this host cannot compile at all, for reasons that are not
 # implicit declarations. They matter because the count below is a grep

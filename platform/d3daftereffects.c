@@ -2762,6 +2762,7 @@ void D3D_PC_AE(tWorld* param1)
     float motionX;
     float motionY;
     float fadeStep;
+    int fadeLeft;
     RECT wholeScreen;
     int aeMasterOnEntry;
     tAef_Source aefSrc;
@@ -2835,7 +2836,8 @@ void D3D_PC_AE(tWorld* param1)
     {
         swap = spare;
         fadeStep = AFD_f_Step(gAEOpacity);
-        if (AFD_b_Freeze(D3DRenderParams.opacity))
+        fadeLeft = GDI_i_AeFadeOpacity();
+        if (AFD_b_Freeze(fadeLeft))
         {
             wholeScreen.left = 0;
             wholeScreen.top = 0;
@@ -2844,10 +2846,13 @@ void D3D_PC_AE(tWorld* param1)
             D3D_SetRenderTargetFromTexture(D3DRenderParams.unktex1_dword_B31988);
             D3D_StretchRect(current, &wholeScreen);
         }
-        D3D_Fade(current, spare, D3DRenderParams.opacity);
+        D3D_Fade(current, spare, fadeLeft);
         spare = current;
         current = swap;
-        fadeDone = AFD_b_Advance(&D3DRenderParams.opacity, fadeStep);
+        /* The timer is the engine's, not this renderer's, so it is
+           read above, stepped here and written back. */
+        fadeDone = AFD_b_Advance(&fadeLeft, fadeStep);
+        GDI_AeFadeOpacitySet(fadeLeft);
         if (fadeDone)
             PC_AE_MASTER = (int)AFD_u_Cleared((unsigned int)PC_AE_MASTER);
     }

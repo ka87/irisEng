@@ -2976,12 +2976,12 @@ void D3D_SetRenderTargetAndDepthStencilSurface()
     surface->lpVtbl->Release(surface);
 }
 
-void D3D_BeginSceneCall()
+void D3D_BeginSceneCall(void)
 {
-    /* Without a device this renderer was not the one chosen. The
-       engine calls in here directly rather than through the
-       interface, so this runs whichever renderer is in force, and
-       the only right answer is to do nothing. */
+    /* Reached through the interface, so this renderer is the one
+       running -- but the frame can come round before the device
+       exists, or while a lost one is waiting to be reset, and there
+       is no scene to open without it. */
     if (!D3DRenderParams.d3dDev)
         return;
 
