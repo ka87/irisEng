@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="IrisEngSettings.MainWindow"
+        Title="irisEng settings"
+        Width="520" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+  <Grid Margin="18" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        ColumnDefinitions="150,*">
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen"
+               VerticalAlignment="Center" Margin="0,0,0,8"/>
+    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="AdapterBox"
+              HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+    <TextBlock Grid.Row="1" Grid.Column="0" Text="Fullscreen resolution"
+               VerticalAlignment="Center" Margin="0,0,0,8"/>
+    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ModeBox"
+              HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+    <TextBlock Grid.Row="2" Grid.Column="0" Text="Depth buffer"
+               x:Name="DepthLabel"
+               VerticalAlignment="Center" Margin="0,0,0,8"/>
+    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="DepthBox"
+              HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+    <CheckBox Grid.Row="3" Grid.Column="1" x:Name="WindowedBox"
+              Content="Windowed"/>
+
+    <CheckBox Grid.Row="4" Grid.Column="1" x:Name="MipMappingBox"
+              Content="Mip mapping"/>
+
+    <TextBlock Grid.Row="5" Grid.ColumnSpan="2" x:Name="StatusText"
+               TextWrapping="Wrap" MinHeight="34" Margin="0,14,0,10"
+               Opacity="0.7"/>
+
+    <Grid Grid.Row="6" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto,Auto">
+      <Button Grid.Column="0" x:Name="DefaultsButton" Content="Defaults"
+              MinWidth="95"/>
+      <Button Grid.Column="2" x:Name="SaveButton" Content="Save"
+              MinWidth="95" Margin="0,0,8,0"/>
+      <Button Grid.Column="3" x:Name="CloseButton" Content="Close"
+              MinWidth="95"/>
+    </Grid>
+
+  </Grid>
+</Window>

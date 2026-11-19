@@ -1,16 +1,24 @@
 using System;
-using System.Windows.Forms;
+using Avalonia;
 
 namespace IrisEngSettings
 {
     internal static class Program
     {
+        /* STAThread for Windows' sake: the Direct3D backend is COM and
+           wants an apartment, and the rest does not mind. */
         [STAThread]
-        private static void Main()
+        public static void Main(string[] args)
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+
+        /* Named and public because the Avalonia tooling looks for it. */
+        public static AppBuilder BuildAvaloniaApp()
+        {
+            return AppBuilder.Configure<App>()
+                             .UsePlatformDetect()
+                             .LogToTrace();
         }
     }
 }
