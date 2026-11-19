@@ -1,7 +1,6 @@
 #include "ai_compiledscripts.h"
 #include "../ai.h"
 #include "../time.h"
-#include "../platform/d3drender.h"
 #include "ai_debugfunctions.h"
 #include "ai_aifunctions.h"
 #include "ai_mathfunctions.h"

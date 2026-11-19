@@ -1,7 +1,6 @@
 #include "math.h"
 #include "gdi.h"
 #include "cameraengine.h"
-#include "platform/d3drender.h"
 
 int CAM_SetObjectMatrixFromCam(Mtx4x4* dest, Mtx4x4* src)
 {
