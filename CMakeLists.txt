@@ -242,6 +242,23 @@ else()
     target_compile_options(irisEng PRIVATE -fms-extensions)
 endif()
 
+# The engine declares its globals in headers without extern. In C that
+# is a tentative definition, so every file that includes one gets
+# storage of its own and the linker is expected to merge them -- which
+# is what it did until GCC 10 and Clang 11 made -fno-common the
+# default. Today it is 545 symbols and 46,543 definitions of them;
+# engine.h alone puts 157 copies of each of its globals into the
+# build, one per file that includes it.
+#
+# -fcommon asks for the old behaviour so the engine links. It is a
+# crutch: the fix is extern in the header and one definition in a
+# file, which is what aemaster.h and platform.h already do for the
+# ones that have been through here. The numbers above are what the
+# work should be measured against.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(irisEng PRIVATE -fcommon)
+endif()
+
 set_target_properties(irisEng PROPERTIES
     C_STANDARD 11
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
