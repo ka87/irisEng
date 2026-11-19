@@ -12,9 +12,12 @@
 # on its own, without -w, and reads only the one diagnostic out of the
 # noise.
 #
-# The baseline below is what the tree carries now: one entry, which is
-# strings.c's isdigit wanting <ctype.h>. The check fails on any count
-# that rises and on any file that appears and is not listed.
+# The baseline below is empty: no engine source calls a function it has
+# not been shown. The check fails on any file that appears, which is
+# now any file at all.
+#
+# strings.c was the last entry, 1 for isdigit. It asks for <ctype.h>
+# itself now rather than waiting for windows.h to bring it.
 #
 # engine.c and sound.c were here with 1 each, both _strnicmp -- the
 # CRT's name for a case-insensitive compare of a bounded length. The
@@ -62,7 +65,7 @@ CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # reports no implicit declarations -- see UNSWEEPABLE below
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
-BASELINE="strings.c 1"
+BASELINE=""
 
 # Files this host cannot compile at all, for reasons that are not
 # implicit declarations. They matter because the count below is a grep

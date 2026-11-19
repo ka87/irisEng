@@ -288,7 +288,7 @@ void LOA_Resolve()
 void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     LOG2("LOA_MakeFileRef", key, flags);
-    *retVal = func((uint32_t)key);
+    *(void**)retVal = func((uint32_t)key);
 }
 
 char* BIG_pc_ReadFileTmp(int Offset, int* size)
