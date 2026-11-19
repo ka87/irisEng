@@ -17,6 +17,55 @@ and `engine.ini` is the install's file rather than the player's -- a
 
     dotnet build -c Release
 
+Produces `irisEngSettings`, or `irisEngSettings.exe` on Windows. It is
+an Avalonia program on .NET 10 and runs on Windows and on Linux.
+
+On Windows it builds x86, because an adapter can offer a different
+mode list to a 32-bit caller and the engine is 32-bit -- the stored
+mode is an index into that list. Off Windows there is no such
+constraint and .NET has no 32-bit Linux runtime anyway; nothing there
+stores an index.
+
+It is a framework-dependent build, so the machine needs the **.NET 10
+runtime**: the desktop runtime and specifically the **x86** one on
+Windows, which is a separate download from the x64. That is a change
+from the .NET Framework 4.8 version, which ran on what Windows already
+had. To hand someone the program without asking them to install
+anything:
+
+    dotnet publish -c Release -r win-x86   --self-contained true -p:PublishSingleFile=true
+    dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true
+
+## Where the modes come from
+
+Two backends, because they answer for two renderers rather than being
+two ways of asking the same question.
+
+**Windows** asks Direct3D 9, because the engine's Direct3D renderer is
+what reads the answer, and the `mode` it stores is an index into
+Direct3D's own list of X8R8G8B8 modes. It also offers the depth-buffer
+formats that adapter supports, and the mip-mapping flag.
+
+**Linux** asks SDL first and the kernel second:
+
+- **SDL** is the same library the engine opens its window with, so its
+  list is the one that will actually be honoured, and it is the only
+  one of the two that speaks both X11 and Wayland. Wayland has no
+  protocol for a client to ask a monitor what modes it has -- the
+  compositor tells the toolkit, and SDL is the toolkit.
+- **`/sys/class/drm`** is the fallback, for a machine with no
+  `libSDL3.so` installed -- which is most of them, since the engine
+  links SDL statically and so does not leave one about. It is the
+  driver's own mode list, needs nothing installed, and is readable
+  with no display server running at all. It carries sizes but no
+  refresh rates, which is enough: the engine does not store one.
+
+The depth-buffer and mip-mapping controls are hidden on Linux. They
+are not shy about being unsupported -- the engine's OpenGL path never
+reads them. Off the Direct3D path it reads `width`, `height` and
+`windowed` and nothing else. Whatever those two keys already held is
+written back untouched rather than cleared, so a dual boot does not
+lose the Windows side's settings.
 Produces `irisEngSettings.exe`. It targets .NET 10 and builds as x86,
 so the display modes it enumerates are the ones the engine will see --
 an adapter can offer a different list to a 32-bit caller, and the

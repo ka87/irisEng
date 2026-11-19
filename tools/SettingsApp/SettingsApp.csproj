@@ -2,6 +2,11 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- Not net10.0-windows: this builds and runs on Linux too, and
+         the Direct3D backend is plain P/Invoke rather than anything
+         that needs the Windows Desktop pack. It is only ever asked
+         for on Windows. -->
+    <TargetFramework>net10.0</TargetFramework>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
 
@@ -23,8 +28,35 @@
     <RootNamespace>IrisEngSettings</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- The sources name their own usings and are kept that way. -->
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
+
+  <!-- The engine is 32-bit on Windows, and an adapter can offer a
+       different mode list to a 32-bit caller than to a 64-bit one.
+       The stored mode is an index into that list, so this has to ask
+       as the engine will.
+
+       Both properties, not one: PlatformTarget settles the assembly
+       and the runtime identifier settles the architecture of the .exe
+       the SDK generates to launch it.
+
+       There is no such thing off Windows. .NET has no 32-bit Linux
+       runtime, and it does not matter there: the engine's OpenGL path
+       reads the width and the height, not an index into anyone's
+       list. -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <PlatformTarget>x86</PlatformTarget>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10" />
+  </ItemGroup>
 
 </Project>

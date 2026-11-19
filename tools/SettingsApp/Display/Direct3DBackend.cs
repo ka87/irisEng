@@ -4,46 +4,9 @@ using System.Runtime.InteropServices;
 
 namespace IrisEngSettings
 {
-    /// Display mode as the engine will index it: the position in the
-    /// adapter's X8R8G8B8 mode list is what gets stored, not the size.
-    internal sealed class DisplayMode
-    {
-        public int Index;
-        public int Width;
-        public int Height;
-        public int RefreshRate;
-
-        public override string ToString()
-        {
-            return Width + " x " + Height + "  @ " + RefreshRate + " Hz";
-        }
-    }
-
-    internal sealed class Adapter
-    {
-        public int Ordinal;
-        public string Description;
-        public List<DisplayMode> Modes = new List<DisplayMode>();
-        public List<DepthFormat> DepthFormats = new List<DepthFormat>();
-
-        public override string ToString()
-        {
-            return Ordinal + ": " + Description;
-        }
-    }
-
-    internal sealed class DepthFormat
-    {
-        public uint Value;
-        public string Name;
-
-        public DepthFormat(uint value, string name) { Value = value; Name = name; }
-        public override string ToString() { return Name; }
-    }
-
     /// Minimal IDirect3D9 interop: enough to list adapters, their
     /// X8R8G8B8 display modes and the depth formats each supports.
-    internal sealed class Direct3D : IDisposable
+    internal sealed class Direct3DBackend : IDisplayBackend
     {
         private const uint D3D_SDK_VERSION = 32;
         private const uint D3DFMT_X8R8G8B8 = 22;
@@ -105,6 +68,14 @@ namespace IrisEngSettings
 
         private IntPtr _d3d;
 
+        public string Name { get { return "Direct3D 9"; } }
+
+        /* The engine's Direct3D renderer reads both, and looks the
+           mode up by the stored index, so all three of these are
+           values it will act on. */
+        public bool HasDepthFormats { get { return true; } }
+        public bool HasModeIndex { get { return true; } }
+
         private static readonly DepthFormat[] CandidateDepthFormats =
         {
             new DepthFormat(75, "D24S8  - 24 bit depth, 8 bit stencil"),
@@ -115,7 +86,7 @@ namespace IrisEngSettings
             new DepthFormat(73, "D15S1  - 15 bit depth, 1 bit stencil"),
         };
 
-        public Direct3D()
+        public Direct3DBackend()
         {
             _d3d = Direct3DCreate9(D3D_SDK_VERSION);
             if (_d3d == IntPtr.Zero)
