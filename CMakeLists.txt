@@ -21,6 +21,39 @@
 cmake_minimum_required(VERSION 3.21)
 project(irisEng C)
 
+# ------------------------------------------------------------ build type
+
+# Without one, CMake passes neither -g nor -O: the binary has its
+# symbol table and no line information at all, so a debugger can name
+# the function a crash is in and nothing else. That is a poor default
+# for a single-configuration generator and it is not what anyone
+# configuring this wants, so it is filled in.
+#
+# RelWithDebInfo rather than Release, because the thing being built is
+# a reconstruction and a report that says which line is worth more
+# here than the last few per cent. -DCMAKE_BUILD_TYPE=Debug for a
+# crash worth stepping through: RelWithDebInfo inlines, which merges
+# frames and loses locals.
+#
+# Multi-configuration generators -- Visual Studio among them -- choose
+# per build rather than per configure, so this is left alone there.
+get_property(IRIS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT IRIS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+        "Build type: Debug, Release, RelWithDebInfo or MinSizeRel" FORCE)
+    message(STATUS
+        "No build type was given, so this is RelWithDebInfo -- optimised, "
+        "with the line information a backtrace needs. -DCMAKE_BUILD_TYPE=Debug "
+        "for one worth stepping through.")
+endif()
+
+# A frame pointer, so a backtrace is readable wherever it is taken.
+# It costs a register on x86 and buys every debugger and profiler a
+# stack they can walk without unwind tables.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-fno-omit-frame-pointer)
+endif()
+
 # ---------------------------------------------------------------- 32-bit
 
 # IRIS_CONFIGURE_ONLY_64 is for looking at this file's own workings
