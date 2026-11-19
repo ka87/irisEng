@@ -28,16 +28,26 @@ static char* GRI_l_Cell(tWorldGridStruct* grid, int x, int y)
     return &grid->capasPtr[y * GRI_l_Stride(grid) + x];
 }
 
-// The centre of one cell in world coordinates. The window's origin is
-// its lower limit in cells times the cell size, and the half is the
-// step from a cell's corner to its centre.
-static void GRI_l_CellToWorld(tWorldGridStruct* grid, int x, int y, Vec3* pos)
+/* The centre of one cell in world coordinates, in x and y. The
+   window's origin is its lower limit in cells times the cell size, and
+   the half is the step from a cell's corner to its centre.
+
+   **The height is not touched, and that is the whole of this.** Two of
+   the three callers are writing a fresh path point and want nought in
+   it, and they say so themselves. The third is adjusting a position
+   that already has a height and has to keep it: nought there is the
+   bottom of the world rather than the ground the object is standing
+   on, which is a destination nothing can reach.
+
+   This used to set it, which read as tidy -- a cell centre is on the
+   grid's plane, so z is nought -- and was wrong for that third caller.
+   It is what left the companions standing still. */
+static void GRI_l_CellToWorldXY(tWorldGridStruct* grid, int x, int y, Vec3* pos)
 {
     pos->x = (float)((double)(grid->gridElemSize * grid->s5Limit1MinX)
                      + ((double)x + grid->startX + 0.5));
     pos->y = (float)((double)(grid->gridElemSize * grid->s5Limit1MinY)
                      + ((double)y + grid->startY + 0.5));
-    pos->z = 0.0f;
 }
 
 // Adds the capability to every cell of the list, and takes it back off
@@ -221,7 +231,9 @@ int GRI_i_ComputeDest(struct sWorldGridStruct* grid, Vec3* pos)
         }
     }
 
-    GRI_l_CellToWorld(grid, cellX, cellY, pos);
+    /* x and y only: the height is the caller's and this function has
+       never written it. */
+    GRI_l_CellToWorldXY(grid, cellX, cellY, pos);
     return 1;
 }
 
@@ -408,7 +420,8 @@ int GRID_ShortestPath(struct sGameObjectMain* gao, struct sWorldGridStruct* ownG
 
     if (targetX == startX && targetY == startY)
     {
-        GRI_l_CellToWorld(ownGrid, startX, startY, pathOut);
+        GRI_l_CellToWorldXY(ownGrid, startX, startY, pathOut);
+        pathOut->z = 0.0f;
         return 1;
     }
 
@@ -660,7 +673,8 @@ int GRID_ShortestPath(struct sGameObjectMain* gao, struct sWorldGridStruct* ownG
         }
         else
         {
-            GRI_l_CellToWorld(ownGrid, atX, atY, &pathOut[written]);
+            GRI_l_CellToWorldXY(ownGrid, atX, atY, &pathOut[written]);
+            pathOut[written].z = 0.0f;
             ++written;
         }
         at = atX + atY * stride;
