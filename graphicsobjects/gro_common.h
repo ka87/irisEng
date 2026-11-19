@@ -3,6 +3,13 @@
 #include "../gameobject.h"
 #include "../world.h"
 
+/* Named below in a parameter list and nowhere else, so without this
+   each prototype would declare a type of its own, scoped to itself:
+   two functions taking "the same" pointer would not agree, and
+   assigning one to the other is a type error rather than the
+   intended opaque handle. */
+struct sGameObjectVisualObject;
+
 typedef struct sGroIntf
 {
     int id;

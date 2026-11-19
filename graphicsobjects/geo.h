@@ -2,6 +2,13 @@
 #include "gro_common.h"
 #include "../common.h"
 
+/* Named below in a parameter list and nowhere else, so without this
+   each prototype would declare a type of its own, scoped to itself:
+   two functions taking "the same" pointer would not agree, and
+   assigning one to the other is a type error rather than the
+   intended opaque handle. */
+struct sGroGeneric;
+
 /* The renderer's buffers for a piece of geometry live in tGEOGRO
    below. They belong to whichever renderer made them, they mean
    nothing to anyone else, and nothing in the engine does anything

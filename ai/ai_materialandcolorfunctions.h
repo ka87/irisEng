@@ -1,6 +1,13 @@
 #pragma once
 #include "../ai.h"
 
+/* Named below in a parameter list and nowhere else, so without this
+   each prototype would declare a type of its own, scoped to itself:
+   two functions taking "the same" pointer would not agree, and
+   assigning one to the other is a type error rather than the
+   intended opaque handle. */
+struct sTexProceduralStruct;
+
 void AI_EvalFunc_MATEnableMltxtLvl_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int enable);
 void AI_EvalFunc_MATSetConstant_C(struct sGameObjectMain* gao, int color, int subMatID);
 void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* procedural, int field, int param1);
