@@ -22,6 +22,7 @@ python3 - <<'PY'
 import re
 import sys
 
+gdic = open('gdi.c', encoding='latin-1').read()
 gdih = open('gdi.h', encoding='latin-1').read()
 i = gdih.index('typedef struct sGdi_DisplayData')
 j = gdih.index('} tGdi_DisplayData', i)
@@ -32,11 +33,40 @@ if not entries:
     print('ifacecheck: found no interface entries -- has gdi.h moved?')
     sys.exit(1)
 
-gdic = open('gdi.c', encoding='latin-1').read()
-fills = re.findall(r'static void (GDI_l_Fill\w+)\(struct sGdi_DisplayData\* dd\)\s*\{(.*?)\n\}',
-                   gdic, re.S)
-if not fills:
-    print('ifacecheck: found no fill functions in gdi.c')
+# One file per renderer that does not live in gdi.c, plus gdi.c
+# itself. A renderer whose row is written elsewhere -- which is every
+# renderer gdi.c cannot name the types of -- has to be listed here, or
+# this check would quietly stop looking at it and still say every
+# renderer fills every entry.
+SOURCES = ['gdi.c', 'platform/d3drow.c']
+
+# How many renderers there are is gdi.c's table, not this list: a file
+# dropped from the list above would otherwise take its renderer out of
+# the check and still report that every renderer fills every entry.
+# The table says two, so two fill functions have to be found.
+table = re.search(r'gdi_renderers\[\]\s*=\s*\{(.*?)\n\};', gdic, re.S)
+if not table:
+    print('ifacecheck: found no renderer table in gdi.c')
+    sys.exit(1)
+WANT = len(re.findall(r'^\s*\{\s*"', table.group(1), re.M))
+if WANT < 1:
+    print('ifacecheck: the renderer table in gdi.c has no rows')
+    sys.exit(1)
+
+fills = []
+for path in SOURCES:
+    text = open(path, encoding='latin-1').read()
+    found = re.findall(r'^(?:static )?void (\w*Fill\w+)\(struct sGdi_DisplayData\* dd\)\s*\{(.*?)\n\}',
+                       text, re.S | re.M)
+    if not found:
+        print('ifacecheck: found no fill function in %s' % path)
+        sys.exit(1)
+    fills += found
+
+if len(fills) != WANT:
+    print('ifacecheck: gdi.c lists %d renderer(s) and %d fill function(s) '
+          'were found -- is a renderer\'s file missing from SOURCES above?'
+          % (WANT, len(fills)))
     sys.exit(1)
 
 bad = 0

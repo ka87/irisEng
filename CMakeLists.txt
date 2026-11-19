@@ -7,13 +7,13 @@
 # program, it would be a broken one. The check below refuses rather
 # than letting that be discovered at run time.
 #
-# What this links today is the Windows game. Off Windows it compiles
-# all but the Direct3D renderer and the files that include its headers
-# -- 157 of 179 -- and links nothing, because gdi.c names that renderer
-# in three places. What is left is written down rather than guessed at,
-# in the warning at the foot of this file and in the notes; the window,
-# the input, the paths, the file reads and the clocks have all left
-# Windows already.
+# What this links today is the Windows game. Off Windows it builds
+# every engine source but the Direct3D renderer's six, which are left
+# out at the foot of this file, and draws through OpenGL instead. The
+# window, the input, the paths, the file reads and the clocks had all
+# left Windows already; what remained was that gdi.c filled the
+# renderer table with Direct3D entries itself, and that is in
+# platform/d3drow.c now.
 #
 #   cmake -S . -B build -A Win32            Visual Studio, 32-bit
 #   cmake --build build --config Release
@@ -70,6 +70,30 @@ foreach(entry IN LISTS IRIS_ENTRIES)
         list(APPEND IRIS_ENGINE_SOURCES "${one}")
     endif()
 endforeach()
+
+# The Direct3D renderer, which only a machine with Direct3D can build.
+# Everything else in the engine is portable now, including gdi.c, which
+# holds the table these fill a row of: the row itself is in
+# platform/d3drow.c and goes with them. What is left draws through the
+# OpenGL renderer.
+if(NOT WIN32)
+    set(IRIS_D3D_SOURCES
+        "platform/d3drender.c"
+        "platform/d3daftereffects.c"
+        "platform/d3dsun.c"
+        "platform/d3dtex.c"
+        "platform/d3dvideo.c"
+        "platform/d3drow.c")
+    foreach(one IN LISTS IRIS_D3D_SOURCES)
+        list(FIND IRIS_ENGINE_SOURCES "${one}" IRIS_FOUND_AT)
+        if(IRIS_FOUND_AT EQUAL -1)
+            message(FATAL_ERROR
+                "${one} is not in irisEng.vcxproj, so this build cannot "
+                "be leaving it out -- the list above has gone stale")
+        endif()
+        list(REMOVE_ITEM IRIS_ENGINE_SOURCES "${one}")
+    endforeach()
+endif()
 
 list(LENGTH IRIS_ENGINE_SOURCES IRIS_ENGINE_COUNT)
 if(IRIS_ENGINE_COUNT LESS 100)
@@ -192,15 +216,16 @@ else()
     # than let that happen.
     target_compile_definitions(irisEng PRIVATE _FILE_OFFSET_BITS=64)
 
-    message(WARNING
-        "This is not a Windows build. 157 of the 179 engine sources "
-        "compile; the other 22 all reach a Direct3D header, either "
-        "being the Direct3D renderer itself or including "
-        "platform/d3drender.h for a declaration. Nothing links yet: "
-        "gdi.c fills the renderer table with the Direct3D entries "
-        "unconditionally, keeps the after-effect fade's timer in that "
-        "renderer's own parameter block, and calls its begin-scene by "
-        "name. Those three and the header includes are what is left.")
+    # OpenGL needs no library named here: every entry point this
+    # renderer uses is resolved at run time through SDL, so there is
+    # no -lGL and no -ldl to add.
+
+    message(STATUS
+        "This is not a Windows build: the Direct3D renderer is left "
+        "out and the game draws through OpenGL. Every other engine "
+        "source is built, and nothing in them refers to the renderer "
+        "that was left out -- its row in the table is in "
+        "platform/d3drow.c, which goes with it.")
 endif()
 
 if(MSVC)
