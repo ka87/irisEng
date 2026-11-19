@@ -90,6 +90,10 @@ typedef struct sGdi_D3DRenderParams
     IDirect3DTexture9* unktex1_dword_B31988;
     IDirect3DTexture9* unktex2_dword_B3198C;
     IDirect3DTexture9* tmpRenderTarget;
+    /* The fade's timer, which this renderer no longer keeps: it is the
+       engine's, behind GDI_i_AeFadeOpacity. The field stays because
+       the frozen pre-rewrite copy in tests/ still writes it, and a
+       frozen copy is not edited to follow a rewrite. */
     int opacity;
 } tGdi_D3DRenderParams;
 
@@ -349,7 +353,7 @@ const char* D3D_sz_Name(void);
 void D3D_OverlayEnd(void);
 
 void D3D_SetProjectionMatrix(tDDCamStruct* cam);
-void D3D_BeginSceneCall();
+void D3D_BeginSceneCall(void);
 void D3D_SetVertexShader(IDirect3DVertexShader9* shader);
 
 /* The engine's drawing-state interface, filled into tGdi_DisplayData. */

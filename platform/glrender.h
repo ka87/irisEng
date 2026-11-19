@@ -138,6 +138,12 @@ void  GL_BuildGeometryCaches(struct sWorld* world);
    Answered rather than left out, as above. */
 void  GL_RebuildDepthBlurRamp(void);
 
+/* Told a frame is about to be drawn. Nothing to do: there is no scene
+   to open here and no render target to point back at the back buffer,
+   because this renderer's draw calls set up what they need as they
+   come. Answered rather than left out, as above. */
+void  GL_BeginScene(void);
+
 /* ---- present but inert, each for the reason in glrender.c ---- */
 void  GL_OverlayBegin(void);
 void  GL_OverlayDrawQuads(const void* vertices, int triangleCount);

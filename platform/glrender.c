@@ -805,6 +805,11 @@ void GL_RebuildDepthBlurRamp(void)
        been noticed by the time it could matter. */
 }
 
+void GL_BeginScene(void)
+{
+    /* See the note in the header: nothing to do. */
+}
+
 void GL_DiscardGeometryCache(struct sGEOGRO* gro)
 {
     (void)gro;

@@ -18,15 +18,19 @@
 float GDI_gaf_ScreenRatio[4] = { 1.0f, 1.0f,  (3.0f / 4.0f), (9.0f / 16.0f) };
 
 /* The fade's timer, reached from either renderer -- see gdi.h for why
-   it lives where it does and why there is only one of it. */
+   it lives here and why there is only one of it. The storage is
+   private to this file: the two functions below are the whole of the
+   way to it. */
+static int GDI_l_i_AeFadeOpacity = 0;
+
 int GDI_i_AeFadeOpacity(void)
 {
-    return D3DRenderParams.opacity;
+    return GDI_l_i_AeFadeOpacity;
 }
 
 void GDI_AeFadeOpacitySet(int opacity)
 {
-    D3DRenderParams.opacity = opacity;
+    GDI_l_i_AeFadeOpacity = opacity;
 }
 
 void GDI_DepthBlurRampRebuild(void)
@@ -756,7 +760,7 @@ void GDI_BeforeDisplay(tGdi_DisplayData* dxdd)
     PRO_PerfCounterStartBlock(&dxdd->rasters[15]);
 
     gpst_DX_stDD = dxdd;
-    D3D_BeginSceneCall();
+    dxdd->BeginScene();
 
     if ((dxdd->presentationFlags & 0x80) == 0)
     {
@@ -910,6 +914,7 @@ static void GDI_l_FillD3D(struct sGdi_DisplayData* dd)
     dd->DiscardGeometryCache = D3D_DiscardGeometryCache;
     dd->BuildGeometryCaches = D3D_CreateGameObjectsD3DStuffForMultiStream;
     dd->RebuildDepthBlurRamp = D3D_RebuildDepthBlurRamp;
+    dd->BeginScene = D3D_BeginSceneCall;
     dd->PrepareWaterRendering = D3D_PrepareWaterRendering;
     dd->DrawWater = D3D_DrawWater_DrawVertexTable;
 }
@@ -977,6 +982,10 @@ static void GDI_l_FillGL(struct sGdi_DisplayData* dd)
        last, so it has nothing to do when told. Answered rather than
        left null, as above. */
     dd->RebuildDepthBlurRamp = GL_RebuildDepthBlurRamp;
+    /* The OpenGL renderer has no scene to open: its draw calls set up
+       what they need as they come. Answered rather than left null, as
+       above. */
+    dd->BeginScene = GL_BeginScene;
     dd->b_Ready = GL_b_Ready;
     dd->sz_Name = GL_sz_Name;
     dd->AfterEffects = GL_PC_AE;

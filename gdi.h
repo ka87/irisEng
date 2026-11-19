@@ -217,6 +217,20 @@ typedef struct sGdi_DisplayData
        device. */
     void(* RebuildDepthBlurRamp)(void);
 
+    /* A frame is about to be drawn. Called once at the top of it,
+       before anything is cleared.
+
+       What that means is the renderer's business: one of them has a
+       scene to open and a render target to point at the back buffer
+       again, and the other has nothing to do, because its own calls
+       set up what they need as they come. Both answer the entry.
+
+       Through the interface for the same reason as the two above: the
+       engine used to call the Direct3D one by name, so the call
+       happened whichever renderer was running and that renderer
+       carried a guard against having no device to open a scene on. */
+    void(* BeginScene)(void);
+
     /* A glyph atlas, and the quads that read from it. The engine
        rasterizes text itself and hands over 8-bit coverage -- one
        byte per pixel, row after row, no padding -- leaving the
@@ -435,12 +449,13 @@ Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8];
 /* The fade's remaining opacity: the timer that effect steps itself,
  * from the whole range down to nothing.
  *
- * The storage sits in the one renderer's own parameter block, because
- * that renderer was the only one when the scripts' way in was written
- * and AEM_Control starts the timer there before any device is known.
- * These two reach it from either renderer, and from the scripts' call
- * itself, without any of them including a renderer's header; gdi.c --
- * which already knows both -- is where they are defined.
+ * The storage is in gdi.c, which is state the engine keeps and not a
+ * renderer's: the scripts' way in starts the timer running before any
+ * device is known, and whichever renderer is in force then reads it,
+ * steps it and writes it back. It used to sit in the Direct3D
+ * renderer's own parameter block -- that renderer was the only one
+ * when the scripts' call was written -- which left the engine's state
+ * inside a renderer that may not be the one running.
  *
  * It is one number and not one each on purpose. A renderer keeping its
  * own copy would miss the start of a fade: the only thing that sets
