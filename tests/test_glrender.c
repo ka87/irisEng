@@ -6891,6 +6891,126 @@ static void caseWaterSmoothRampDown(void)
     tweak_water_smoothy = 0.0f;
 }
 
+/* The depth conversion, which is what a context without
+   glClipControl gets instead of one.
+
+   The claim it rests on is that nothing downstream can tell: OpenGL
+   maps its -1..1 to the window's 0..1 by halving and shifting, and
+   that undoes the conversion exactly, so the depth buffer holds what
+   it would have held and the depth blur reads what it would have
+   read. That is an algebraic identity rather than a property of any
+   particular projection, so this checks it on a projection with
+   nothing special about it and on points spread through the frustum.
+
+   It is worth checking rather than trusting because the cost of being
+   wrong is a frame that draws, with every depth comparison subtly
+   out. */
+static void glr_CaseDepthRange(void)
+{
+    /* Dense on purpose. A real projection has nought at f13, f23 and
+       f44, which is exactly where this arithmetic lives: written with
+       one of those, a conversion that forgot a row or dropped the w
+       term computed the same answer and the check said nothing. The
+       identity below holds for any matrix, so the matrix may as well
+       be one that cannot hide a mistake. */
+    static const float proj[16] = {
+        1.5f,  0.3f,  0.7f,   0.1f,
+        0.2f,  2.0f,  0.9f,   0.4f,
+        0.25f, 0.5f,  1.03f,  1.0f,
+        0.6f, -0.8f, -3.09f,  0.2f,
+    };
+    static const float pts[][4] = {
+        {  0.0f,  0.0f, 100.0f, 1.0f },
+        {  3.0f, -2.0f, 100.5f, 1.0f },
+        { -7.5f,  4.25f, 1000.0f, 1.0f },
+        {  1.0f,  1.0f, 3.1f,   1.0f },
+    };
+    Mtx4x4 p, converted;
+    size_t i;
+
+    printf("-- the depth conversion matches what glClipControl would do\n");
+
+    memcpy(&p, proj, sizeof(proj));
+    p.mtxflag = 0;
+    converted = p;
+    GL_l_ToOpenGLDepth(&converted);
+
+    for (i = 0; i < sizeof(pts) / sizeof(pts[0]); i++)
+    {
+        const float* v = pts[i];
+        float zc, wc, zc2, wc2, withClipControl, withConversion;
+        const float* a = (const float*)&p;
+        const float* b = (const float*)&converted;
+        int k;
+
+        /* Row vectors: clip.z is the third column, clip.w the fourth. */
+        zc = wc = zc2 = wc2 = 0.0f;
+        for (k = 0; k < 4; k++)
+        {
+            zc  += v[k] * a[k * 4 + 2];
+            wc  += v[k] * a[k * 4 + 3];
+            zc2 += v[k] * b[k * 4 + 2];
+            wc2 += v[k] * b[k * 4 + 3];
+        }
+
+        /* GL_ZERO_TO_ONE: the clip z over w is already the window's. */
+        withClipControl = zc / wc;
+        /* Without it: -1..1, which the viewport halves and shifts. */
+        withConversion = 0.5f * (zc2 / wc2) + 0.5f;
+
+        ok(fabs(withClipControl - withConversion) < 1e-5,
+           "the same window depth either way");
+        ok(fabs(wc - wc2) < 1e-5, "and w is untouched, so x and y are too");
+    }
+
+    /* And why the water must not be handed the converted one: its
+       texture matrix is built from the projection and takes the z
+       column through, so the two projections do not give the same
+       matrix. This checks that premise rather than the wiring --
+       which projection the water path actually passes is not visible
+       from here, and is held in place by the comment at that call. */
+    {
+        Mtx4x4WithoutAdditionalData texRaw, texConverted;
+
+        WMS_ProjectionToTexture(&texRaw,
+                                (const Mtx4x4WithoutAdditionalData*)&p, 64, 64);
+        WMS_ProjectionToTexture(&texConverted,
+                                (const Mtx4x4WithoutAdditionalData*)&converted,
+                                64, 64);
+        ok(memcmp(&texRaw, &texConverted, sizeof(texRaw)) != 0,
+           "the reflection's texture matrix differs between the two, so "
+           "which one it is built from matters");
+    }
+
+    /* And the choice of which to use. */
+    gl_state.clipControl = 1;
+    gl_projIsD3DDepth = 1;
+    gl_projMtx = p;
+    {
+        Mtx4x4 scratch;
+        ok(GL_l_p_ClipProjection(&scratch)
+               == (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+           "with clip control the projection is handed over untouched");
+    }
+    gl_state.clipControl = 0;
+    {
+        Mtx4x4 scratch;
+        ok(GL_l_p_ClipProjection(&scratch)
+               != (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+           "without it a converted copy is handed over instead");
+    }
+    gl_projIsD3DDepth = 0;
+    {
+        Mtx4x4 scratch;
+        ok(GL_l_p_ClipProjection(&scratch)
+               == (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
+           "and a projection that is not Direct3D's -- the shadow's -- "
+           "is never converted");
+    }
+    gl_state.clipControl = 0;
+    gl_projIsD3DDepth = 0;
+}
+
 int main(void)
 {
     void* p;
@@ -6907,12 +7027,18 @@ int main(void)
        MATH_GetSin. */
     MATH_InitModule();
 
+    /* Before the context, because it needs none: this is arithmetic,
+       and it is the arithmetic that stands in for glClipControl where
+       there is no glClipControl. */
+    glr_CaseDepthRange();
+
     if (!EGLH_b_Open())
     {
         printf("  skipped: %s\n", EGLH_why);
         printf("  (this test needs a software OpenGL 4.5 or 4.1; the rest of the"
                " renderer's tests do not)\n");
-        return 0;
+        printf("  %ld checks, %ld failure(s)\n", checks, fails);
+        return fails ? 1 : 0;
     }
 
     /* The renderer's own pointers, aimed at the live driver. One

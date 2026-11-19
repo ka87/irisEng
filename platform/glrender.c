@@ -181,8 +181,9 @@ static void GL_l_AskForCore(int major, int minor)
 /* What to ask for, best first. 4.5 is what this renderer was written
    against and is still what it would rather have. 4.1 is the floor,
    and the whole of the difference between them that the renderer
-   actually depends on is glClipControl -- core at 4.5, and at 4.1 an
-   extension that has to be there. See GL_l_b_ClipControlUsable. */
+   actually depends on is glClipControl -- core at 4.5, an extension
+   at 4.1, and arithmetic where there is neither. See
+   GL_l_b_ClipControlUsable and GL_l_ToOpenGLDepth. */
 static const struct { int major, minor; } gl_wanted[] =
 {
     { 4, 5 },
@@ -237,6 +238,34 @@ static int GL_l_b_ClipControlUsable(void)
     return GL_l_b_HasExtension("GL_ARB_clip_control");
 }
 
+/* The same thing glClipControl would have done, done to the matrix.
+
+   Where the context cannot be told to take z in 0..1, the projection
+   is made to produce OpenGL's -1..1 instead: the engine's matrices
+   stay as they are and the last step before the clip is adjusted, so
+   projection.c is still shared and no shader changes.
+
+   The engine's matrices are row-major and multiply a row vector, so
+   clip.z is the third column and clip.w the fourth. Wanting
+   clip.z' = 2*clip.z - clip.w is therefore twice the third column
+   less the fourth.
+
+   What comes out the far end is the same number. OpenGL maps -1..1 to
+   the window's 0..1 by halving and shifting, which undoes this
+   exactly: a vertex whose depth would have been 0.25 under
+   GL_ZERO_TO_ONE is 0.25 here too. So the depth buffer holds what it
+   held, the depth test compares what it compared, and the depth blur
+   -- which samples that buffer -- reads the same values. The cost is
+   a little precision in the round trip through -1..1, and nothing
+   else. */
+static void GL_l_ToOpenGLDepth(Mtx4x4* m)
+{
+    m->v1.z  = 2.0f * m->v1.z  - m->_m14;
+    m->v2.z  = 2.0f * m->v2.z  - m->_m24;
+    m->v3.z  = 2.0f * m->v3.z  - m->_m34;
+    m->Pos.z = 2.0f * m->Pos.z - m->w;
+}
+
 /* ------------------------------------------------- the real context */
 
 /* One attempt at one version. Leaves nothing current and nothing
@@ -280,17 +309,6 @@ static SDL_GLContext GL_l_p_TryContext(SDL_Window* window, int major, int minor)
         return NULL;
     }
 
-    if (!GL_l_b_ClipControlUsable())
-    {
-        DBG_OutputDebugString("GL: %d.%d here has no glClipControl and no "
-                              "GL_ARB_clip_control, so the depth range "
-                              "cannot be set to the one the engine's "
-                              "projections use\n", major, minor);
-        GL_ForgetFunctions();
-        SDL_GL_MakeCurrent(window, NULL);
-        SDL_GL_DestroyContext(ctx);
-        return NULL;
-    }
     return ctx;
 }
 
@@ -453,16 +471,24 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
        be shared between the two renderers rather than having a
        variant for each.
 
-       Core from 4.5 and GL_ARB_clip_control before it, and the
-       context would have been refused without one of the two, so
-       this call is safe by the time it is reached.
+       Core from 4.5 and GL_ARB_clip_control before it. Where there is
+       neither, the projection carries the conversion instead and the
+       depths that reach the buffer are the same ones -- see
+       GL_l_ToOpenGLDepth. Asked once, here, because the answer cannot
+       change while a context lasts and every projection consults it.
 
        The origin stays at the lower left, OpenGL's own. Both
        conventions put clip y = +1 at the top of the screen -- one
        measures the window from the bottom and negates on the way, the
        other does not -- so nothing is upside down, and the overlay's
        pixel mapping is unaffected. */
-    GLFN_glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+    gl_state.clipControl = GL_l_b_ClipControlUsable();
+    if (gl_state.clipControl)
+        GLFN_glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+    else
+        DBG_OutputDebugString(
+            "GL: no glClipControl and no GL_ARB_clip_control here, so the "
+            "projection converts the depth range instead\n");
 
     GLFN_glEnable(GL_DEPTH_TEST);
     GLFN_glDepthFunc(GL_LEQUAL);
@@ -1271,12 +1297,62 @@ static void GL_l_ForgetGeometry(void)
     gl_sprVertNum = 0;
 }
 
+/* Whether the projection now in gl_projMtx is one that produces
+   Direct3D's depth range -- which the scene's is and the shadow's is
+   not. Set wherever the projection is. */
+static int gl_projIsD3DDepth;
+/* and the same, saved across a shadow pass beside gl_savedProjMtx */
+static int gl_savedProjIsD3DDepth;
+
+/* The projection to multiply a view matrix by, for a product that
+   will become gl_Position.
+
+   gl_projMtx itself is left exactly as the engine computed it,
+   because it is read for more than clip space: watermesh.c builds the
+   reflection's texture matrix out of it, and that matrix takes the
+   projection's z column through unchanged and divides by it. Adjusting
+   gl_projMtx in place moved the water's reflection, which is a long
+   way from the depth buffer.
+
+   So the conversion happens here, on the way into a product, and
+   leaves the original alone. It composes either way -- the conversion
+   is a multiply on the right, so (V*P)*S is V*(P*S) -- and doing it
+   here means every caller that wants clip space gets it and every
+   caller that wants the engine's projection still has it. */
+static const Mtx4x4WithoutAdditionalData* GL_l_p_ClipProjection(Mtx4x4* scratch)
+{
+    if (gl_state.clipControl || !gl_projIsD3DDepth)
+        return (const Mtx4x4WithoutAdditionalData*)&gl_projMtx;
+    *scratch = gl_projMtx;
+    GL_l_ToOpenGLDepth(scratch);
+    return (const Mtx4x4WithoutAdditionalData*)scratch;
+}
+
+/* The shadow's projection is not one of these, and the engine is what
+   says so rather than this file guessing.
+ *
+   The matrix the engine hands to SetViewMatrixSDW has its third row
+   zeroed and is then transposed, and its _m34 set to nought -- so the
+   third column is nought throughout and every vertex of a shadow
+   arrives with clip z of exactly nought and w of one. The projection
+   beside it is an identity, so nothing changes that.
+ *
+   Converting it would put every one of those vertices at z = -w, the
+   near plane itself, where an implementation is within its rights to
+   drop them -- and one does. Left alone, they sit at the middle of
+   OpenGL's range instead of at the end of Direct3D's. Which of those
+   two it is cannot matter: they are all at the same depth as each
+   other, which is the only thing the shadow pass compares. */
+
 /* view * projection, in the engine's own order, kept ready for the
    next draw rather than rebuilt per chunk. */
 static void GL_l_CombineMatrices(void)
 {
-    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&gl_viewProjMtx, (const Mtx4x4WithoutAdditionalData*)&gl_viewMtx,
-                       (const Mtx4x4WithoutAdditionalData*)&gl_projMtx);
+    Mtx4x4 scratch;
+
+    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&gl_viewProjMtx,
+                       (const Mtx4x4WithoutAdditionalData*)&gl_viewMtx,
+                       GL_l_p_ClipProjection(&scratch));
 }
 
 int GL_SetViewMatrix(Mtx4x4* mtxptr)
@@ -1313,6 +1389,7 @@ void GL_SetProjectionMatrix(tDDCamStruct* cam)
 
     PRJ_Compute(cam, &in, &out);
     memcpy(&gl_projMtx, &out.matrix, sizeof(Mtx4x4WithoutAdditionalData));
+    gl_projIsD3DDepth = 1;
     GL_l_CombineMatrices();
 
     if (out.setViewport && gl_state.context)
@@ -2647,8 +2724,13 @@ void GL_SetRenderTargetAndBackupPreviousSDW(int textureID, int clear)
         GLFN_glViewport(gl_savedViewport[0], gl_savedViewport[1],
                         gl_savedViewport[2], gl_savedViewport[3]);
         /* Only the projection, because the caller puts the view back
-           itself -- which is what the other renderer relies on too. */
+           itself -- which is what the other renderer relies on too.
+           What kind of projection it is goes back with it: the scene's
+           wants the depth conversion and the shadow's does not, and
+           restoring the one without the other would leave the scene
+           being drawn as though it were a shadow. */
         gl_projMtx = gl_savedProjMtx;
+        gl_projIsD3DDepth = gl_savedProjIsD3DDepth;
         GL_l_CombineMatrices();
         gl_targetInForce = 0;
         return;
@@ -2730,6 +2812,7 @@ void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
        is where the other renderer saves it and the engine calls this
        one first. */
     gl_savedProjMtx = gl_projMtx;
+    gl_savedProjIsD3DDepth = gl_projIsD3DDepth;
 
     /* The shadow is drawn with the projection out of the way: the view
        matrix the engine builds for it already maps the caster into the
@@ -2745,6 +2828,7 @@ void GL_SetViewMatrixSDW(Mtx4x4* mtxptr, float* unused)
        silhouette upside down. */
     MATH_SetIdentityMatrix(&gl_projMtx);
     GL_l_FlipVertical(&gl_projMtx, &gl_projMtx);
+    gl_projIsD3DDepth = 0;
     GL_SetViewMatrix(mtxptr);
 }
 
@@ -5197,6 +5281,12 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     if (verts <= 0)
         return;
 
+    /* The engine's projection, deliberately, and not the one the
+       clip-space products are built from. This does not make a clip
+       position: it makes the texture matrix the reflection is sampled
+       with, and it takes the projection's z column through unchanged
+       and divides by it. A depth conversion in here would move the
+       reflection on the water. */
     WMS_ProjectionToTexture(&texMtx,
                             (const Mtx4x4WithoutAdditionalData*)&gl_projMtx,
                             GL_WATER_SIZE, GL_WATER_SIZE);
@@ -5232,9 +5322,13 @@ void GL_DrawWater(struct sWaterParamsGlobalStruct* water)
     camInv._m34 = 0.0f;
     camInv.w = 1.0f;
     MATH_MakeOGLMatrix(&camView, &camInv);
-    MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&camViewProj,
-                       (const Mtx4x4WithoutAdditionalData*)&camView,
-                       (const Mtx4x4WithoutAdditionalData*)&gl_projMtx);
+    {
+        Mtx4x4 scratch;
+
+        MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&camViewProj,
+                           (const Mtx4x4WithoutAdditionalData*)&camView,
+                           GL_l_p_ClipProjection(&scratch));
+    }
 
     /* The reflection is blurred before it is sampled, which is where
        the other renderer does it too -- in the function that hands the
@@ -5428,7 +5522,12 @@ static void GL_l_AimAtReflection(void)
        top of the picture -- see GL_l_FlipVertical. Without it the
        reflection is upside down on the water, which reads as it
        sliding the wrong way when the camera moves. */
-    GL_l_FlipVertical(&flippedProj, &gl_projMtx);
+    {
+        Mtx4x4 scratch;
+
+        GL_l_FlipVertical(&flippedProj,
+                          (const Mtx4x4*)GL_l_p_ClipProjection(&scratch));
+    }
     MTX_p_Multiply((Mtx4x4WithoutAdditionalData*)&viewProj, (const Mtx4x4WithoutAdditionalData*)&view,
                        (const Mtx4x4WithoutAdditionalData*)&flippedProj);
 

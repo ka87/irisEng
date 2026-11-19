@@ -77,6 +77,12 @@ typedef struct sGlRenderState
     SDL_GLContext context;
     int   width;
     int   height;
+    /* Whether this context can be told to take clip z in 0..1, which
+       is the range the engine's projections produce. Where it cannot,
+       the projection carries the conversion instead and every depth
+       that reaches the buffer is the same -- see GL_l_ToOpenGLDepth in
+       glrender.c. */
+    int   clipControl;
     int   zEnable;
     int   zWrite;
     /* Which colour channels the renderer last turned *off*, one entry
