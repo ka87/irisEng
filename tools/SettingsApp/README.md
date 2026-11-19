@@ -66,6 +66,24 @@ reads them. Off the Direct3D path it reads `width`, `height` and
 `windowed` and nothing else. Whatever those two keys already held is
 written back untouched rather than cleared, so a dual boot does not
 lose the Windows side's settings.
+Produces `irisEngSettings.exe`. It targets .NET 10 and builds as x86,
+so the display modes it enumerates are the ones the engine will see --
+an adapter can offer a different list to a 32-bit caller, and the
+engine is 32-bit.
+
+It is a framework-dependent build, so the machine it runs on needs the
+**.NET Desktop Runtime 10, x86**. That is a change: it used to target
+.NET Framework 4.8, which is part of Windows and is therefore already
+on every machine the game runs on. The x86 runtime is the one to
+install even on a 64-bit Windows, and it is a separate download from
+the x64 one.
+
+To hand someone the program without asking them to install anything:
+
+    dotnet publish -c Release -r win-x86 --self-contained true \
+        -p:PublishSingleFile=true
+
+which produces one larger .exe with the runtime inside it.
 
 ## Where it writes
 
