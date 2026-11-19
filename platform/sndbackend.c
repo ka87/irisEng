@@ -8,7 +8,7 @@
 #include "../bigfiles.h"
 #include "../time.h"
 #include "../dbg.h"
-#include "d3drender.h"
+#include "../platform.h"
 #include "sndbackend.h"
 #include "../sndplatform.h"
 

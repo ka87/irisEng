@@ -13,6 +13,12 @@ tProMockCall PROMOCK_log[PROMOCK_LOG_MAX];
 int PROMOCK_logLen;
 int PROMOCK_overflow;
 
+/* The main window, which profiler.c parents its raster window to. It
+   used to come from the renderer header's tentative definition, which
+   both sides shared because it is not one of the renamed names; one
+   definition here, shared the same way. */
+HWND MAI_gh_MainWindow;
+
 unsigned int PROMOCK_ticks;
 unsigned int PROMOCK_tickStep;
 long long PROMOCK_qpc;

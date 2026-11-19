@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common.h"
+
 /* The window and the events, which are SDL's rather than Windows' own.
  *
  * The game used to register a window class, create a window, and run a
@@ -28,6 +30,23 @@ void PLT_Close(void);
 /* The window's native handle: an HWND on Windows, and what the
    renderers are handed. Null before the window is open. */
 void* PLT_p_NativeWindow(void);
+
+/* The same handle, kept where the engine can reach it without asking:
+   the sound backend hands it to the device, the joystick is opened on
+   it, and the renderer destroys the window with it.
+ *
+ * It is not the same thing as MAI_gst_MainHandles.hwnd, which is set
+ * from the same window at the same moment and looks interchangeable.
+ * The engine zeroes that one when it shuts the world down and leaves
+ * this one standing, and the sound backend tests exactly that
+ * difference, so the two are not one variable spelled twice.
+ *
+ * It was declared in the Direct3D renderer's header, and declared
+ * there without extern -- so every file that included that header got
+ * storage of its own and a linker willing to merge them made it look
+ * like one. Here it is a declaration, and platform.c has the one
+ * definition. */
+extern HWND MAI_gh_MainWindow;
 
 /* Once a frame, from the engine's loop. Everything the old window
    procedure did -- the engine paused when the window loses focus, the

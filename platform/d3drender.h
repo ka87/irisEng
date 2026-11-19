@@ -1,5 +1,6 @@
 #pragma once
 #include "../common.h"
+#include "../platform.h"
 #include "../gdi.h"
 #include "../gfx/gfxsun.h"
 #include "d3dsun.h"
@@ -320,7 +321,6 @@ Mtx4x4WithoutAdditionalData d3dTransformationMatrix[8]; // TODO IFXME? van egy h
 D3DMATRIX d3dTransformMatrixBackup;
 D3DMATRIX d3dTransformMatrix2Backup;
 
-HWND MAI_gh_MainWindow;
 int ENG_WIN_AutoPlaySupressorRegistered;
 
 

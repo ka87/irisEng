@@ -28,7 +28,6 @@
 #include "../math.h"
 #include "../gameobject.h"
 #include "../dynamics.h"
-#include "../platform/d3drender.h"
 #include "../platform/sndbackend.h"
 
 #ifndef SIDE_RUN
@@ -40,6 +39,12 @@
 #ifndef SIDE_RUN_GUARDS
 #define SIDE_RUN_GUARDS wsnd_side_guards
 #endif
+
+/* The main window, which the backend hands to the device and tests for
+   before opening one. It is a renamed name, so each side needs its own
+   -- which is what the renderer header's tentative definition used to
+   give it, one per side's copy of sndbackend.c. */
+HWND MAI_gh_MainWindow;
 
 /* sndbackend.c defines these and no header declares them. */
 void pcSND_AddSoundToThePlayList(BOOL notifyThread);

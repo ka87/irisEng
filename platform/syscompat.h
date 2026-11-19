@@ -110,6 +110,9 @@ typedef char CHAR;
    allocator's signature. */
 typedef unsigned int DWORD;
 typedef unsigned int UINT;
+/* And LONG, which is a 32-bit signed int and not C's long: the sound
+   backend holds a stereo balance in one. */
+typedef int LONG;
 typedef const char* LPCSTR;
 typedef size_t SIZE_T;
 /* The longest path the engine is willing to hold on the stack. Windows
