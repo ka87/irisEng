@@ -413,6 +413,20 @@ void MAT_UV_Compute_FACE_MAP(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangle
 void MAT_UV_Compute_FOGZZ(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 void MAT_UV_Compute_Default(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* gtc, unsigned int unk);
 
+/* The three that are computed in materialuv.c rather than gdi.c,
+   because they are the modes that want the device told about the
+   projection as well as the engine. The arithmetic is the engine's
+   like the rest of them, so they are declared here with their
+   siblings; what a renderer does about the result goes through the
+   renderer's own table.
+
+   They were declared in the Direct3D renderer's header, which is why
+   materialanddraw.c -- which calls the first of them straight -- had
+   to include that header to draw anything. */
+void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, struct sMultiTextureElemStruct* texElem);
+void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
+void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
+
 /* How a video frame is fitted to the screen. The engine says which
    it wants in these terms; what a renderer does about it, and what
    it calls its filters, is the renderer's business. */
