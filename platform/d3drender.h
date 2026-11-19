@@ -342,9 +342,6 @@ float depthBlur1TypeOrcamUnkf2Save;
 Vec3 AE_MS_CurrVec;
 Vec3 AE_MS_PrevVec;
 
-void MAT_UV_ComputeAndSetTransform(tGEOGRO* geogro, tGeoTriangleChunks* chunks, tMultiTextureElemStruct* texElem);
-void MAT_UV_Compute_PLANAR_GIZMO_NOSTORE(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
-void MAT_UV_Compute_Chrome(tGdi_DisplayData* dd, tGEOGRO* geogro, tGeoTriangleChunks* chunks, unsigned int type);
 // the overlay's screen-space pass, used by platform/overlay.c
 void D3D_OverlayBegin(void);
 void D3D_OverlayDrawQuads(const void* verts, int triangleCount);

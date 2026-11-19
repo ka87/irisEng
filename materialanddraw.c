@@ -4,8 +4,6 @@
 //#include "graphicsobjects/geomaterial.h"
 #include "time.h"
 #include "textures.h"
-#include "gdi.h"
-#include "platform/d3drender.h"
 #include "soft.h"
 #include "dbg.h"
 #include "materialanddraw.h"
