@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The water's surface smoothing: one quad over the reflection, with
 // the four tap coordinates worked out per corner.

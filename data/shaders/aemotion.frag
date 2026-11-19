@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The motion smooth: four samples of the frame along the way the
 // camera just moved, summed.

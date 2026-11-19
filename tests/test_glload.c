@@ -62,6 +62,16 @@ static const char* glNames[] = {
 };
 #define GLNAMECOUNT ((int)(sizeof(glNames) / sizeof(glNames[0])))
 
+/* The optional list, the same way. The loader walks it too -- it just
+   does not count what it cannot find there -- so the number of
+   lookups is the two lists together. */
+static const char* glOptionalNames[] = {
+#define GL_NAME(ret, name, params, args) #name,
+    GL_FUNCTION_LIST_OPTIONAL(GL_NAME)
+#undef GL_NAME
+};
+#define GLOPTCOUNT ((int)(sizeof(glOptionalNames) / sizeof(glOptionalNames[0])))
+
 /* Distinct fake addresses, so a case can tell which lookup answered
    and whether the right pointer landed in the right variable. */
 static void* ctxAddr(int i) { return (void*)(size_t)(0x10000 + i); }
@@ -87,6 +97,27 @@ static int nameIndex(const char* name)
         if (strcmp(glNames[i], name) == 0)
             return i;
     return -1;
+}
+
+/* The same, for a case that is naming a function on purpose rather
+   than asking whether one is there.
+
+   A case that names a function the list no longer has used to get -1
+   back and index an array with it, which is a write before the start
+   of the array and reads as a buffer overflow a long way from the
+   cause. Saying so here turns that into one line naming the function
+   that moved. */
+static int nameIndexOrDie(const char* name)
+{
+    int i = nameIndex(name);
+
+    if (i < 0)
+    {
+        printf("FAIL: this test names %s, which is not in glcore.h's "
+               "required list any more\n", name);
+        exit(1);
+    }
+    return i;
 }
 
 static void* fromContext(const char* name)
@@ -232,7 +263,8 @@ static void caseLoadAll(void)
             bad++;
     okEq(bad, 0, "every pointer holds the address of its own name");
 
-    okEq(ctxCalls, GLNAMECOUNT, "the context was asked once per name");
+    okEq(ctxCalls, GLNAMECOUNT + GLOPTCOUNT,
+         "the context was asked once per name, optional ones included");
 
     /* and they are cleared on request, because a pointer belonging to
        a context that has gone is worse than a NULL */
@@ -253,12 +285,12 @@ static void caseMissing(void)
 
     /* one name that neither lookup knows */
     reset();
-    i = nameIndex("glDebugMessageCallback");
+    i = nameIndexOrDie("glUniform1i");
     ctxMode[i] = REFUSE_NULL;
     modRefusesIndex = i;
     okEq(GL_i_LoadFunctions(fromContext, fromModule, missing, sizeof(missing)), 1,
          "one missing is counted as one");
-    okStr(missing, "glDebugMessageCallback", "and named");
+    okStr(missing, "glUniform1i", "and named");
     ok(loaded(i) == NULL, "its pointer is left NULL");
     ok(loaded(nameIndex("glClear")) != NULL, "the others still loaded");
 
@@ -296,6 +328,47 @@ static void caseMissing(void)
     modRefusesIndex = nameIndex("glViewport");
     okEq(GL_i_LoadFunctions(fromContext, fromModule, NULL, 0), 1,
          "no buffer is survivable");
+}
+
+/* The optional list is the whole of what lets a 4.1 context be
+   accepted: the two debug entry points are core only from 4.3, and
+   nothing in the engine calls either, so a context without them is a
+   context worth having. The loader has to look for them and not count
+   them -- and counting them is a one-character change, so it is worth
+   a case of its own rather than being proved by the happy path. */
+static void caseOptional(void)
+{
+    char missing[64];
+
+    printf("-- the entry points a context is allowed not to have\n");
+
+    /* The mocks know only the required list, so every optional name
+       comes back NULL from both lookups: this is a driver that has
+       none of them. */
+    reset();
+    okEq(GL_i_LoadFunctions(fromContext, fromModule, missing, sizeof(missing)), 0,
+         "a context with none of them is not short of anything");
+    okStr(missing, "", "and nothing is named as missing");
+    ok(GLFN_glDebugMessageCallback == NULL,
+       "the optional pointer is left NULL");
+    ok(GLFN_glDebugMessageControl == NULL, "both of them");
+    ok(GLFN_glClear != NULL, "while the required ones are loaded");
+
+    /* And they are forgotten with the rest, so a second context does
+       not inherit the first one's.
+
+       Aimed at something first, on purpose: these mocks do not know
+       the optional names, so the pointers are NULL throughout and an
+       assertion that they are NULL afterwards would hold whether or
+       not anything cleared them. */
+    GLFN_glDebugMessageCallback = (void (GL_APIENTRY *)(GL_pfn_DebugProc, const void*))
+                                  ctxAddr(0);
+    GLFN_glDebugMessageControl = (void (GL_APIENTRY *)(GLenum, GLenum, GLenum,
+                                                       GLsizei, const GLuint*,
+                                                       GLboolean))ctxAddr(1);
+    GL_ForgetFunctions();
+    ok(GLFN_glDebugMessageCallback == NULL, "and cleared with the rest");
+    ok(GLFN_glDebugMessageControl == NULL, "both of them");
 }
 
 static void caseVersion(void)
@@ -358,6 +431,7 @@ int main(void)
     caseSentinels();
     caseLoadAll();
     caseMissing();
+    caseOptional();
     caseVersion();
     printf("  %ld checks, %ld failure(s)\n", checks, fails);
     return fails ? 1 : 0;

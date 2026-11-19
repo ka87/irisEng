@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The hue sweep: a colour taken away from the picture, saturating at
 // black.

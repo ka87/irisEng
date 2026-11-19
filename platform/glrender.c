@@ -158,7 +158,8 @@ static void* GL_l_p_FromContext(const char* name)
 
 /* ---------------------------------------------- the context's shape
 
-   A 4.5 core context, asked for by attribute. On Windows this took a
+   A core context, asked for by attribute, 4.5 for preference and 4.1
+   at worst. On Windows this took a
    1.1 context on a throwaway window first, because the call that
    makes a modern context is itself an extension and can only be found
    through a context that already exists -- and a separate window
@@ -169,41 +170,100 @@ static void* GL_l_p_FromContext(const char* name)
    None of that is here any more. SDL does it, and the window's format
    is settled where the window is made. */
 
-static void GL_l_AskFor45Core(void)
+static void GL_l_AskForCore(int major, int minor)
 {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
                         SDL_GL_CONTEXT_PROFILE_CORE);
 }
 
+/* What to ask for, best first. 4.5 is what this renderer was written
+   against and is still what it would rather have. 4.1 is the floor,
+   and the whole of the difference between them that the renderer
+   actually depends on is glClipControl -- core at 4.5, and at 4.1 an
+   extension that has to be there. See GL_l_b_ClipControlUsable. */
+static const struct { int major, minor; } gl_wanted[] =
+{
+    { 4, 5 },
+    { 4, 1 },
+};
+
+/* Whether a core context advertises an extension.
+
+   glGetString(GL_EXTENSIONS) returns nothing on a core profile --
+   that is the one place where the old way is not merely discouraged
+   but absent -- so the list is walked an entry at a time. */
+static int GL_l_b_HasExtension(const char* want)
+{
+    GLint n = 0;
+    GLint i;
+
+    if (!GLFN_glGetStringi || !GLFN_glGetIntegerv)
+        return 0;
+    GLFN_glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+    for (i = 0; i < n; i++)
+    {
+        const GLubyte* one = GLFN_glGetStringi(GL_EXTENSIONS, (GLuint)i);
+
+        if (one && strcmp((const char*)one, want) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+/* Whether this context can be told to put z in 0..1.
+
+   The engine's projections are Direct3D's, and the renderer leans on
+   being able to say so rather than on a GL variant of projection.c --
+   so this is not a nicety, and a context that cannot do it is one
+   this renderer declines.
+
+   Resolving the entry point is not the same question. A driver is
+   allowed to hand back a pointer for something its context does not
+   support, and taking that at face value would put every z in the
+   wrong half of the range with nothing to see but a wrong-looking
+   frame. Core from 4.5, and before that only if the extension says
+   so. */
+static int GL_l_b_ClipControlUsable(void)
+{
+    const GLubyte* version;
+
+    if (!GLFN_glClipControl)
+        return 0;
+    version = GLFN_glGetString(GL_VERSION);
+    if (GL_b_VersionAtLeast((const char*)version, 4, 5))
+        return 1;
+    return GL_l_b_HasExtension("GL_ARB_clip_control");
+}
+
 /* ------------------------------------------------- the real context */
 
-/* Makes a 4.5 core context current on a window and loads the entry
-   points. Leaves nothing current and nothing allocated if it cannot.
+/* One attempt at one version. Leaves nothing current and nothing
+   allocated if it cannot.
 
    The second resolver the loader takes is nothing: see the note on
    GL_l_p_FromContext. */
-static SDL_GLContext GL_l_p_MakeContext(SDL_Window* window)
+static SDL_GLContext GL_l_p_TryContext(SDL_Window* window, int major, int minor)
 {
     SDL_GLContext ctx;
     char          missing[64];
     int           absent;
 
-    GL_l_AskFor45Core();
+    GL_l_AskForCore(major, minor);
     ctx = SDL_GL_CreateContext(window);
     if (!ctx)
     {
-        DBG_OutputDebugString("GL: no 4.5 core context here: %s\n",
-                              SDL_GetError());
+        DBG_OutputDebugString("GL: no %d.%d core context here: %s\n",
+                              major, minor, SDL_GetError());
         return NULL;
     }
     /* Creating one makes it current, but saying so costs nothing and
        is what the next line depends on. */
     if (!SDL_GL_MakeCurrent(window, ctx))
     {
-        DBG_OutputDebugString("GL: the 4.5 context would not become "
-                              "current: %s\n", SDL_GetError());
+        DBG_OutputDebugString("GL: the %d.%d context would not become "
+                              "current: %s\n", major, minor, SDL_GetError());
         SDL_GL_DestroyContext(ctx);
         return NULL;
     }
@@ -212,14 +272,45 @@ static SDL_GLContext GL_l_p_MakeContext(SDL_Window* window)
                                 missing, sizeof(missing));
     if (absent)
     {
-        DBG_OutputDebugString("GL: %d entry point(s) missing, first is %s\n",
-                              absent, missing);
+        DBG_OutputDebugString("GL: %d.%d is short %d entry point(s), "
+                              "first is %s\n", major, minor, absent, missing);
+        GL_ForgetFunctions();
+        SDL_GL_MakeCurrent(window, NULL);
+        SDL_GL_DestroyContext(ctx);
+        return NULL;
+    }
+
+    if (!GL_l_b_ClipControlUsable())
+    {
+        DBG_OutputDebugString("GL: %d.%d here has no glClipControl and no "
+                              "GL_ARB_clip_control, so the depth range "
+                              "cannot be set to the one the engine's "
+                              "projections use\n", major, minor);
         GL_ForgetFunctions();
         SDL_GL_MakeCurrent(window, NULL);
         SDL_GL_DestroyContext(ctx);
         return NULL;
     }
     return ctx;
+}
+
+/* The best context this driver will give, of the ones worth having.
+
+   A driver that cannot make the first is asked for the next rather
+   than refused: 4.5 is what this was written against, and 4.1 draws
+   the same frame as long as it has the one extension. */
+static SDL_GLContext GL_l_p_MakeContext(SDL_Window* window)
+{
+    size_t i;
+
+    for (i = 0; i < sizeof(gl_wanted) / sizeof(gl_wanted[0]); i++)
+    {
+        SDL_GLContext ctx = GL_l_p_TryContext(window, gl_wanted[i].major,
+                                              gl_wanted[i].minor);
+        if (ctx)
+            return ctx;
+    }
+    return NULL;
 }
 
 /* ------------------------------------------------------- is it here */
@@ -255,10 +346,13 @@ int GL_b_Available(void)
     {
         const GLubyte* version = GLFN_glGetString(GL_VERSION);
 
-        gl_available = GL_b_VersionAtLeast((const char*)version, 4, 5);
+        /* 4.1 is the floor. Anything above it that got this far has
+           already been shown to have the one thing that matters, so
+           this is the version test and not a second capability one. */
+        gl_available = GL_b_VersionAtLeast((const char*)version, 4, 1);
         if (!gl_available)
             DBG_OutputDebugString("GL: context reports \"%s\", "
-                                  "which is not 4.5\n",
+                                  "which is below 4.1\n",
                                   version ? (const char*)version : "?");
         SDL_GL_MakeCurrent(probe, NULL);
         SDL_GL_DestroyContext(ctx);
@@ -353,11 +447,15 @@ int GL_Init(HWND hwnd, struct sGdi_DisplayData* dd)
     GLFN_glViewport(0, 0, gl_state.width, gl_state.height);
 
     /* The engine's projections put z in 0..1, which is Direct3D's
-       range and not OpenGL's -1..1. Core 4.5 can be told to use it,
-       which is a large part of why this renderer asks for 4.5: the
+       range and not OpenGL's -1..1. GL can be told to use it, which
+       is a large part of why this renderer asks for 4.5 first: the
        engine's matrices then need no adjusting, and projection.c can
        be shared between the two renderers rather than having a
        variant for each.
+
+       Core from 4.5 and GL_ARB_clip_control before it, and the
+       context would have been refused without one of the two, so
+       this call is safe by the time it is reached.
 
        The origin stays at the lower left, OpenGL's own. Both
        conventions put clip y = +1 at the top of the screen -- one
@@ -735,10 +833,10 @@ void GL_SetZWriteEnable(int on)
 /* ------------------------------------------------------ capabilities
 
    Direct3D answers these from what the card reported. This renderer
-   requires 4.5 core, where all three are a given: two texture stages
+   requires 4.1 core at least, where all three are a given: two texture stages
    with a doubled modulate, a colour buffer with alpha, and the
-   precision the depth blur wants are not optional features of a 4.5
-   implementation. The depth blur is off because nothing is drawn
+   precision the depth blur wants are not optional features of a core
+   implementation at any of the versions this asks for. The depth blur is off because nothing is drawn
    yet. */
 
 int GL_b_CanDiffuse2x(void) { return gl_state.canDiffuse2x; }

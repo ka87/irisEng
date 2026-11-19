@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The second zoom smooth: eight samples of the frame, each turned
 // about the middle of the picture by a different angle, summed.

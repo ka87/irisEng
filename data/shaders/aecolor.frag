@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // One step of the colour after-effects: brightness, contrast or
 // grayscale. All three are a gain and a bias, and the grayscale

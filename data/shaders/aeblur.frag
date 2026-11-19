@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // One widening pass of the depth blur's blur.
 //

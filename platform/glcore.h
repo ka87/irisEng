@@ -1,7 +1,7 @@
 #pragma once
 #include <stddef.h>
 
-/* OpenGL 4.5 core, declared here because Windows ships headers for
+/* OpenGL core, declared here because Windows ships headers for
    1.1 and nothing else: everything past that is reached through a
    function pointer the driver hands over at run time. So this file is
    the part of the GL headers the renderer actually uses, written out,
@@ -173,6 +173,8 @@ typedef struct __GLsync* GLsync;
 #define GL_ONE                            1
 #define GL_ZERO                           0
 
+#define GL_NUM_EXTENSIONS                 0x821D
+#define GL_EXTENSIONS                     0x1F03
 #define GL_DEBUG_OUTPUT                   0x92E0
 #define GL_DEBUG_OUTPUT_SYNCHRONOUS       0x8242
 #define GL_DEBUG_SEVERITY_HIGH            0x9146
@@ -346,6 +348,23 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
                                       GLenum rbTarget, GLuint rb),             \
                                      (target, attachment, rbTarget, rb))      \
                                                                               \
+    X(const GLubyte*, glGetStringi,  (GLenum name, GLuint index),             \
+                                     (name, index))
+
+/* The ones a context is allowed not to have.
+   Same shape, loaded the same way, but a missing one is not a reason
+   to refuse the context: the loader counts these separately and the
+   caller decides.
+
+   Both of these are core from 4.3 and come from KHR_debug before
+   that. Nothing in the engine calls either -- they are here for a
+   debugger's sake -- so a 4.1 context without them draws exactly the
+   same frame. glClipControl is the opposite case and is in the
+   required list above: it is core from 4.5 and comes from
+   ARB_clip_control before that, and the renderer cannot draw a
+   correct frame without one or the other, because the engine's
+   projections put z in Direct3D's range. */
+#define GL_FUNCTION_LIST_OPTIONAL(X)                                          \
     X(void,  glDebugMessageCallback, (GL_pfn_DebugProc proc, const void* user), \
                                      (proc, user))                            \
     X(void,  glDebugMessageControl,  (GLenum source, GLenum type,             \
@@ -358,8 +377,10 @@ typedef void (GL_APIENTRY *GL_pfn_DebugProc)(GLenum source, GLenum type, GLuint 
 #define GL_DECLARE(ret, name, params, args) \
     extern ret (GL_APIENTRY *GLFN_##name) params;
 GL_FUNCTION_LIST(GL_DECLARE)
+GL_FUNCTION_LIST_OPTIONAL(GL_DECLARE)
 #undef GL_DECLARE
 
 #define GL_REDIRECT(ret, name, params, args)
 GL_FUNCTION_LIST(GL_REDIRECT)
+GL_FUNCTION_LIST_OPTIONAL(GL_REDIRECT)
 #undef GL_REDIRECT

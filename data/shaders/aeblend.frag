@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The motion blur: this frame laid over whatever the target already
 // holds, which is what this effect wrote into it last frame.

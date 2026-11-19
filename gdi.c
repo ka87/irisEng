@@ -817,7 +817,7 @@ static const tGdi_Renderer gdi_renderers[] = {
 #if GDI_HAVE_D3D
     { "d3d", "Direct3D 9", D3D_FillRenderer, D3D_b_Available },
 #endif
-    { "gl", "OpenGL 4.5 core", GDI_l_FillGL, GL_b_Available },
+    { "gl", "OpenGL core", GDI_l_FillGL, GL_b_Available },
 };
 
 /* Direct3D is first where there is one, so it is what the fallback

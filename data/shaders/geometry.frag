@@ -1,4 +1,4 @@
-#version 450 core
+#version 410 core
 
 // The world's geometry: the texture modulated by the vertex colour,
 // which is what the other renderer's texture stage computes.
