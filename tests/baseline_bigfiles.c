@@ -6,7 +6,7 @@
 #include "../memory.h"
 #include "../bigfiles.h"
 #include "../textures.h"
-#include "../minilzo/minilzo.h"
+#include "../thirdparty/minilzo/minilzo.h"
 #include "../ai/ai_debugfunctions.h"
 #include "../dbg.h"
 

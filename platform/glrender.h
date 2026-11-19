@@ -4,7 +4,6 @@
 
 struct sWaterParamsGlobalStruct;
 struct sWorld;
-#include <windows.h>
 
 #include "../gdi.h"
 

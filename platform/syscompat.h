@@ -59,3 +59,86 @@ int PLT_b_OnlyInstance(void);
 #else
 #include <strings.h>
 #endif
+
+/* The two Win32 type names the engine says in code that is not
+ * Windows-only.
+ *
+ * `BOOL` is in the engine's own vocabulary -- its globals, its
+ * function signatures and its struct fields -- and `HMODULE` holds the
+ * handle the entry point is given and the handle a sound library is
+ * loaded under. Both come out of windows.h where there is one, and
+ * both are needed off Windows for the files that merely *mention*
+ * them to compile.
+ *
+ * `BOOL` is `int` and nothing else. Windows' is a signed 32-bit int,
+ * so it decides the size of every struct field and global declared
+ * with it; a narrower stand-in -- common.h carried a commented-out
+ * `int8_t` one for years -- would quietly give the two builds
+ * different layouts for the same struct, which is the worst way for
+ * this to be wrong.
+ *
+ * `HMODULE` is an opaque handle, so a void pointer carries it. Nothing
+ * off Windows loads a library through one yet; this is here so that a
+ * declaration naming the type compiles, not as a promise that the
+ * thing behind it works. */
+/* Exactly when common.h will not be including windows.h: the same
+   condition it asks, so that the two cannot both define these. The
+   harnesses stand a stub of windows.h in tests/stub and it declares
+   all of this already. */
+#if !defined(_WIN32) && !__has_include(<windows.h>)
+typedef int BOOL;
+typedef void* HMODULE;
+/* Three more handles named in headers that are not Windows-only:
+   HWND in gdi.h and the renderer interface, HANDLE in sound.h, and
+   LARGE_INTEGER in profiler.h. Opaque, so a pointer carries the first
+   two and the third is the 64-bit counter it is on Windows, spelled as
+   the union so that the .QuadPart the engine reads still reads.
+
+   As with HMODULE above: this is so that a declaration naming the type
+   compiles. Nothing off Windows has a window handle or a wait handle
+   to put in one -- the window is SDL's and is reached through
+   PLT_p_Window -- and the code that would fill them is the code that
+   has not left Windows yet. */
+typedef void* HWND;
+typedef void* HANDLE;
+/* And one that is not a handle at all: CHAR, in dbg.h, which is
+   Windows' name for char and nothing more. */
+typedef char CHAR;
+/* Two more spellings of things C already has: DWORD is a 32-bit
+   unsigned and SIZE_T is size_t. syscompat.c names the first in its
+   own non-Windows half, and memory.c names the second in the
+   allocator's signature. */
+typedef unsigned int DWORD;
+typedef unsigned int UINT;
+typedef const char* LPCSTR;
+typedef size_t SIZE_T;
+/* The longest path the engine is willing to hold on the stack. Windows
+   puts this at 260; nothing here depends on the number matching, only
+   on the buffer being big enough for what the loader builds. */
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+typedef union { struct { unsigned int LowPart; int HighPart; }; long long QuadPart; } LARGE_INTEGER;
+
+/* The millisecond timer and the two calls that ask the system for a
+   finer one. Windows declares these in <timeapi.h> and syscompat.c
+   answers them off Windows -- the timer from the monotonic clock, the
+   other two with nothing to do, there being no system-wide timer
+   resolution to set.
+ *
+ * Declared here because they were declared nowhere: the definitions
+ * have been in syscompat.c since the move off winmm, and every caller
+ * was taking them from <timeapi.h> on Windows and from the test stub's
+ * windows.h off it. A real build off Windows got an implicit
+ * declaration, which is a warning the sweep does not see because the
+ * sweep compiles against that same stub. */
+DWORD timeGetTime(void);
+DWORD timeBeginPeriod(UINT period);
+DWORD timeEndPeriod(UINT period);
+#ifndef TRUE
+#define TRUE  1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+#endif

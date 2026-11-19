@@ -6,7 +6,7 @@
 #include "../common.h"
 #include "../basic_array.h"
 #include "../memory.h"
-#include "../minilzo/minilzo.h"
+#include "../thirdparty/minilzo/minilzo.h"
 #include "bigfiles_mocks.h"
 
 tBFCall BFM_log[2][BFM_LOG_MAX];

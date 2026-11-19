@@ -19,15 +19,34 @@
    way out, so it is asked for here, beside math.h, which they reach
    the same way. */
 #include <float.h>
+/* And the limits, which are standard C and which the engine reads --
+   SHRT_MAX in math.c -- but which used to arrive only because
+   windows.h dragged them in. */
+#include <limits.h>
 /* The debugger check and the C library's POSIX spellings, which the
    engine uses everywhere and so are asked for here. */
 #include "platform/syscompat.h"
 
-// Windows
+/* Windows' own, where there is a Windows to have them. What the engine
+   actually wants out of these is answered portably elsewhere now -- the
+   POSIX spellings and the debugger check in platform/syscompat.h above,
+   the wide seek and the free-space query in fileio.h, the window and the
+   input in platform.h -- so what is still taken from here is the types
+   and the handles the Win32-only files name, and syscompat.h declares
+   those itself where there is no windows.h.
+
+   The condition asks whether the header is reachable rather than
+   whether this is Windows, and on purpose: the test harnesses stand a
+   stub of it in tests/stub and are built by a compiler that does not
+   define _WIN32, so asking _WIN32 would take the stub away from the
+   one place that put it there. Off Windows and outside the harnesses
+   there is no windows.h and the branch is not taken. */
+#if defined(_WIN32) || __has_include(<windows.h>)
 #include <windows.h>
 #include <synchapi.h>
 #include <io.h>
-#include <sys/stat.h> // for _S_IWRITE
+#endif
+#include <sys/stat.h> // for _S_IWRITE on Windows, and stat everywhere
 
 // Bink
 #define RAD_NO_LOWERCASE_TYPES // to be able to compile with lzolib (u32 redef problem)

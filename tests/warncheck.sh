@@ -24,10 +24,10 @@
 #
 # Required to be zero like the other two. The only exclusion is by
 # file: minilzo's own headers test a long list of undefined platform
-# macros on purpose, and they are upstream source, which this sweep
-# already leaves alone -- but bigfiles.c includes them, so they are
-# dropped by the path they are reported against rather than by the
-# file being swept.
+# macros on purpose, and they are upstream source under thirdparty/,
+# which this sweep already leaves alone -- but bigfiles.c includes
+# them, so they are dropped by the path they are reported against
+# rather than by the file being swept.
 #
 # gcc has an equivalent for each -- -Wunused-variable and
 # -Wfloat-conversion -- and both have now been reported by hand more
@@ -96,7 +96,7 @@ for m in re.finditer(r'ClCompile Include="([^"]+\.c)"', raw):
     p = m.group(1).replace('\\', '/')
     # upstream source is not ours to tidy, and the vendored libraries
     # are built with warnings off in the project too
-    if 'minilzo' in p or p.startswith('thirdparty/'):
+    if p.startswith('thirdparty/'):
         continue
     print(p)
 PY
@@ -120,7 +120,6 @@ for f in $files; do
     # on purpose, so they go by the path they are reported against.
     uout=$($CC $CFLAGS -Wundef "$f" 2>&1 \
            | grep -E '\[-Wundef\]' \
-           | grep -v '^minilzo/' \
            | grep -v '/minilzo/' || true)
     [ -n "$uout" ] && out="$out${out:+
 }$uout"
