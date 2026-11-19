@@ -34,6 +34,13 @@ if(NOT IRIS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
     message(STATUS "irisEng: no build type given, defaulting to Debug")
 endif()
 
+# A frame pointer, so a backtrace is readable wherever it is taken. It
+# costs a register on x86 and buys every debugger and profiler a stack
+# they can walk without unwind tables.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-fno-omit-frame-pointer)
+endif()
+
 # ---------------------------------------------------------------- 32-bit
 
 # IRIS_CONFIGURE_ONLY_64 is for looking at this file's own workings
