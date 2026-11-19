@@ -1,5 +1,4 @@
 #include "memory.h"
-#include "platform/d3drender.h"
 #include "loading.h"
 #include "bigfiles.h"
 #include "ai.h"
@@ -7,7 +6,6 @@
 #include "textures.h"
 #include "inputoutput.h"
 #include "platform/inputbackend.h"
-#include "platform/d3drender.h"
 #include "strings.h"
 #include "flatlayer.h"
 

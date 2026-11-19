@@ -1,6 +1,5 @@
 #include "../memory.h"
 #include "gro_common.h"
-#include "../platform/d3drender.h"
 #include "../modifiers/shadowmodifier.h"
 #include "shadow.h"
 

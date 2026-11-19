@@ -6,7 +6,6 @@
 #include "ai_worldfunctions.h"
 #include "ai_gfxfunctions.h"
 #include "../sound.h"
-#include "../platform/d3drender.h"
 #include "../video.h"
 #include "../platform/sndvideo.h"
 #include "../settings.h"

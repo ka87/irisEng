@@ -24,6 +24,10 @@
 #include "../gfx/gfxsun.h"
 #include "../gdi.h"
 #include "../soft.h"
+/* This harness reaches for the Direct3D renderer's parameter block
+   itself. It used to arrive through gfxsun.c, which included the
+   renderer's header and had no use for it. */
+#include "../platform/d3drender.h"
 
 static long checks;
 static long fails;

@@ -26,7 +26,6 @@
 #include "modifiers/lazymodifier.h"
 #include "modifiers/protexmodifier.h"
 #include "gdi.h"
-#include "platform/d3drender.h"
 #include "soft.h"
 #include "inputoutput.h"
 #include "textures.h"
