@@ -18,6 +18,16 @@
 #include "sprites.h"
 #include "aftereffects/aemaster.h"
 
+/* Named below in a parameter list and nowhere else, so without this
+   each prototype would declare a type of its own, scoped to itself:
+   two functions taking "the same" pointer would not agree, and
+   assigning one to the other is a type error rather than the
+   intended opaque handle. */
+struct sEngPaletteElem;
+struct sEngTexIntermediateStruct;
+struct sEngTexListElemStruct;
+struct sMultiTextureElemStruct;
+
 
 /* The renderer's own private state, whatever renderer that is. The
    engine holds it as an opaque pointer and never looks inside: the
