@@ -2115,7 +2115,7 @@ float MATH_GetInverse(float f)
 }
 
 float MATH_RandFloat() {
-    int r = rand();
+    int r = RND_i_Rand();
     return r * (1.0f / SHRT_MAX);
 }
 

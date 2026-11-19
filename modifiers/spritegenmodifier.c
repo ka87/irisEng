@@ -282,7 +282,8 @@ void SPG_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, voi
         ulRandomInit = 1;
         for (i = 255; i >= 0; i--) {
             f_RandomTable[i] = (RND_JADErand() & 0xff) / 256.0f - 0.5f;
-        }        
+        }
+        f_RandomTable[256] = f_RandomTable[0];
     }
 
     if (modifierDataToBeSet)

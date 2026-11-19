@@ -490,6 +490,49 @@ static void fireCases(void)
 
 /* ---- group 3: plasma ---- */
 
+/* The two angles a plasma load draws.
+
+   Each is rand() * (1/32767) * 360, which is an angle in degrees only
+   where RAND_MAX is 0x7FFF -- it is under MSVC and nowhere else. The
+   frozen copy scales the whole draw and so goes far past 360; the
+   rewrite takes the low fifteen bits first. These are the only use of
+   the platform's rand() anywhere in the file: everything else draws
+   through RND_JADErand, which the mocks answer in MSVC's range.
+
+   So the two sides are not compared against each other here. Each is
+   checked against its own formula, which is what says the only change
+   is the mask, and the rewrite's is required to be an angle. Both are
+   then set to the same value so that everything the angles feed --
+   the updates, the picture, the rest of the arena -- is compared like
+   for like. */
+static void plasmaAngles(const char* name, int side, unsigned int seed,
+                         tTexProcPlasma* pl)
+{
+    int d1, d2;
+
+    srand(seed);
+    d1 = rand();
+    d2 = rand();
+    if (side)
+    {
+        d1 &= 0x7FFF;
+        d2 &= 0x7FFF;
+    }
+    checkInt(name, "first angle", (int)(pl->f1 * 1000.0f),
+             (int)((float)((double)d1 * 0.000030518509 * 360.0) * 1000.0f));
+    checkInt(name, "second angle", (int)(pl->f2 * 1000.0f),
+             (int)((float)((double)d2 * 0.000030518509 * 360.0) * 1000.0f));
+    if (side)
+    {
+        checkIs(name, "the rewrite's first angle is an angle",
+                pl->f1 >= 0.0f && pl->f1 < 360.0f, 1);
+        checkIs(name, "the rewrite's second angle is an angle",
+                pl->f2 >= 0.0f && pl->f2 < 360.0f, 1);
+    }
+    pl->f1 = 11.25f;
+    pl->f2 = 148.5f;
+}
+
 static void plasmaCases(void)
 {
     static const int sizes[][2] = { { 8, 8 }, { 16, 16 }, { 32, 32 }, { 64, 32 },
@@ -508,13 +551,20 @@ static void plasmaCases(void)
 
             MOCKP_Reset();
             setupHolder(w, h, (uint32_t)(seed * 613 + w));
+            sprintf(name, "plasma %dx%d seed %d", w, h, seed);
             for (s = 0; s < 2; ++s)
             {
+                tTexProcPlasma* pl;
+
                 MOCKP_SetSide(s);
                 MOCKP_SeedRand(4242u * seed);
                 holder[s].st.proceduralTexPtr =
                     s ? (void*)NEW_TEXPRO_pv_PlasmaLoad(0, 0, w, h)
                       : (void*)BASE_TEXPRO_pv_PlasmaLoad(0, 0, w, h);
+
+                pl = (tTexProcPlasma*)holder[s].st.proceduralTexPtr;
+                plasmaAngles(name, s, 4242u * seed, pl);
+
                 for (step = 0; step < 5; ++step)
                 {
                     if (s)
@@ -527,7 +577,6 @@ static void plasmaCases(void)
                 else
                     BASE_TEXPRO_Free(&holder[s].st);
             }
-            sprintf(name, "plasma %dx%d seed %d", w, h, seed);
             compareSides(name);
             comparePic(name, w * h);
             compareHolderTail(name, w * h);
@@ -866,6 +915,14 @@ static void tableCases(void)
                           : BASE_TEX_l_File_LoadProcedural((char*)procStream, &tex[s], size);
             }
             sprintf(name, "load procedural idx %d size %d", idx, size);
+            /* interface 5 is the plasma, so this draws the two angles
+               too -- see the note on plasmaAngles */
+            if (idx == 5)
+                for (s = 0; s < 2; ++s)
+                    if (tex[s].tp.proceduralParams.interfacePtr)
+                        plasmaAngles(name, s, 5u,
+                                     (tTexProcPlasma*)(size_t)
+                                     tex[s].tp.proceduralParams.interfacePtr);
             compareSides(name);
             checkInt(name, "return", rc[0], rc[1]);
             checkInt(name, "flags", tex[0].flags, tex[1].flags);

@@ -680,8 +680,8 @@ tTexProcPlasma* TEXPRO_pv_PlasmaLoad(char* readptr, int size, int width, int hei
     copy = (uint8_t*)MEM_p_Alloc(height * width);
     plasma->ptr2 = copy;
     memset(copy, 0, height * width);
-    plasma->f1 = (float)((double)rand() * 0.000030518509 * 360.0);
-    plasma->f2 = (float)((double)rand() * 0.000030518509 * 360.0);
+    plasma->f1 = (float)((double)RND_i_Rand() * 0.000030518509 * 360.0);
+    plasma->f2 = (float)((double)RND_i_Rand() * 0.000030518509 * 360.0);
     field = plasma->ptr1;
     copy = plasma->ptr2;
     // preserved: both passes generate into ptr1, so the first is discarded and the two fields end up identical

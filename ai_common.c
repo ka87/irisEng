@@ -1493,7 +1493,12 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
             }
             else if (!strcasecmp(typeIdentifier, ".ofc"))
             {
-                LOA_MakeFileRef(key, &(aiModel->funcs[idx++]), (void* (*)(uint32_t))AI_ul_CallbackLoadFunction, 1);
+                /* 1 | 8: every reference is counted, including the ones the
+                   loader already has in its cache, because AI_FreeModel
+                   releases every entry of this list. Without the 8 a
+                   function shared by two models, or named twice in one,
+                   was freed while still referenced. */
+                LOA_MakeFileRef(key, &(aiModel->funcs[idx++]), (void* (*)(uint32_t))AI_ul_CallbackLoadFunction, 1 | 8);
             }
         }
     }

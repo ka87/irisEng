@@ -3016,7 +3016,11 @@ void pcSND_Stream_Stop(tSndSoundBufferElem* sndBufferElem) {
 
 int SND_i_SoftInit()
 {
-    if (!MAI_gh_MainWindow)
+    /* The window has to exist, as it did for DirectSound -- but the
+       device is SDL's now and needs no native handle, which off Windows
+       there is none of: MAI_gh_MainWindow stays NULL there, and asking
+       for it here left the whole sound system switched off. */
+    if (!PLT_p_Window())
         return -1;
     SND_gst_Params.soundRenderModeMask |= 3u;
     SND_gpst_Interface.win.ChangeRenderMode = pcSND_i_ChangeRenderMode;

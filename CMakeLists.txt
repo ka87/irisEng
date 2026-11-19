@@ -21,6 +21,19 @@
 cmake_minimum_required(VERSION 3.21)
 project(irisEng C)
 
+# ----------------------------------------------------------- debug info
+#
+# An empty CMAKE_BUILD_TYPE on a single-config generator means no -g and
+# no optimisation flags at all, which is the worst of both: slow and
+# impossible to debug. Default to Debug instead. Pass
+# -DCMAKE_BUILD_TYPE=RelWithDebInfo (or Release) to override.
+get_property(IRIS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT IRIS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING
+        "Debug, Release, RelWithDebInfo or MinSizeRel" FORCE)
+    message(STATUS "irisEng: no build type given, defaulting to Debug")
+endif()
+
 # ---------------------------------------------------------------- 32-bit
 
 # IRIS_CONFIGURE_ONLY_64 is for looking at this file's own workings
@@ -282,6 +295,35 @@ if(MSVC)
     target_compile_options(irisEng PRIVATE /W3)
 else()
     target_compile_options(irisEng PRIVATE -fms-extensions)
+endif()
+
+# Symbols and frame pointers in every configuration, so a crash in a
+# Release build still produces a usable backtrace. -g does not change
+# the generated code, only what is kept beside it.
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(irisEng PRIVATE -g -fno-omit-frame-pointer)
+elseif(MSVC)
+    target_compile_options(irisEng PRIVATE /Zi)
+    target_link_options(irisEng PRIVATE /DEBUG)
+endif()
+
+# The memory debugging build. The engine carves everything out of one
+# pool, where AddressSanitizer sees a single 40 MB block and nothing in
+# it; with this on, memory.c hands every allocation to malloc instead
+# (memdebug.inc), so an overrun or a use after free is reported where it
+# happens. -fsanitize-recover lets a run report everything rather than
+# stop at the first. Use its own build directory: the binary it writes
+# is the same ./irisEng.
+option(IRIS_MEM_DEBUG "Replace the pool allocator with malloc under AddressSanitizer" OFF)
+if(IRIS_MEM_DEBUG)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        message(FATAL_ERROR "IRIS_MEM_DEBUG needs GCC or Clang's AddressSanitizer")
+    endif()
+    target_compile_definitions(irisEng PRIVATE IRIS_MEM_DEBUG)
+    target_compile_options(irisEng PRIVATE
+        -fsanitize=address -fsanitize-recover=address)
+    target_link_options(irisEng PRIVATE -fsanitize=address)
+    message(STATUS "irisEng: memory debugging build (pool replaced, AddressSanitizer on)")
 endif()
 
 # The engine declares its globals in headers without extern. In C that

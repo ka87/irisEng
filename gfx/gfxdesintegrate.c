@@ -118,10 +118,10 @@ void GFX_Desintegrate_Init(tGfxDesintegrateData* desint)
             normals[1] = normal;
             normals[2] = normal;
 
-            speed = (double)rand() * 0.000030518509
+            speed = (double)RND_i_Rand() * 0.000030518509
                   * (desint->rand1Start - desint->rand1End) + desint->rand1End;
             MATH_VecMultScalar(&particle->v1, &normal, (float)speed);
-            particle->ff2 = (float)((double)rand() * 0.000030518509
+            particle->ff2 = (float)((double)RND_i_Rand() * 0.000030518509
                             * (desint->rand2Start - desint->rand2End) + desint->rand2End);
 
             elems->v1 = baseVertex;

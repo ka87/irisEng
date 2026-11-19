@@ -7,6 +7,35 @@
 
 #include <SDL3/SDL_mutex.h>
 
+/* The memory debugging build (cmake -DIRIS_MEM_DEBUG=ON): the pool
+   below is renamed out of the way and memdebug.inc, included at the end
+   of this file, takes its names -- every block its own malloc, so that
+   AddressSanitizer sees each one. Without IRIS_MEM_DEBUG none of this
+   exists and the pool is the allocator. */
+#ifdef IRIS_MEM_DEBUG
+#define MEM_p_Alloc MEMPOOL_MEM_p_Alloc
+#define MEM_p_AllocAligned MEMPOOL_MEM_p_AllocAligned
+#define MEM_Free MEMPOOL_MEM_Free
+#define MEM_FreeAlign MEMPOOL_MEM_FreeAlign
+#define MEM_FreeTmp MEMPOOL_MEM_FreeTmp
+#define MEM_p_AllocTmp MEMPOOL_MEM_p_AllocTmp
+#define MEM_ResetTmpMemory MEMPOOL_MEM_ResetTmpMemory
+#define MEM_Defrag MEMPOOL_MEM_Defrag
+#define MEM_GetHolesStat MEMPOOL_MEM_GetHolesStat
+#define MEM_MoveToTempMem MEMPOOL_MEM_MoveToTempMem
+#define MEM_GEO_p_Alloc MEMPOOL_MEM_GEO_p_Alloc
+#define MEM_GEO_p_AllocAlign MEMPOOL_MEM_GEO_p_AllocAlign
+#define MEM_p_ReallocAligned MEMPOOL_MEM_p_ReallocAligned
+#define MEM_p_Realloc MEMPOOL_MEM_p_Realloc
+#define MEM_p_AllocFromEnd MEMPOOL_MEM_p_AllocFromEnd
+#define MEM_FreeFromEnd MEMPOOL_MEM_FreeFromEnd
+#define MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck MEMPOOL_MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck
+#define MEM_MemBlockSizeGetAligned MEMPOOL_MEM_MemBlockSizeGetAligned
+#define MEM_MemBlockSizeGetTmpAddressSpace MEMPOOL_MEM_MemBlockSizeGetTmpAddressSpace
+#define MEM_GetBlockSizeBySize MEMPOOL_MEM_GetBlockSizeBySize
+#define MEM_b_CheckBlockHasBeenFreed MEMPOOL_MEM_b_CheckBlockHasBeenFreed
+#endif
+
 /* The lock around the allocator. A semaphore standing at one, which
    is what the auto-reset event it replaces was: a taker waits for it
    and a giver signals it, and nothing requires that the two be the
@@ -609,7 +638,12 @@ void* MEM_p_AllocFromEnd(int size)
     alignedSize = (size & 0xFFFFFFFC) + 4;
     if (lastFree - MEM_gst_MemoryInfo.nextFreeMemoryPointer - 8 <= alignedSize)
     {
+        /* MEM_p_Alloc takes the lock itself, and it is not a recursive
+           one: calling it with the lock held waited on itself forever,
+           which froze the game instead of reaching "No more memory". */
+        MEM_l_GiveLock();
         newPtr = MEM_p_Alloc((size & 0xFFFFFFFC) + 4);
+        MEM_l_TakeLock();
     }
     else
     {
@@ -708,3 +742,28 @@ int MEM_MemBlockSizeGetAligned(void* ptr) {
 int MEM_MemBlockSizeGetTmpAddressSpace(void* ptr) {
     return *((uint32_t*)ptr - 1);
 }
+
+#ifdef IRIS_MEM_DEBUG /* the replacements for the names renamed at the top */
+#undef MEM_p_Alloc
+#undef MEM_p_AllocAligned
+#undef MEM_Free
+#undef MEM_FreeAlign
+#undef MEM_FreeTmp
+#undef MEM_p_AllocTmp
+#undef MEM_ResetTmpMemory
+#undef MEM_Defrag
+#undef MEM_GetHolesStat
+#undef MEM_MoveToTempMem
+#undef MEM_GEO_p_Alloc
+#undef MEM_GEO_p_AllocAlign
+#undef MEM_p_ReallocAligned
+#undef MEM_p_Realloc
+#undef MEM_p_AllocFromEnd
+#undef MEM_FreeFromEnd
+#undef MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck
+#undef MEM_MemBlockSizeGetAligned
+#undef MEM_MemBlockSizeGetTmpAddressSpace
+#undef MEM_GetBlockSizeBySize
+#undef MEM_b_CheckBlockHasBeenFreed
+#include "memdebug.inc"
+#endif

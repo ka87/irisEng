@@ -370,6 +370,13 @@ void LOA_Resolve()
                         LOA_AddPosAddress(position, (unsigned int)addr);
                 }
             }
+            else if ((currElem->flags & 8) != 0)
+            {
+                /* Flag 8: the callback counts its own references, so it
+                   is called for a file that is already loaded too. It
+                   finds the address itself and reads nothing. */
+                addr = (void*)(currElem->funcPtr)(position);
+            }
             retValPtr = currElem->retValPtr;
             if (retValPtr)
                 *retValPtr = addr;

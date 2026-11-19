@@ -191,11 +191,11 @@ void GFX_Lightning_SampleFractal(struct sGfxLightningData* bolt)
             }
 
             bolt->points[mid].z = (float)((right.z + prevZ) * 0.5);
-            bolt->points[mid].x = (float)((angleSpan * (float)((double)rand() * 0.000030518509)
+            bolt->points[mid].x = (float)((angleSpan * (float)((double)RND_i_Rand() * 0.000030518509)
                                            + angleBase + (right.x + prevX) * 0.5) * detail
                                           + keep * bolt->points[mid].x);
             bolt->points[mid].y = (float)(((right.y + prevY) * 0.5
-                                           + (double)rand() * 0.000030518509 * amplitude) * detail
+                                           + (double)RND_i_Rand() * 0.000030518509 * amplitude) * detail
                                           + keep * bolt->points[mid].y);
             prevX = right.x;
             prevY = right.y;

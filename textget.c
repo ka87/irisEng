@@ -215,7 +215,7 @@ tWorldTextsStruct* TEXT_ul_CallbackLoadWorldText(uint32_t Offset)
     int size;
 
     readBuffer = BIG_pc_ReadFileTmp(Offset, &size);
-    num = (size / 2 * sizeof(uint32_t));
+    num = size / (2 * sizeof(uint32_t)); // ([key][tag]) = 8 bytes per entry
 
     if (num)
     {

@@ -24,6 +24,22 @@ void GRP_ObjDetachGroup(tGameObjectMain* gao)
                     currGao = (tGameObjectMain*)currElem->objectPtr;
                     if (!TAB_TableElemIsInvalid(currElem->objectPtr))
                     {
+                        tableElemStructPF* prev;
+
+                        /* A .gol can name the same object twice, and the
+                           data does. Its first slot has removed and freed
+                           it; reading it again was a use after free. The
+                           original read the pool's hole size over the
+                           flags here, saw bit 0 clear and stopped, which
+                           left the rest of the group alive -- and the bin
+                           streams were recorded with exactly that, so
+                           stopping is what keeps later loads in step. */
+                        for (prev = gao->extended->grp->tablePF->firstElemPtr; prev < currElem; prev++)
+                            if (prev->objectPtr == currElem->objectPtr)
+                                break;
+                        if (prev < currElem && currGao != gao)
+                            break;
+
                         if ((currGao->flags & 0x1) == 0)
                             break;
 
@@ -31,6 +47,7 @@ void GRP_ObjDetachGroup(tGameObjectMain* gao)
                         {
                             WOR_World_DetachObject(WOR_gpst_CurrentWorld, (tGameObjectMain*)currElem->objectPtr);
                             OBJ_GameObject_Remove(currGao, TRUE);
+
                         }
                     }
                 }

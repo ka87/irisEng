@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "sndplatform.h"
+#include "dbg.h"
 
 /* 48 kHz stereo, which is what the primary buffer was set to. Every
    voice's own rate is converted to it by the stream. */
@@ -78,12 +79,12 @@ int SPL_b_IsOpen(void)
     return spl_device != 0;
 }
 
-int SPL_b_Open(void)
+/* The audio subsystem and the default playback device, or 0 with the
+   subsystem shut again. */
+static int SPL_l_b_OpenDevice(void)
 {
     SDL_AudioSpec spec;
 
-    if (spl_device)
-        return 1;
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
         return 0;
     spec.format = SDL_AUDIO_S16;
@@ -95,6 +96,33 @@ int SPL_b_Open(void)
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
         return 0;
     }
+    return 1;
+}
+
+int SPL_b_Open(void)
+{
+    if (spl_device)
+        return 1;
+    /* Without a device the engine switches sound off, and with sound off
+       its loaders skip the sound data in the binarized streams: every
+       world with sounds is then read out of step, which ends in a decode
+       error or an impossible allocation. A machine with no sound has to
+       play silently instead, so SDL's dummy driver stands in -- it takes
+       the samples and throws them away. The override priority wins over
+       an SDL_AUDIO_DRIVER in the environment, which may be what failed. */
+    if (!SPL_l_b_OpenDevice())
+    {
+        DBG_OutputDebugString("SPL: no audio device (%s); playing silently\n",
+                              SDL_GetError());
+        SDL_SetHintWithPriority(SDL_HINT_AUDIO_DRIVER, "dummy", SDL_HINT_OVERRIDE);
+        if (!SPL_l_b_OpenDevice())
+        {
+            DBG_OutputDebugString("SPL: not even the dummy audio driver opened (%s)\n",
+                                  SDL_GetError());
+            return 0;
+        }
+    }
+    DBG_OutputDebugString("SPL: audio through %s\n", SDL_GetCurrentAudioDriver());
     spl_lock = SDL_CreateMutex();
     if (!spl_lock)
     {

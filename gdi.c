@@ -1004,6 +1004,13 @@ void GDI_DestroyDisplayData(struct sGdi_DisplayData* dd)
     MEM_Free(dd->rasters);
     MEM_FreeAlign(dd);
 
+    /* The display is gone, so the global must not still name it: the
+       engine closes after the display does, and GEO_FreeContent then
+       read DiscardGeometryCache out of the freed block and called it.
+       It checks for NULL -- no display, no cache -- which is the truth
+       once the device has been destroyed. */
+    if (gpst_DX_stDD == dd)
+        gpst_DX_stDD = NULL;
 }
 
 void s_Display(HWND hwnd, tGdi_DisplayData* dxdd)

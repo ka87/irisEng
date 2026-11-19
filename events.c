@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "memory.h"
 #include "loading.h"
 #include "bigfiles.h"
@@ -727,8 +728,13 @@ void EVE_Event_InterpolationKey_CopyMatrix(Mtx4x4* dest, tGameObjectEventElem* k
                 src = (Mtx4x4*)EVE_pst_Event_InterpolationKey_GetNextValue(key);
             else
                 src = (Mtx4x4*)EVE_pst_Event_InterpolationKey_GetRotation(key);
+            /* A key stores the matrix and its flag word -- 68 bytes,
+               a 72-byte key with its header -- not the whole Mtx4x4,
+               whose last three words nothing reads. Copying all 80
+               read past the key, and past the track's data on its last
+               key. */
             if (dest != src)
-                memcpy(dest, src, sizeof(Mtx4x4));
+                memcpy(dest, src, offsetof(Mtx4x4, unk1));
             if (mirror)
             {
                 MATH_ConvertMatrixToQuaternion(&mirrored, dest);
