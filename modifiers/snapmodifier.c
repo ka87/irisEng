@@ -95,7 +95,7 @@ int GEO_ul_ModifierSnap_Load(struct sModifier* mdf, char* data)
         if (BIG_ul_SearchKeyToPos(key) == -1)
             snap->gao = 0;
         else
-            LOA_MakeFileRef(key, &snap->gao, OBJ_ul_GameObjectCallback, 1);
+            LOA_MakeFileRef(key, &snap->gao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
     }
     count = LOA_ReadLong(&data, 0, 1);
     snap->num = count;

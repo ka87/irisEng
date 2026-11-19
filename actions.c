@@ -443,13 +443,13 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
     {
         if (actionElems[i].eventLists != (tGameObjectEventsList*)-1)
             LOA_MakeFileRef((int)actionElems[i].eventLists, &actionElems[i].eventLists,
-                EVE_ul_CallbackLoadListTracks, 1);
+                (void* (*)(uint32_t))EVE_ul_CallbackLoadListTracks, 1);
 
         shapeKey = (int)actionElems[i].shape;
         if (shapeKey == -1)
             actionElems[i].shape = 0;
         else
-            LOA_MakeFileRef(shapeKey, &actionElems[i].shape, ANI_ul_ShapeCallback, 1);
+            LOA_MakeFileRef(shapeKey, &actionElems[i].shape, (void* (*)(uint32_t))ANI_ul_ShapeCallback, 1);
     }
 
     for (i = 0; i < elemNum; i++)
@@ -531,7 +531,7 @@ struct sActionKit* ACT_ul_ActionKitCallback(uint32_t Offset)
                 if (actionKey == -1 || !actionKey)
                     actions[i] = NULL;
                 else
-                    LOA_MakeFileRef(actionKey, &actions[i], ACT_ul_ActionCallback, 1);
+                    LOA_MakeFileRef(actionKey, &actions[i], (void* (*)(uint32_t))ACT_ul_ActionCallback, 1);
             }
         }
     }

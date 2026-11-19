@@ -188,7 +188,7 @@ struct sGroGeneric* MAT_pst_CreateMultiFromBuffer(struct sGroGeneric* gro, char*
             mat->multiMaterialPtrIfType4ThenDiffuseColor[i] = NULL;
         else
             LOA_MakeFileRef(childKey, &mat->multiMaterialPtrIfType4ThenDiffuseColor[i],
-                            GEO_ul_Load_ObjectCallback, 1);
+                            (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback, 1);
     }
     return (tGroGeneric*)mat;
 }
@@ -362,15 +362,15 @@ void MAT_Init()
     GRO_gast_Interface[3].CreateFromBuffer = MAT_pst_CreateSingleFromBuffer;
     GRO_gast_Interface[3].Duplicate = MAT_Duplicate;
     GRO_gast_Interface[3].Destroy = MAT_DestroyMaterial;
-    GRO_gast_Interface[3].GetValidatedMask = MAT_GetValidatedMask_MTT;
+    GRO_gast_Interface[3].GetValidatedMask = (int (*)(void *, int))MAT_GetValidatedMask_MTT;
     GRO_gast_Interface[4].Create = MAT_pst_CreateMulti;
     GRO_gast_Interface[4].CreateFromBuffer = MAT_pst_CreateMultiFromBuffer;
     GRO_gast_Interface[4].Destroy = MAT_DestroyMaterial;
-    GRO_gast_Interface[4].GetValidatedMask = MAT_GetValidatedMask_MSM;
+    GRO_gast_Interface[4].GetValidatedMask = (int (*)(void *, int))MAT_GetValidatedMask_MSM;
     GRO_gast_Interface[5].CreateFromBuffer = MAT_pst_CreateMultiTextureFromBuffer;
     GRO_gast_Interface[5].Duplicate = MAT_Duplicate;
     GRO_gast_Interface[5].Destroy = MAT_DestroyMaterial;
-    GRO_gast_Interface[5].GetValidatedMask = MAT_GetValidatedMask_MTT;
+    GRO_gast_Interface[5].GetValidatedMask = (int (*)(void *, int))MAT_GetValidatedMask_MTT;
     MAT_gst_DefaultSingleMaterial.intf = &GRO_gast_Interface[5];
 }
 

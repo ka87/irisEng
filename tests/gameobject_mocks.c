@@ -333,7 +333,7 @@ int TAB_ul_Ptable_GetElemIndexWithPointer(tableDescStruct* t, void* o)
 BOOL TAB_TableElemIsInvalid(void* p) { return p == 0 || p == (void*)-1; }
 
 void LOA_DeleteAddress(int a) { GMOCK_Log("LOA_DeleteAddress"); (void)a; }
-void LOA_MakeFileRef(int k, void** slot, void* (*cb)(uint32_t), char n) { (void)k; (void)slot; (void)cb; (void)n; unreached("LOA_MakeFileRef"); }
+void LOA_MakeFileRef(int k, void* slot, void* (*cb)(uint32_t), char n) { (void)k; (void)slot; (void)cb; (void)n; unreached("LOA_MakeFileRef"); }
 int LOA_ReadLong(char** p, uint32_t* d, char m) { (void)p; (void)d; (void)m; unreached("LOA_ReadLong"); return 0; }
 char LOA_ReadChar(char** p, char* d, char m) { (void)p; (void)d; (void)m; unreached("LOA_ReadChar"); return 0; }
 uint16_t LOA_ReadShort(char** p, uint16_t* d, char m) { (void)p; (void)d; (void)m; unreached("LOA_ReadShort"); return 0; }

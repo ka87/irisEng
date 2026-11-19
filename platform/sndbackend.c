@@ -3080,8 +3080,14 @@ int SND_i_SoftInit()
     SND_gpst_Interface.stream.GetPan = pcSND_Stream_GetPan;
     SND_gpst_Interface.stream.GetCurrPos = pcSND_Stream_GetCurrPos;
     SND_gpst_Interface.stream.Pause = pcSND_Stream_Pause;
-    SND_gpst_Interface.stream.Release = pcSND_Stream_Release;
-    SND_gpst_Interface.stream.SetFrequency = pcSND_Stream_SetFrequency;
+    /* Both return a handle that no caller can reach: every one of
+       them goes through this slot, which is declared to return
+       nothing. The cast says that is meant, and the functions keep
+       their own signatures. */
+    SND_gpst_Interface.stream.Release =
+        (void (*)(tSndSoundBufferElem*))pcSND_Stream_Release;
+    SND_gpst_Interface.stream.SetFrequency =
+        (void (*)(tSndSoundBufferElem*, int))pcSND_Stream_SetFrequency;
     SND_gpst_Interface.stream.SetPan = pcSND_Stream_SetPan;
     SND_gpst_Interface.stream.SetCurrPos = pcSND_Stream_SetCurrPos;
     SND_gpst_Interface.stream.Setvolume = pcSND_Stream_SetVolume;

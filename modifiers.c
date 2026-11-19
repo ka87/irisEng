@@ -374,15 +374,15 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[0].mdfId = 0;
     MDF_gast_ModifierInterface[0].Create = GEO_ModifierSnap_Create;
     MDF_gast_ModifierInterface[0].Destroy = GEO_ModifierSnap_Destroy;
-    MDF_gast_ModifierInterface[0].Apply = GEO_ModifierSnap_Apply;
-    MDF_gast_ModifierInterface[0].UnApply = GEO_ModifierSnap_Unapply;
+    MDF_gast_ModifierInterface[0].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierSnap_Apply;
+    MDF_gast_ModifierInterface[0].UnApply = (void (*)(struct sModifier *, void *))GEO_ModifierSnap_Unapply;
     MDF_gast_ModifierInterface[0].Load = GEO_ul_ModifierSnap_Load;
     MDF_gast_ModifierInterface[0].ReInit = NULL;
     MDF_gast_ModifierInterface[1].mdfId = 1;
     MDF_gast_ModifierInterface[1].Create = GEO_ModifierOnduleTonCorps_Create;
     MDF_gast_ModifierInterface[1].Destroy = GEO_ModifierOnduleTonCorps_Destroy;
-    MDF_gast_ModifierInterface[1].Apply = GEO_ModifierOnduleTonCorps_Apply;
-    MDF_gast_ModifierInterface[1].UnApply = GEO_ModifierOnduleTonCorps_UnApply;
+    MDF_gast_ModifierInterface[1].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierOnduleTonCorps_Apply;
+    MDF_gast_ModifierInterface[1].UnApply = (void (*)(struct sModifier *, void *))GEO_ModifierOnduleTonCorps_UnApply;
     MDF_gast_ModifierInterface[1].Load = GEO_ul_ModifierOnduleTonCorps_Load;
     MDF_gast_ModifierInterface[1].ReInit = NULL;
     
@@ -405,8 +405,8 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[4].mdfId = 4;
     MDF_gast_ModifierInterface[4].Create = GEO_ModifierMorphing_Create;
     MDF_gast_ModifierInterface[4].Destroy = GEO_ModifierMorphing_Destroy;
-    MDF_gast_ModifierInterface[4].Apply = GEO_ModifierMorphing_Apply;
-    MDF_gast_ModifierInterface[4].UnApply = GEO_ModifierMorphing_UnApply;
+    MDF_gast_ModifierInterface[4].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierMorphing_Apply;
+    MDF_gast_ModifierInterface[4].UnApply = (void (*)(struct sModifier *, void *))GEO_ModifierMorphing_UnApply;
     MDF_gast_ModifierInterface[4].Load = GEO_ul_ModifierMorphing_Load;
     MDF_gast_ModifierInterface[4].ReInit = NULL;
     
@@ -437,8 +437,8 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[8].mdfId = 8;
     MDF_gast_ModifierInterface[8].Create = GEN_ModifierSound_Create;
     MDF_gast_ModifierInterface[8].Destroy = GEN_ModifierSound_Destroy;
-    MDF_gast_ModifierInterface[8].Apply = GEN_ModifierSound_Apply;
-    MDF_gast_ModifierInterface[8].UnApply = GEN_ModifierSound_Unapply;
+    MDF_gast_ModifierInterface[8].Apply = (void (*)(struct sModifier *, void *))GEN_ModifierSound_Apply;
+    MDF_gast_ModifierInterface[8].UnApply = (void (*)(struct sModifier *, void *))GEN_ModifierSound_Unapply;
     MDF_gast_ModifierInterface[8].Load = GEN_ModifierSound_Load;
     MDF_gast_ModifierInterface[8].ReInit = GEN_ModifierSound_Reinit;
 
@@ -461,16 +461,16 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[11].mdfId = 11;
     MDF_gast_ModifierInterface[11].Create = SPG_Modifier_Create;
     MDF_gast_ModifierInterface[11].Destroy = SPG_Modifier_Destroy;
-    MDF_gast_ModifierInterface[11].Apply = SPG_Modifier_Apply;
-    MDF_gast_ModifierInterface[11].UnApply = SPG_Modifier_Unapply;
+    MDF_gast_ModifierInterface[11].Apply = (void (*)(struct sModifier *, void *))SPG_Modifier_Apply;
+    MDF_gast_ModifierInterface[11].UnApply = (void (*)(struct sModifier *, void *))SPG_Modifier_Unapply;
     MDF_gast_ModifierInterface[11].Load = SPG_ul_Modifier_Load;
     MDF_gast_ModifierInterface[11].ReInit = NULL;
 
     MDF_gast_ModifierInterface[12].mdfId = 12;
     MDF_gast_ModifierInterface[12].Create = GEO_ModifierSymetrie_Create;
     MDF_gast_ModifierInterface[12].Destroy = GEO_ModifierSymetrie_Destroy;
-    MDF_gast_ModifierInterface[12].Apply = GEO_ModifierSymetrie_Apply;
-    MDF_gast_ModifierInterface[12].UnApply = GEO_ModifierSymetrie_Unapply;
+    MDF_gast_ModifierInterface[12].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierSymetrie_Apply;
+    MDF_gast_ModifierInterface[12].UnApply = (void (*)(struct sModifier *, void *))GEO_ModifierSymetrie_Unapply;
     MDF_gast_ModifierInterface[12].Load = GEO_ul_ModifierSymetrie_Load;
     MDF_gast_ModifierInterface[12].ReInit = NULL;
     
@@ -493,8 +493,8 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[15].mdfId = 15;
     MDF_gast_ModifierInterface[15].Create = GEN_ModifierSoundFx_Create;
     MDF_gast_ModifierInterface[15].Destroy = GEN_ModifierSoundFx_Destroy;
-    MDF_gast_ModifierInterface[15].Apply = GEN_ModifierSoundFx_Apply;
-    MDF_gast_ModifierInterface[15].UnApply = GEN_ModifierSoundFx_Unapply;
+    MDF_gast_ModifierInterface[15].Apply = (void (*)(struct sModifier *, void *))GEN_ModifierSoundFx_Apply;
+    MDF_gast_ModifierInterface[15].UnApply = (void (*)(struct sModifier *, void *))GEN_ModifierSoundFx_Unapply;
     MDF_gast_ModifierInterface[15].Load = GEN_ModifierSoundFx_Load;
     MDF_gast_ModifierInterface[15].ReInit = GEN_ModifierSoundFx_Reinit;
 
@@ -525,8 +525,8 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[19].mdfId = 19;
     MDF_gast_ModifierInterface[19].Create = MDF_LoadingSound_Create;
     MDF_gast_ModifierInterface[19].Destroy = MDF_LoadingSound_Destroy;
-    MDF_gast_ModifierInterface[19].Apply = MDF_LoadingSound_Apply;
-    MDF_gast_ModifierInterface[19].UnApply = MDF_LoadingSound_Unapply;
+    MDF_gast_ModifierInterface[19].Apply = (void (*)(struct sModifier *, void *))MDF_LoadingSound_Apply;
+    MDF_gast_ModifierInterface[19].UnApply = (void (*)(struct sModifier *, void *))MDF_LoadingSound_Unapply;
     MDF_gast_ModifierInterface[19].Load = MDF_LoadingSound_Load;
     MDF_gast_ModifierInterface[19].ReInit = MDF_LoadingSound_Reinit;
 
@@ -541,7 +541,7 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[21].mdfId = 21;
     MDF_gast_ModifierInterface[21].Create = GEO_ModifierSTP_Create;
     MDF_gast_ModifierInterface[21].Destroy = GEO_ModifierSTP_Destroy;
-    MDF_gast_ModifierInterface[21].Apply = GEO_ModifierSTP_Apply;
+    MDF_gast_ModifierInterface[21].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierSTP_Apply;
     MDF_gast_ModifierInterface[21].UnApply = GEO_ModifierSTP_Unapply;
     MDF_gast_ModifierInterface[21].Load = GEO_ul_ModifierSTP_Load;
     MDF_gast_ModifierInterface[21].ReInit = NULL;
@@ -549,15 +549,15 @@ void MDF_Modifier_Init()
     MDF_gast_ModifierInterface[22].mdfId = 22;
     MDF_gast_ModifierInterface[22].Create = GEO_ModifierCrush_Create;
     MDF_gast_ModifierInterface[22].Destroy = GEO_ModifierCrush_Destroy;
-    MDF_gast_ModifierInterface[22].Apply = GEO_ModifierCrush_Apply;
-    MDF_gast_ModifierInterface[22].UnApply = GEO_ModifierCrush_Unapply;
+    MDF_gast_ModifierInterface[22].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierCrush_Apply;
+    MDF_gast_ModifierInterface[22].UnApply = (void (*)(struct sModifier *, void *))GEO_ModifierCrush_Unapply;
     MDF_gast_ModifierInterface[22].Load = GEO_ul_ModifierCrush_Load;
     MDF_gast_ModifierInterface[22].ReInit = GEO_ModifierCrush_Reinit;
 
     MDF_gast_ModifierInterface[23].mdfId = 23;
     MDF_gast_ModifierInterface[23].Create = GEO_ModifierRLICarte_Create;
     MDF_gast_ModifierInterface[23].Destroy = GEO_ModifierRLICarte_Destroy;
-    MDF_gast_ModifierInterface[23].Apply = GEO_ModifierRLICarte_Apply;
+    MDF_gast_ModifierInterface[23].Apply = (void (*)(struct sModifier *, void *))GEO_ModifierRLICarte_Apply;
     MDF_gast_ModifierInterface[23].UnApply = GEO_ModifierRLICarte_Unapply;
     MDF_gast_ModifierInterface[23].Load = GEO_ul_ModifierRLICarte_Load;
     MDF_gast_ModifierInterface[23].ReInit = GEO_ModifierRLICarte_Reinit;

@@ -177,7 +177,7 @@ void JpegInfo(tJpegLibIntf* jpg)
 
 void JpegRead(tJpegLibIntf* jpg)
 {
-    char** scanLineArray;
+    JSAMPARRAY scanLineArray;
     char* currData;
     struct jpeg_decompress_struct jds;
     struct jpeg_error_st jerr;
@@ -219,7 +219,7 @@ void JpegRead(tJpegLibIntf* jpg)
 
 void JpegWrite(tJpegLibIntf* jpg)
 {
-    char* row;
+    JSAMPROW row;
 
     struct jpeg_compress_struct jcs;
     struct jpeg_error_st jerr;
@@ -268,7 +268,7 @@ void JpegWrite(tJpegLibIntf* jpg)
 
         while (jcs.next_scanline < jcs.image_height)
         {
-            row = (char*)(jpg->indata) + 3 * jpg->width * jcs.next_scanline;
+            row = (JSAMPROW)(jpg->indata) + 3 * jpg->width * jcs.next_scanline;
             jpeg_write_scanlines(&jcs, &row, 1);
         }
         jpeg_finish_compress(&jcs);

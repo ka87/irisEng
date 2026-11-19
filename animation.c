@@ -1384,9 +1384,9 @@ void ANI_pst_Load(int animation, int shape, int group, tGameObjectMain* gao, tWo
     shapePtr = 0;
     groupPtr = 0;
     if (shape != -1)
-        LOA_MakeFileRef(shape, &shapePtr, ANI_ul_ShapeCallback, 1);
+        LOA_MakeFileRef(shape, &shapePtr, (void* (*)(uint32_t))ANI_ul_ShapeCallback, 1);
     if (group != -1)
-        LOA_MakeFileRef(group, &groupPtr, GRP_ul_LoadGrpCallback, 1);
+        LOA_MakeFileRef(group, &groupPtr, (void* (*)(uint32_t))GRP_ul_LoadGrpCallback, 1);
     LOA_Resolve();
     if (groupPtr)
     {
@@ -1413,7 +1413,7 @@ void ANI_pst_Load(int animation, int shape, int group, tGameObjectMain* gao, tWo
     }
     else
     {
-        LOA_MakeFileRef(animation, &animationPtr, EVE_ul_CallbackLoadListTracks, 1);
+        LOA_MakeFileRef(animation, &animationPtr, (void* (*)(uint32_t))EVE_ul_CallbackLoadListTracks, 1);
         LOA_Resolve();
         anim = ANI_AllocAnim();
         gaoActorObject->animPtr[0] = anim;

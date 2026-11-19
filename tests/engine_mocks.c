@@ -645,7 +645,7 @@ void MATH_BlendVector(Vec3* dest, Vec3* v1, Vec3* v2, float amount)
     dest->z = (1.0f - amount) * v1->z + amount * v2->z;
 }
 
-void LOA_MakeFileRef(int key, void** retVal, void* (*func)(uint32_t), char flags)
+void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags)
 {
     MOCK_Record("LOA_MakeFileRef", retVal, 2, (double)key, (double)flags);
 }

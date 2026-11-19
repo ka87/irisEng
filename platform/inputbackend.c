@@ -1025,6 +1025,17 @@ void pcINO_mouse_and_keyb_unacquire()
     PLT_InputCapture(0);
 }
 
+/* bsearch hands the comparator a void* for the key and a void* for
+   the element. The key is the name on its own and the element is a
+   whole tweak, whose name is its first field -- which is why this
+   used to be strcmp passed straight in, reading the element as if
+   it were the string. Spelling it out says that on purpose rather
+   than leaving it to the layout. */
+static int inp_l_i_TweakNameCompare(const void* key, const void* elem)
+{
+    return strcmp((const char*)key, ((const tTweakElem*)elem)->elemname);
+}
+
 // One command line: a tweak name and a value. Split out of the old
 // dialog path so the overlay's command field runs the same thing.
 void pcINO_RunTweakCommand(const char* line)
@@ -1043,7 +1054,7 @@ void pcINO_RunTweakCommand(const char* line)
        out here. As a literal it was right only while it matched, and
        the entry it would drop first is the one that sorts last. */
     tweak = (tTweakElem*)bsearch(Key, &tweaks, (size_t)tweaksNum,
-                                 sizeof(tTweakElem), strcmp);
+                                 sizeof(tTweakElem), inp_l_i_TweakNameCompare);
     if (tweak)
     {
         if (tweak->type == 0)

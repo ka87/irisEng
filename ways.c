@@ -86,7 +86,7 @@ tWayNetwork* WAY_ul_NetWorkCallback(uint32_t offset)
     if (!rootKey || rootKey == -1)
         network->gao = 0;
     else
-        LOA_MakeFileRef(rootKey, &network->gao, OBJ_ul_GameObjectCallback, 1);
+        LOA_MakeFileRef(rootKey, &network->gao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
     network->flags = LOA_ReadLong(&data, 0, 1);
     return network;
 }
@@ -115,7 +115,7 @@ tWayAllNetworks* WAY_ul_AllNetWorksCallback(uint32_t offset)
         for (i = 0; i < allNetworks->networkNum; ++i)
         {
             networkKey = LOA_ReadLong(&data, 0, 1);
-            LOA_MakeFileRef(networkKey, &allNetworks->networks[i], WAY_ul_NetWorkCallback, 1);
+            LOA_MakeFileRef(networkKey, &allNetworks->networks[i], (void* (*)(uint32_t))WAY_ul_NetWorkCallback, 1);
         }
     }
     return allNetworks;
@@ -275,7 +275,7 @@ struct sWay* WAY_ul_AllLinkListsCallback(uint32_t offset)
     {
         elem = &way->wayElems[i];
         networkKey = LOA_ReadLong(&data, 0, 1);
-        LOA_MakeFileRef(networkKey, (void**)&elem->network, WAY_ul_NetWorkCallback, 1);
+        LOA_MakeFileRef(networkKey, (void**)&elem->network, (void* (*)(uint32_t))WAY_ul_NetWorkCallback, 1);
         elem->innerElems = 0;
         elem->num = LOA_ReadLong(&data, 0, 1);
         if (elem->num)
@@ -287,7 +287,7 @@ struct sWay* WAY_ul_AllLinkListsCallback(uint32_t offset)
                 link->capa = LOA_ReadShort(&data, 0, 1);
                 link->capaBackup = link->capa;
                 gaoKey = LOA_ReadLong(&data, 0, 1);
-                LOA_MakeFileRef(gaoKey, (void**)&link->gao, OBJ_ul_GameObjectCallback, 1);
+                LOA_MakeFileRef(gaoKey, (void**)&link->gao, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);
                 link->design = LOA_ReadChar(&data, 0, 1);
                 link->designBackup = link->design;
                 link->s3 = LOA_ReadShort(&data, 0, 1);

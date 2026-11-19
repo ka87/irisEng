@@ -1264,7 +1264,7 @@ tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
         *stored++ = LOA_ReadLong(&src, 0, 1);
 
     LOA_MakeFileRef((int)grid->compressedGrid, &grid->compressedGrid,
-                    GRID_ul_CallbackCompressedGrid, 1);
+                    (void* (*)(uint32_t))GRID_ul_CallbackCompressedGrid, 1);
 
     capasSize = grid->s3Size7LimitMaxX * grid->gridElemSize;
     capasSize *= grid->s4Size7LimitMaxY * grid->gridElemSize;

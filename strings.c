@@ -9,6 +9,9 @@
 #include "strings.h"
 #include "flatlayer.h"
 
+/* isdigit, which used to arrive through windows.h. */
+#include <ctype.h>
+
 int pcINO_ControlsReadFormatBufferSize;
 char* pcINO_ControlsReadFormatBuffer;
 int STRDataPtrStart;

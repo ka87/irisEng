@@ -162,7 +162,7 @@ struct sGroup* GRP_ul_LoadGrpCallback(uint32_t offset)
     currReadPtr = BIG_pc_ReadFileTmp(offset, &size);
     golKey = LOA_ReadLong(&currReadPtr, 0, 1);
     
-    LOA_MakeFileRef(golKey, &grp->tablePF, OBJ_ul_World_LoadGolCallback, 1);
+    LOA_MakeFileRef(golKey, &grp->tablePF, (void* (*)(uint32_t))OBJ_ul_World_LoadGolCallback, 1);
     
     grp->unk2 = LOA_ReadLong(&currReadPtr, 0, 1);
     

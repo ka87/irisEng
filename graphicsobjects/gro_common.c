@@ -95,7 +95,7 @@ void GRO_Struct_InitInterfaces()
     {
         intf->id = i;
         intf->Create = GRO_p_UnknownCreateDefault;
-        intf->CreateFromBuffer = GRO_p_UnknownCreateFromBuffer;
+        intf->CreateFromBuffer = (struct sGroGeneric * (*)(struct sGroGeneric *, char **, struct sWorld *))GRO_p_UnknownCreateFromBuffer;
         intf->Duplicate = GRO_UnknownDuplicate;
         intf->Destroy = GRO_UnknownDestroy;
         intf->HasSomethingToRender = GRO_l_UnknowHasSomethingToRender;

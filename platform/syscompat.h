@@ -120,6 +120,17 @@ typedef size_t SIZE_T;
    on the buffer being big enough for what the loader builds. */
 #ifndef MAX_PATH
 #define MAX_PATH 260
+
+/* windows.h defines these two and the engine uses them as if they
+   were the language's -- lights.c clamps a colour channel with min.
+   Spelled the same way windows.h spells them, so a build on either
+   side computes the same thing. */
+#ifndef min
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 #endif
 typedef union { struct { unsigned int LowPart; int HighPart; }; long long QuadPart; } LARGE_INTEGER;
 
@@ -135,6 +146,15 @@ typedef union { struct { unsigned int LowPart; int HighPart; }; long long QuadPa
  * windows.h off it. A real build off Windows got an implicit
  * declaration, which is a warning the sweep does not see because the
  * sweep compiles against that same stub. */
+/* The high-resolution counter, which the profiler's instrumentation
+   calls in about a hundred places, and the debugger's ear. All three
+   are answered in syscompat.c; they are declared here for the same
+   reason as the timer below, which is that windows.h is where the
+   engine used to get them from. */
+int   QueryPerformanceCounter(LARGE_INTEGER* out);
+BOOL  QueryPerformanceFrequency(LARGE_INTEGER* out);
+void  OutputDebugStringA(LPCSTR text);
+
 DWORD timeGetTime(void);
 DWORD timeBeginPeriod(UINT period);
 DWORD timeEndPeriod(UINT period);
