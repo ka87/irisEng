@@ -1,8 +1,5 @@
 #version 410 core
 
-// Glyphs. The atlas is single-channel coverage, so the colour comes
-// entirely from the vertex and the texture decides only how much of
-// it there is.
 in vec4 vColor;
 in vec2 vUV;
 out vec4 oColor;

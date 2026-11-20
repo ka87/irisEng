@@ -1,9 +1,5 @@
 #version 410 core
 
-// The same as overlay.vert with a texture coordinate carried through.
-// It is a separate program rather than a branch, because the two
-// vertex layouts differ and a vertex array has to describe one of
-// them.
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec4 aColor;
 layout(location = 2) in vec2 aUV;
