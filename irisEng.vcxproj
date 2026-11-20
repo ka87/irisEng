@@ -99,6 +99,18 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- The prebuilt libav libraries are not built by this project and
+           not built by this compiler, and much of them is hand-written
+           assembly, so their objects carry no safe exception handler
+           table. On x86 the linker builds that table for the image and
+           then refuses any object that cannot contribute to it:
+             swresample.lib(..) : error LNK2026: module unsafe for SAFESEH image
+           The table is a property of the whole image, so the only answer
+           is to not ask for one. It is here as well as in Release even
+           though Debug links without complaint today: Debug links
+           incrementally, and an incremental link builds no table, which
+           is the only reason it does not. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dxguid.lib;d3d9.lib;opengl32.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -139,6 +151,11 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- See the note in the Debug|Win32 block. This is the
+           configuration it actually matters in: the two optimisations
+           above rule out an incremental link, so the table is built
+           here and the libav objects fail it. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dxguid.lib;d3d9.lib;opengl32.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>

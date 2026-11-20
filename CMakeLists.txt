@@ -203,6 +203,26 @@ add_library(irisEngFFmpeg INTERFACE)
 
 if(WIN32)
     target_include_directories(irisEngFFmpeg INTERFACE thirdparty/ffmpeg/include)
+    # These libraries are not built by this project and not built by
+    # MSVC, and a good deal of them is hand-written assembly, so their
+    # objects carry no safe exception handler table. On x86 the linker
+    # marks the image as having one and then refuses any object that
+    # cannot contribute to it:
+    #
+    #   swresample.lib(...) : error LNK2026: module unsafe for SAFESEH image
+    #
+    # The table is image-wide, so the only answer is to not ask for one.
+    # It goes here, on the libraries that need it, rather than on the
+    # engine, and only where it means anything: the option is x86's.
+    #
+    # It only ever showed up in Release because the project file's
+    # Release|Win32 link turns on /OPT:REF and /OPT:ICF, which rule out
+    # an incremental link -- and an incremental link, which is what
+    # Debug gets, builds no table to fail in the first place. So this
+    # goes on every configuration rather than one.
+    if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+        target_link_options(irisEngFFmpeg INTERFACE /SAFESEH:NO)
+    endif()
     foreach(lib avcodec avformat avutil swscale swresample)
         if(MSVC)
             target_link_libraries(irisEngFFmpeg INTERFACE
