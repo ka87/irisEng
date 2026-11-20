@@ -5,8 +5,15 @@ in. A shader is the part of a renderer most likely to need changing on
 somebody else's machine, and a file that can be edited with the game
 restarted is worth more than one that needs a rebuild.
 
-They are **4.50 core**, which is what the OpenGL renderer asks the
-driver for. They are not used by the Direct3D renderer at all.
+They are **4.10 core**, which is the oldest the renderer needs -- it
+asks the driver for 4.5 and falls back to 4.1, and the only thing in
+these files past 3.30 is `layout(location = N)` on a vertex input.
+They are not used by the Direct3D renderer at all.
+
+There are no comments in them. What a line is doing, and which of the
+two renderers settled it, is in this file instead: a shader is a file
+somebody edits on another machine, and the reasoning is worth more
+gathered in one place than scattered a sentence at a time.
 
 | | |
 |---|---|
@@ -22,7 +29,31 @@ driver for. They are not used by the Direct3D renderer at all.
 | `aeremanence.frag` | the frame with a wide blur of it added on top |
 | `aeblend.frag` | the frame over the frame before, for the motion blur |
 | `aezoom.frag` | the frame summed at eight tightening crops |
+| `aezoom2.frag` | the frame summed at eight turns about its middle |
+| `aemotion.frag` | the frame summed along the way the camera moved |
+| `aefade.frag` | a frozen copy of the picture dissolving into the live one |
+| `aehue.frag` | a colour taken off the picture, saturating at black |
 | `water.vert` / `.frag` | the water surface, with the reflection projected onto it |
+| `watersmooth.vert` / `.frag` | four taps over the reflection, before the water reads it |
+
+## The matrices, and why nothing is transposed
+
+`geometry.vert`, `depthblur.vert` and `water.vert` all multiply a
+matrix by a column vector, `uViewProj * vec4(aPos, 1.0)`, and that is
+the engine's own arithmetic rather than a rearrangement of it.
+
+The engine's matrices are **row-vector** -- a point is transformed as
+`v * M` -- and they are stored **row-major**. They are uploaded
+**untransposed**, so OpenGL reads that storage as column-major and
+hands GLSL the transpose. The transpose times a column vector is the
+row vector times the original, so the two cancel and the shader gets
+what the engine meant.
+
+Which means there is nothing to fix here if a matrix ever looks wrong:
+the pair of conventions is load-bearing, and transposing on upload
+*or* writing `vec4(aPos, 1.0) * uViewProj` would each break it on its
+own, while doing both would work and read as though one of them were a
+mistake.
 
 ## The water, and the one thing in it that is not derived
 
@@ -56,6 +87,44 @@ Three things in it are worth knowing:
   written from the same reading. So the console tweak `gl_water_flip`
   moves it while somebody looks at a real scene, and the default is
   whichever way round that measurement settled.
+
+## The water's smoothing pass
+
+`watersmooth.vert` and `.frag` are one quad over the reflection target,
+four taps mixed, run before the water surface samples it. Two things in
+it are not what a reading of the shader would suggest.
+
+**The tap coordinates are worked out per corner, in the vertex stage,
+and that is faithfulness rather than speed.** The other renderer writes
+four texture coordinate sets into each of the quad's four vertices and
+lets the rasteriser interpolate between them -- and the vertical
+offsets it writes are nought at the top two vertices and one, two and
+three steps at the bottom two. Interpolating that gives a blur which
+**opens out towards the bottom** of the rectangle. Computing the
+offsets per pixel instead would give a uniform blur, which is the
+obvious thing to write and the wrong one. So the offsets are scaled by
+how far down the corner is, and the horizontal ones, which that
+renderer writes at every vertex, are not.
+
+They are **subtracted** here where that renderer adds them, because a
+step further towards the bottom of the picture is a smaller `v` in this
+interface and a larger one in that.
+
+**The weights are not a quarter each.** They are `watersmooth.c`'s, and
+that file asks the depth blur for them: both effects are the same run
+of hardware stages mixing each sample into the running result by one
+fixed factor, so the first two taps land on the same power of
+one-less-the-factor and the last two come out heavier. The alpha is
+**tap nought's**, not a weighted sum -- the chain being reproduced
+selects the running alpha at each later stage rather than blending it.
+
+One thing it does *not* need settling against the other renderer: the
+rectangle is given as the quad's top edge and then its bottom, and
+which row of the source each of those is comes from the C side, because
+a target's first row is the bottom of the picture here. The reflection
+is drawn into one of these targets and sampled from the same one, so
+both ends agree. That is not the question `gl_water_flip` exists for,
+which is about a matrix carried over from elsewhere.
 
 ## The reflection, which is in `geometry.vert`
 
@@ -118,6 +187,10 @@ a glyph and a movie frame -- a glyph's texture is coverage and decides
 how much of the vertex colour there is, and a frame's texture is the
 picture. Sharing the stage means the pixel mapping is written and
 tested once.
+
+`video.frag` writes the frame opaque whatever its alpha says: the
+engine's decoder writes into a surface whose fourth channel is padding,
+and the other renderer's blit ignores it too.
 
 ## The depth blur
 
@@ -233,6 +306,30 @@ brightening.
 reproducing the byte truncation the other renderer's texture factors
 do. Nothing about the numbers is decided here.
 
+## The fade and the hue sweep
+
+Two more that are a function of the pixel, like the colour steps above.
+
+**`aefade.frag`** dissolves a frozen copy of the picture into the live
+one. The copy was taken on the frame the fade started and has not moved
+since, so this is not a blur or a trail -- it is the world carrying on
+underneath a still photograph of itself. The photograph's share falls
+from all of it to none over the fade's length, and on the first frame
+the two are the same picture, so a fade begins invisibly. The share
+arrives as the opacity byte over the whole range, which is the same
+number the other renderer puts in the alpha of a constant colour and
+lets the hardware divide.
+
+**`aehue.frag`** takes a colour off the picture, saturating at black. A
+different amount comes off each channel, and the three amounts are one
+wave sampled a third of a cycle apart -- so one channel is left alone
+while the other two are darkened, and which one that is sweeps round as
+the phase advances. Three numbers and not one is the whole effect: the
+same amount off all three would only be a brightness. `aehue.c` has the
+wave; what reaches the shader is the three amounts as fractions. The
+clamp at black is written out rather than left to the target, so that a
+target of some other format later does not quietly change the effect.
+
 ## The after-effects that sum whole frames
 
 Three more, and they are a group because each one's output is a sum of
@@ -296,6 +393,67 @@ Every tap weighs the same and the weight is just under an eighth, so
 the eight together come to 248 of 255 and a flat frame comes back a
 shade dark. The same flavour of deliberate undershoot as the
 grayscale's weights.
+
+**`aemotion.frag`** is the motion smooth: four samples of the frame
+along the way the camera just moved, summed. `aemotion.c` decides where
+the four sit and what they weigh. What is worth knowing here is that
+the four are **not** a symmetric spread about the pixel -- they are at
+minus three, plus two, minus one and nothing times the step -- so this
+is not a blur centred on anything. It leans one way, and that is the
+effect. The weight is not a quarter either: the renderer this came from
+carries 63 of 255 in a vertex colour, so the four together come to 252
+of 255 and the smeared picture is a shade darker than the one it was
+made from. They are summed in the order the offsets are given, which is
+the order that renderer binds its four stages in, and eight-bit
+arithmetic is not associative, so the order is part of the answer.
+
+**`aezoom2.frag`** is the second zoom smooth: eight samples, each
+turned about the middle of the picture by a different angle, summed.
+All the arithmetic is `aezoom2.c`'s, including the thing worth knowing
+about it -- **the transform is written as a rotation and is not one.**
+Its second row reads the first row's answer, so its determinant is
+cosine squared rather than one and every sample is turned *and* shrunk.
+That is what makes a rotational smear look like a zoom, and why the
+effect is named as it is.
+
+What reaches the shader is eight such transforms, already conjugated by
+the frame's aspect and already with the vertical the way round this
+renderer measures it; nothing is rebuilt from an angle. They arrive
+four to a `mat4`, **one per column**, because two of those hold exactly
+eight taps and the renderer has a four-by-four uniform to hand where it
+has no vector-array one. Each sample weighs `256/8 - 1` of 255, so the
+eight come to 248 and the smear lands a shade dark rather than
+saturating -- the same deliberate undershoot as the first zoom's and
+the grayscale's.
+
+The turn pushes the corners outside the quad and the targets clamp at
+their edges, so a corner sample repeats the edge rather than wrapping.
+That is the sane reading rather than a matched one: the other renderer
+leaves its addressing mode alone here and inherits whatever the pass
+before set.
+
+## The frame's alpha through the chain
+
+Every effect above either carries the frame's alpha through unchanged
+or replaces it outright, and which one it does is not a detail.
+
+The depth-blur pass writes a blur amount into the frame's alpha, and
+`aedepthmix.frag` is what reads it. Everything after that point is
+mixed by alpha in the same way, so an effect that threw it away would
+silently make every later one a no-op -- which is why the colour steps,
+the fade, the hue sweep, the remanence, the motion smooth and both
+zooms all carry it rather than computing one.
+
+`aeblend.frag` is the exception and replaces it, because its alpha is
+the framebuffer blend's own factor and that is the only way to reach
+the blend from a shader. Nothing downstream of the motion blur reads
+the frame's alpha, so there is nothing to lose there.
+
+For several of these the alpha is not observable at all -- the renderer
+masks the alpha write off before the draw, as the other renderer
+narrows its colour write. Written anyway, and written to the value that
+leaves the frame meaning what it meant, so that dropping the mask later
+changes nothing.
 
 ## The material's texture-coordinate projection
 
