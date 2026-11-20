@@ -9,7 +9,7 @@ one it got**.
 
 ```ini
 [render]
-backend = d3d
+backend = gl
 ```
 
 ## The table is the preference

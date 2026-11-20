@@ -347,7 +347,10 @@ static void theShippedFile(void)
     okStr(SET_pc_BigFile(), "sally_clean.bf",
           "the shipped ini names the big file");
     okInt(SET_b_Binarized(), 1, "and asks for binarized world files");
-    okStr(SET_pc_Backend(), "d3d", "and names the renderer the game shipped on");
+    /* gl, not the renderer the game shipped on: the install asks for
+       the OpenGL one and gdi.c's table order is what still makes
+       Direct3D the fallback where there is one. */
+    okStr(SET_pc_Backend(), "gl", "and asks for the OpenGL renderer");
     okStr(SET_pc_Video((int)0x490294C0u), "BGEMakingOf.bik",
           "and has the video under the id the trailer launcher asks for");
     okInt(dmLogLen, 0, "and the reader finds nothing to complain about");
