@@ -823,7 +823,7 @@ static const tGdi_Renderer gdi_renderers[] = {
 /* Direct3D is first where there is one, so it is what the fallback
    lands on and what the game gets when the ini asks for nothing. The
    OpenGL row is reached by asking for it, and declines itself on a
-   machine that cannot give a 4.5 core context.
+   machine that cannot give it a context it can use.
 
    Where there is no Direct3D the table is the OpenGL row alone, and
    an ini that asks for "d3d" gets the same answer as an ini that asks

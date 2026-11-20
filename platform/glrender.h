@@ -22,43 +22,38 @@ struct sGlRenderState;
 
 /* The OpenGL renderer.
 
-   It is the second row in gdi.c's table and never the fallback. The
-   first row that can run is what the game gets when engine.ini
-   asks for nothing, and that is Direct3D; this one is reached by
-   asking for it with
+   It is what the shipped engine.ini asks for:
 
        [render]
        backend = gl
 
-   What it does so far: comes up, clears and presents; draws the
-   debug overlay and its text; draws the world's geometry with its
-   textures, its sampler and blend state, and its alpha test; and
-   draws each caster's shadow into a target of its own and samples
-   it back; draws the engine's sprites; and plays fullscreen video.
-   What it does not do yet is the sun's occlusion test and the
-   depth-blur pass -- and those two are one piece of work, because
-   the alpha the occlusion test reads is what the depth-blur pass
-   writes. The geometry cache is answered rather than implemented:
-   the engine is told there is none, so it always takes the immediate
-   path, which this renderer draws. Those interface entries are present and
-   inert, because an entry left NULL is a crash rather than a
-   missing feature; each carries a comment saying what it waits on,
-   and the log says it once at startup.
+   It is still the second row in gdi.c's table, though, and the table
+   order is what decides the fallback -- so on Windows, with that line
+   taken out or naming nothing, the game gets Direct3D. Off Windows the
+   Direct3D row is not built and this is the only row there is.
 
-   Culling is decoded from the draw mask and deliberately not applied,
-   so everything is drawn: which winding the engine calls front
-   depends on the projection as well as on the geometry, and a wrong
-   guess takes holes out of the world that look like a texture or a
-   projection fault.
+   It draws the game. Every entry of the interface is implemented:
+   there is no "present and inert" list left. The geometry cache is
+   answered rather than implemented -- the engine is told there is
+   none, so it always takes the immediate path, which this renderer
+   draws -- and that is a decision rather than a gap.
 
-   The context is 4.5 core. There is no fallback to a lower version
-   and no compatibility profile: the point of the rewrite is the
-   modern API, and a renderer that quietly came up on 3.3 would fail
-   later and further away. A machine that cannot give 4.5 core makes
-   this row unavailable, and the picker falls back to Direct3D. */
+   The context is 4.1 core, and 4.5 where the driver offers it. 4.5 is
+   worth asking for because it has glClipControl, which lets the
+   Direct3D-range depth the engine's projection produces go to the
+   driver untouched; without it the projection's depth row is converted
+   on the way to the shader, which costs four multiplies per matrix and
+   comes to the same window-space z. 3.3 is not enough: the shaders
+   want layout(location) on their vertex inputs.
 
-/* Whether a 4.5 core context can be had here. Answered by making one
-   on a hidden window of its own and throwing both away, which is the
+   Culling follows the draw mask. The winding in force is kept on this
+   side rather than read back, because the water's reflection draws the
+   same geometry with the facing the other way round and has to put it
+   back, and reading it out of the driver would be a round trip per
+   object. */
+
+/* Whether a context this renderer can use can be had here. Answered by
+   making one on a hidden window of its own and throwing both away, which is the
    only answer that is not a guess -- and on a window of its own
    because the game's may not exist yet when this is asked, and
    because a context made to ask a question should not be the one the

@@ -17,7 +17,7 @@ binarized    = 1
 specialarray = jade.spe
 
 [render]
-backend = d3d
+backend = gl
 
 [video]
 0x490294C0 = BGEMakingOf.bik
