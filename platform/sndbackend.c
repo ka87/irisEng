@@ -1696,8 +1696,12 @@ void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int len, int startPos, 
         fullSize = pcSND_calcMemoryNeededForTheSound(len, sbe->format);
         pcSND_setCurrSoundBuffElemAndTriggerToAddToThePlayList(sbe);
         readSize = pcSND_CalcSizeToReadByFormat(from, sbe->format);
-        // preserved: this is the ADPCM block stride, which equals the struct size only in a 32-bit build
-        startSize = pcSND_calcMemoryNeededForTheSound(sizeof(tSndSoundBufferElem) * sbe->format * (readSize / (sizeof(tSndSoundBufferElem) * sbe->format)), sbe->format);
+        /* The start position is rounded down to a whole compressed
+           block, so that the seek below lands on a block boundary. The
+           block is 36 bytes per channel -- a fixed property of the
+           format, not of any struct, which is what it used to be taken
+           from. */
+        startSize = pcSND_calcMemoryNeededForTheSound(SND_ADPCM_BLOCK_BYTES * sbe->format * (readSize / (SND_ADPCM_BLOCK_BYTES * sbe->format)), sbe->format);
         if (startSize < 0 || startSize > fullSize)
             startSize = 0;
         misc->RemoveAfterPlayFinished = 0;

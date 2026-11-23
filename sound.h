@@ -70,6 +70,12 @@ typedef struct sSbeMiscData
 } tSbeMiscData;
 
 
+/* One compressed block, per channel. It is a property of the sample
+   format and nothing else; it happens to match the size of the
+   structure below in a 32-bit build, which is where that size used
+   to be read from. */
+#define SND_ADPCM_BLOCK_BYTES 36
+
 typedef struct sSndSoundBufferElem
 {
     /* The sound itself: the buffer and the cursor over it. Three
