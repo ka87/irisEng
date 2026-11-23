@@ -14,33 +14,33 @@ void GEN_ModifierSound_Create(struct sGameObjectMain* gao, struct sModifier* mdf
         gsm->nearFarFactor = 0.5f;
         gsm->nearFar2factor = 0.5f;
         gsm->nearFar3factor = 0.5f;
-        gsm->f4 = 0.5f;
-        gsm->i1 = 273;
+        gsm->middleCoefficient = 0.5f;
+        gsm->dataVersion = 273;
         gsm->flags = 16;
         gsm->modifierID = -1;
-        gsm->ii5 = 0;
+        gsm->familyMask = 0;
         gsm->far1 = 20.0f;
         gsm->near1 = 0.0;
         gsm->far2 = 20.0f;
         gsm->near2 = 0.0;
         gsm->far3 = 20.0f;
         gsm->near3 = 0.0;
-        gsm->xx = 0.0;
-        gsm->unkIsInActiveVolume = 2.0f;
-        gsm->ii2 = 0.0;
+        gsm->farCoefficient = 0.0;
+        gsm->dtFar = 2.0f;
+        gsm->fadeInTime = 0.0;
         gsm->ii8 = 1;
-        gsm->ii4 = 0.0;
+        gsm->fadeOutTime = 0.0;
         gsm->ii9 = 128;
         gsm->volume = 1.0;
         gsm->volume2 = 0.0;
         gsm->pan = 0;
-        gsm->b0 = 0.0;
+        gsm->minPan = 0.0;
         gsm->freq2 = 0;
         gsm->flags2 = 0;
-        gsm->ii11 = 0;
+        gsm->muteFactorFlags = 0;
         gsm->idx = -1;
         gsm->sndInstanceID = -1;
-        gsm->i4 = -1;
+        gsm->sndKey = -1;
         gsm->trackID = -1;
         gsm->soundIndex = -1;
         gsm->soundBank = 0;
@@ -56,7 +56,7 @@ void GEN_ModifierSound_Create(struct sGameObjectMain* gao, struct sModifier* mdf
             gsm->sndInstanceID = -1;
             gsm->flags &= ~0x84;
             gsm->flags2 &= 0x5F1B700C;
-            gsm->ii11 &= 0xFCB;
+            gsm->muteFactorFlags &= 0xFCB;
         }
 
         mdf->modifierFlags |= 0x4000000;
@@ -177,7 +177,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
 
     gsm->flags = LOA_ReadLong(&data, 0, 1);
     gsm->modifierID = LOA_ReadLong(&data, 0, 1);
-    gsm->i4 = LOA_ReadLong(&data, 0, 1);
+    gsm->sndKey = LOA_ReadLong(&data, 0, 1);
     gsm->volume = LOA_ReadFloat(&data, 0, 1);
     volume2 = LOA_ReadFloat(&data, 0, 1);
     gsm->volume2 = (float)volume2;
@@ -198,14 +198,14 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
             gsm->volume2 = 1.0;
     }
 
-    gsm->ii2 = LOA_ReadFloat(&data, 0, 1);
+    gsm->fadeInTime = LOA_ReadFloat(&data, 0, 1);
     gsm->distPrefetchVolume = LOA_ReadFloat(&data, 0, 1);
-    gsm->ii4 = LOA_ReadFloat(&data, 0, 1);
-    gsm->ii5 = LOA_ReadLong(&data, 0, 1);
-    if (gsm->ii2 <= 0.0000099999997)
-        gsm->ii2 = 0.0;
-    if (gsm->ii4 <= 0.0000099999997)
-        gsm->ii4 = 0.0;
+    gsm->fadeOutTime = LOA_ReadFloat(&data, 0, 1);
+    gsm->familyMask = LOA_ReadLong(&data, 0, 1);
+    if (gsm->fadeInTime <= 0.0000099999997)
+        gsm->fadeInTime = 0.0;
+    if (gsm->fadeOutTime <= 0.0000099999997)
+        gsm->fadeOutTime = 0.0;
     gsm->freq2 = LOA_ReadLong(&data, 0, 1);
     gsm->pan = LOA_ReadLong(&data, 0, 1);
     gsm->ii8 = LOA_ReadLong(&data, 0, 1);
@@ -216,24 +216,24 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
         gsm->ii9 = 128;
     }
     gsm->flags2 = LOA_ReadLong(&data, 0, 1);
-    gsm->ii11 = LOA_ReadLong(&data, 0, 1);
+    gsm->muteFactorFlags = LOA_ReadLong(&data, 0, 1);
     LOA_ReadLong(&data, 0, 2);
 
     if (verUpTo268 || (gsm->flags & 0x800) == 0)
     {
         flags2 = gsm->flags2;
         if ((flags2 & 0x4000) != 0)
-            gsm->idx = SND_l_AddDialogNoLoad(gsm->i4);
+            gsm->idx = SND_l_AddDialogNoLoad(gsm->sndKey);
         else if ((flags2 & 0x2000) != 0)
-            gsm->idx = SND_l_AddMusicNoLoad(gsm->i4);
+            gsm->idx = SND_l_AddMusicNoLoad(gsm->sndKey);
         else if ((flags2 & 0x80000) != 0)
-            gsm->idx = SND_l_AddAmbienceNoLoad(gsm->i4);
+            gsm->idx = SND_l_AddAmbienceNoLoad(gsm->sndKey);
         else if ((flags2 & 0x10000) != 0)
-            gsm->idx = SND_l_AddSModifierNoLoad(gsm->i4, &data);
+            gsm->idx = SND_l_AddSModifierNoLoad(gsm->sndKey, &data);
         else if ((flags2 & 8) != 0)
-            gsm->idx = SND_l_AddLoadingSound(gsm->i4);
+            gsm->idx = SND_l_AddLoadingSound(gsm->sndKey);
         else
-            gsm->idx = SND_l_AddSound(gsm->i4);
+            gsm->idx = SND_l_AddSound(gsm->sndKey);
     }
     else
     {
@@ -243,7 +243,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     if (verUpTo267)
     {
         flags2 = gsm->flags2;
-        channelBits = gsm->ii11 & ~0x7C0u;
+        channelBits = gsm->muteFactorFlags & ~0x7C0u;
         if ((flags2 & 0x4000) != 0)
             channelBits |= 0x80;
         else if ((flags2 & 0x2000) != 0)
@@ -252,7 +252,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
             channelBits |= 0x80;
         else
             channelBits |= 0x40;
-        gsm->ii11 = channelBits;
+        gsm->muteFactorFlags = channelBits;
     }
 
     if (verUpTo269)
@@ -273,7 +273,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     gsm->far1 = LOA_ReadFloat(&data, 0, 1);
     gsm->far2 = LOA_ReadFloat(&data, 0, 1);
     gsm->far3 = LOA_ReadFloat(&data, 0, 1);
-    gsm->unkIsInActiveVolume = LOA_ReadFloat(&data, 0, 1);
+    gsm->dtFar = LOA_ReadFloat(&data, 0, 1);
     gsm->trackID = LOA_ReadLong(&data, 0, 1);
 
     flags2 = gsm->flags2;
@@ -290,9 +290,9 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     gsm->nearFarFactor = LOA_ReadFloat(&data, 0, 1);
     gsm->nearFar2factor = LOA_ReadFloat(&data, 0, 1);
     gsm->nearFar3factor = LOA_ReadFloat(&data, 0, 1);
-    gsm->xx = LOA_ReadFloat(&data, 0, 1);
-    gsm->f4 = LOA_ReadFloat(&data, 0, 1);
-    gsm->b0 = LOA_ReadFloat(&data, 0, 1);
+    gsm->farCoefficient = LOA_ReadFloat(&data, 0, 1);
+    gsm->middleCoefficient = LOA_ReadFloat(&data, 0, 1);
+    gsm->minPan = LOA_ReadFloat(&data, 0, 1);
     gsm->soundIndex = LOA_ReadLong(&data, 0, 1);
     LOA_ReadLong(&data, 0, 1);
     gsm->soundBank = 0;
@@ -341,18 +341,18 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
 
     if (zoneChecked)
     {
-        if (gsm->unkIsInActiveVolume <= 0.0)
-            gsm->unkIsInActiveVolume = 2.0;
-        if (gsm->unkIsInActiveVolume >= 10000.0)
-            gsm->unkIsInActiveVolume = 2.0;
-        if (gsm->xx < 0.0)
-            gsm->xx = 0.0;
-        if (gsm->xx > 1.0)
-            gsm->xx = 0.0;
-        if (gsm->f4 < 0.0)
-            gsm->xx = 0.0;
-        if (gsm->f4 > 1.0)
-            gsm->xx = 0.0;
+        if (gsm->dtFar <= 0.0)
+            gsm->dtFar = 2.0;
+        if (gsm->dtFar >= 10000.0)
+            gsm->dtFar = 2.0;
+        if (gsm->farCoefficient < 0.0)
+            gsm->farCoefficient = 0.0;
+        if (gsm->farCoefficient > 1.0)
+            gsm->farCoefficient = 0.0;
+        if (gsm->middleCoefficient < 0.0)
+            gsm->farCoefficient = 0.0;
+        if (gsm->middleCoefficient > 1.0)
+            gsm->farCoefficient = 0.0;
     }
 
     if (verUpTo268)
@@ -363,7 +363,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     }
     else if ((gsm->flags & 0x800) != 0)
     {
-        soundKey = gsm->i4;
+        soundKey = gsm->sndKey;
         gsm->flags2 = flags2 & ~0x96008u;
         if (soundKey && soundKey != -1)
             LOA_MakeFileRef(soundKey, &gsm->soundBank, (void* (*)(uint32_t))SND_ul_CallbackLoad, 1);

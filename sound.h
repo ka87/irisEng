@@ -48,7 +48,7 @@ typedef struct sSbeMiscData
     int distanceToMove;
     unsigned int fullSize;
     int sumSize;
-    int unk6;
+    int startDecodedOffset;
     int soundBufferSize;
     int sizeToUpload;
     HANDLE eventHandle2;
@@ -133,8 +133,8 @@ typedef struct sLoadingSoundEffectStruct
     int mode;
     float f_fadeOutTime;
     float f_fadeInTime;
-    float i4;
-    float i5;
+    float fadeRate;
+    float fadeLevel;
     float i6;
 } tLoadingSoundEffectStruct;
 
@@ -230,12 +230,12 @@ typedef struct sSoundModifierDataEmpty
 typedef struct sSoundModifierDataFade
 {
     tSoundModifierDataGeneric gen;
-    float i1;
-    float i2;
-    float i3;
-    float i4;
-    int i5;
-    float i6;
+    float startVolume;
+    float targetVolume;
+    float duration;
+    float rate;
+    int flags;
+    float elapsedTime;
 } tSoundModifierDataFade;
 
 typedef struct sSoundModifierDataPlayer
@@ -246,20 +246,20 @@ typedef struct sSoundModifierDataPlayer
     float fnear;
     float ffar;
     int flags;
-    int i6;
+    int dataVersion;
     float timeRemainTillStart;
 } tSoundModifierDataPlayer;
 
 typedef struct sSoundModifierDataExtPlayer
 {
     tSoundModifierDataGeneric gen;
-    int i1;
+    int flags;
     int idx;
-    int i3;
+    int flags2;
     float vol;
     float vol2;
-    float i6;
-    float i7;
+    float fadeInDuration;
+    float fadeOutDuration;
     int freq;
     int pan;
     float fnear;
@@ -277,14 +277,14 @@ typedef struct sSoundModifierDataExtPlayer
     float farCoefficient;
     float middleCoefficient;
     float nearfar;
-    int i25;
+    int dataVersion;
     float timeRemainTillStart;
 } tSoundModifierDataExtPlayer;
 
 typedef struct sSoundModifierData3DSettings
 {
     tSoundModifierDataGeneric gen;
-    float i1;
+    float interpolationFactor;
     float i2;
     float i3;
     float farCoefficient;
@@ -299,8 +299,8 @@ typedef struct sMutesSetupStruct
     float muteSetUp1;
     int flags;
     float elapsedTime;
-    float i6;
-    float i7;
+    float fadeCurveRate;
+    float fadeFrom;
     float muteSetUp2ToSetWithThis;
 } tMutesSetupStruct;
 
@@ -402,8 +402,8 @@ typedef struct sTrackListElem
     tSndInterfaceStruct* soundIntf;
     int16_t trackResourceNum;
     int16_t stereoToMono_sub499C20;
-    int unk1;
-    float f1;
+    int attenuated;
+    float attenuationFactor;
     float f2;
     uint8_t gap[20];
 } tTrackListElem;
@@ -462,59 +462,63 @@ typedef struct sSndList
 } tSndList;
 
 #pragma pack(push, 1)
+/* The sound file's own header, read in whole. Which of the three
+   shapes applies is decided by fmtChunkSize: 14 has no bit depth and
+   no extension size, 16 adds the bit depth, 18 adds both. The header
+   is 28 bytes plus that size, so 42, 44 or 46. */
 typedef struct sSoundHeaderDataCase0
 {
-    int i1;
-    int i2;
-    int i3;
-    int i4;
-    int i5;
-    int16_t is1;
-    int16_t is2;
-    int ii1;
-    int ii2;
-    int16_t is3;
-    int ii3;
-    int ii4;
+    int riffId;
+    int riffChunkSize;
+    int waveId;
+    int fmtId;
+    int fmtChunkSize;
+    int16_t wFormatTag;
+    int16_t nChannels;
+    int nSamplesPerSec;
+    int nAvgBytesPerSec;
+    int16_t nBlockAlign;
+    int dataId;
+    int dataChunkSize;
 } tSoundHeaderDataCase0;
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct sSoundHeaderDataCase1
 {
-    int i1;
-    int i2;
-    int i3;
-    int i4;
-    int i5;
-    int16_t is1;
-    int16_t is2;
-    int ii1;
-    int ii2;
-    int16_t is3;
-    int16_t is4;
-    int ii3;
-    int ii4;
+    int riffId;
+    int riffChunkSize;
+    int waveId;
+    int fmtId;
+    int fmtChunkSize;
+    int16_t wFormatTag;
+    int16_t nChannels;
+    int nSamplesPerSec;
+    int nAvgBytesPerSec;
+    int16_t nBlockAlign;
+    int16_t wBitsPerSample;
+    int dataId;
+    int dataChunkSize;
 } tSoundHeaderDataCase1;
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct sSoundHeaderDataCase2
 {
-    int i1;
-    int i2;
-    int i3;
-    int i4;
-    int i5;
-    int16_t is1;
-    int16_t is2;
-    int ii1;
-    int ii2;
-    int16_t is3;
-    int16_t is4;
-    int16_t is5;
-    int ii3;
-    int ii4;
+    int riffId;
+    int riffChunkSize;
+    int waveId;
+    int fmtId;
+    int fmtChunkSize;
+    int16_t wFormatTag;
+    int16_t nChannels;
+    int nSamplesPerSec;
+    int nAvgBytesPerSec;
+    int16_t nBlockAlign;
+    int16_t wBitsPerSample;
+    int16_t cbSize;
+    int dataId;
+    int dataChunkSize;
 } tSoundHeaderDataCase2;
 #pragma pack(pop)
 
@@ -571,16 +575,21 @@ typedef struct sSndWavHdrStruct
     tSndWaveFormat wfex;
 } tSndWavHdrStruct;
 
+/* Bytes handed out per category, kept for inspection only: the engine
+   writes these and reads none of them back, and the three fields
+   between them are written by the initial clear and never again. What
+   they were for is not recoverable, so they keep their placeholders
+   rather than a name that would only look informative. */
 typedef struct sSndRasterStatStruct
 {
-    int i1;
+    int trackBytes;
     int i2;
-    int i3;
+    int loadingSoundBytes;
     int i4;
-    int i5;
+    int soundBytes;
     int i6;
-    int i7;
-    int i8;
+    int totalBytes;
+    int budgetLeft;
 } tSndRasterStatStruct;
 
 typedef struct sSoundFxParams
@@ -591,13 +600,13 @@ typedef struct sSoundFxParams
     int feedback;
     float vol;
     int wetPan;
-    int i7;
-    struct sSndSoundBufferElem** i8;
+    int voiceListCount;
+    struct sSndSoundBufferElem** voiceList;
 } tSoundFxParams;
 
 typedef struct sSoundFamilyInnerStruct
 {
-    int i1;
+    int refCount;
     tMutesSetupStruct muteSetup1;
     tMutesSetupStruct muteSetup2;
     float muteSetup1TimeMultiplier;
@@ -607,10 +616,10 @@ typedef struct sSoundFamilyInnerStruct
 
 typedef struct sSoundFamilyStruct
 {
-    int i1;
-    int i2;
+    int requiredMask;
+    int anyMaskUnion;
     int innerNum;
-    int i4[32];
+    int anyMask[32];
     struct sSoundFamilyInnerStruct** unkIntArrPtr;
 } tSoundFamilyStruct;
 
@@ -629,22 +638,25 @@ typedef struct sLinkedSoundFade
 
 typedef struct sSoundMdfStruct
 {
-    int i1;
+    /* Which revision of this record the data was written at. The
+       loader sets it from the record's own length, fills in whatever
+       that older shape lacked, then stamps the current value. */
+    int dataVersion;
     int flags;
     int modifierID;
-    int i4;
+    int sndKey;
     float volume;
     float volume2;
-    float ii2;
+    float fadeInTime;
     float distPrefetchVolume;
-    float ii4;
-    int ii5;
+    float fadeOutTime;
+    int familyMask;
     int freq2;
     int pan;
     int ii8;
     int ii9;
     int flags2;
-    int ii11;
+    int muteFactorFlags;
     int idx;
     int sndInstanceID;
     float near1;
@@ -653,21 +665,21 @@ typedef struct sSoundMdfStruct
     float far1;
     float far2;
     float far3;
-    float unkIsInActiveVolume;
+    float dtFar;
     int trackID;
     float nearFarFactor;
     float nearFar2factor;
     float nearFar3factor;
-    float xx;
-    float f4;
-    float b0;
+    float farCoefficient;
+    float middleCoefficient;
+    float minPan;
     int soundIndex;
     tSndBank* soundBank;
     float timeRemainTillStart;
     int b3;
     int b4;
     float freq;
-    char gap[38];
+    char gap[40];
 } tSoundMdfStruct;
 
 tSNDgstParams SND_gst_Params;

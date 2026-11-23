@@ -364,7 +364,7 @@ void MDF_SndCreateInstance(struct sSoundMdfStruct* a1, struct sGameObjectMain* a
         {
             SND_SetVol(v5, a1->volume2);
             SND_SetFlags(a2, a1->sndInstanceID, a1->flags2);
-            SND_SetFlags(a2, a1->sndInstanceID, a1->ii11 & 0xFCB | 0x40000000);
+            SND_SetFlags(a2, a1->sndInstanceID, a1->muteFactorFlags & 0xFCB | 0x40000000);
             SND_i_CheckOrInitGAO(a2);
             SND_gst_Params.soundInstances[a1->sndInstanceID].gao = a2;
             SND_SetPos(a2, a1->sndInstanceID, a2->matrices);
@@ -403,25 +403,25 @@ void MDF_SndCreateInstance(struct sSoundMdfStruct* a1, struct sGameObjectMain* a
             }
             if ((a1->flags2 & 0x8000000) != 0)
             {
-                SND_i_InstanceSetf(a1->sndInstanceID, 4105, a1->b0);
+                SND_i_InstanceSetf(a1->sndInstanceID, 4105, a1->minPan);
                 v4 = 1;
             }
-            if ((a1->ii11 & 3) != 0)
-                SND_i_InstanceSetf(a1->sndInstanceID, 4104, a1->unkIsInActiveVolume);
+            if ((a1->muteFactorFlags & 3) != 0)
+                SND_i_InstanceSetf(a1->sndInstanceID, 4104, a1->dtFar);
             if (v4)
             {
-                SND_i_InstanceSetf(a1->sndInstanceID, 4103, a1->f4);
-                SND_i_InstanceSetf(a1->sndInstanceID, 4102, a1->xx);
+                SND_i_InstanceSetf(a1->sndInstanceID, 4103, a1->middleCoefficient);
+                SND_i_InstanceSetf(a1->sndInstanceID, 4102, a1->farCoefficient);
             }
             v7 = a1->trackID;
             if (v7 != -1 && v7)
                 SND_SetTrack(a1->sndInstanceID, a1->trackID);
-            if (a1->ii2 != 0.0)
+            if (a1->fadeInTime != 0.0)
             {
                 v8 = a1->volume2;
                 v9 = a1->volume;
-                a3.maxTimeToLast = a1->ii2;
-                v10 = a1->i4;
+                a3.maxTimeToLast = a1->fadeInTime;
+                v10 = a1->sndKey;
                 a3.minVolume = v8;
                 a3.sndKey = v10;
                 v11 = a1->sndInstanceID;
@@ -432,11 +432,11 @@ void MDF_SndCreateInstance(struct sSoundMdfStruct* a1, struct sGameObjectMain* a
                 a3.sndIndexInAllocatedSounds = v12;
                 SND_SModifierAddInInstance(v11, 3, &a3, 36);// fadein
             }
-            if (a1->ii4 != 0.0)
+            if (a1->fadeOutTime != 0.0)
             {
                 v13 = a1->volume2;
                 v14 = a1->volume;
-                a3.maxTimeToLast = a1->ii4;
+                a3.maxTimeToLast = a1->fadeOutTime;
                 v15 = a1->flags;
                 a3.fadeFlags = 0x80;
                 a3.maxVolume = v13;
@@ -446,13 +446,13 @@ void MDF_SndCreateInstance(struct sSoundMdfStruct* a1, struct sGameObjectMain* a
                 if ((v15 & 0x20) != 0)
                     a3.fadeFlags |= 8u;
                 v16 = a1->idx;
-                a3.sndKey = a1->i4;
+                a3.sndKey = a1->sndKey;
                 v19 = a1->sndInstanceID;
                 a3.flags = 0;
                 a3.sndIndexInAllocatedSounds = v16;
                 SND_SModifierAddInInstance(v19, 4, &a3, 36);// fadeout
             }
-            v17 = a1->ii5;
+            v17 = a1->familyMask;
             if (v17)
                 SND_LinkToFamilly(v17, a1->sndInstanceID);
             v18 = a1->flags;
@@ -610,36 +610,36 @@ void SND_SModifierFadeInit(tSndModifierElem* a1, tSoundModifierDataFade* a2, int
     double v5;
     tSoundModifierDataFade* result;
 
-    if (a2->i2 >= 0.0000001)
+    if (a2->targetVolume >= 0.0000001)
     {
-        if (a2->i2 > 1.0)
-            a2->i2 = 1.0;
+        if (a2->targetVolume > 1.0)
+            a2->targetVolume = 1.0;
     }
     else
     {
-        a2->i2 = 0.0;
+        a2->targetVolume = 0.0;
     }
-    if (a2->i1 >= 0.0000001)
+    if (a2->startVolume >= 0.0000001)
     {
-        if (a2->i1 > 1.0)
-            a2->i1 = 1.0;
-    }
-    else
-    {
-        a2->i1 = 0.0;
-    }
-    if (a2->i3 == 0.0 || a2->i1 == a2->i2)
-    {
-        v5 = a2->i1;
-        a2->i3 = 0.0000099999997f;
-        a2->i4 = 10000.0f;
-        a2->i2 = (float)(v5 + 0.000099999997);
+        if (a2->startVolume > 1.0)
+            a2->startVolume = 1.0;
     }
     else
     {
-        v2 = fabs(a2->i3);
-        v3 = (a2->i5 & 0x83) - 1;
-        a2->i3 = (float)v2;
+        a2->startVolume = 0.0;
+    }
+    if (a2->duration == 0.0 || a2->startVolume == a2->targetVolume)
+    {
+        v5 = a2->startVolume;
+        a2->duration = 0.0000099999997f;
+        a2->rate = 10000.0f;
+        a2->targetVolume = (float)(v5 + 0.000099999997);
+    }
+    else
+    {
+        v2 = fabs(a2->duration);
+        v3 = (a2->flags & 0x83) - 1;
+        a2->duration = (float)v2;
         if (v3)
         {
             v4 = v3 - 1;
@@ -647,26 +647,26 @@ void SND_SModifierFadeInit(tSndModifierElem* a1, tSoundModifierDataFade* a2, int
             {
                 if (v4 != 126)
                     DBG_assert(0, __FILE__, __LINE__, "0", "Bad Fade identification", 0, 1);
-                if (a2->i1 == 0.0)
-                    a2->i1 = 0.0000001f;
-                if (a2->i2 == 0.0)
-                    a2->i2 = 0.0000001f;
-                a2->i6 = 0.0;
-                a2->i4 = (float)(255.0 / v2);
+                if (a2->startVolume == 0.0)
+                    a2->startVolume = 0.0000001f;
+                if (a2->targetVolume == 0.0)
+                    a2->targetVolume = 0.0000001f;
+                a2->elapsedTime = 0.0;
+                a2->rate = (float)(255.0 / v2);
             }
             else
             {
-                if (a2->i1 == 0.0)
-                    a2->i1 = 0.0000001f;
-                if (a2->i2 == 0.0)
-                    a2->i2 = 0.0000001f;
+                if (a2->startVolume == 0.0)
+                    a2->startVolume = 0.0000001f;
+                if (a2->targetVolume == 0.0)
+                    a2->targetVolume = 0.0000001f;
                 //a2->i4 = __FYL2X__(a2->i2 / a2->i1, 0.30102999566398119802) / v2;
-                a2->i4 = (float)((log10(2) * log2(a2->i2 / a2->i1)) / v2);
+                a2->rate = (float)((log10(2) * log2(a2->targetVolume / a2->startVolume)) / v2);
             }
         }
         else
         {
-            a2->i4 = (float)((a2->i2 - a2->i1) / v2);
+            a2->rate = (float)((a2->targetVolume - a2->startVolume) / v2);
         }
     }
     if (!a1->linkedSoundData)
@@ -684,16 +684,16 @@ void SND_SModifierFadeUpdate(tSndModifierElem* a1, tSoundInstanceElem* a2, int x
     BOOL v9;
 
     v3 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    if ((v3->i5 & 0x10) == 0)
+    if ((v3->flags & 0x10) == 0)
         return;
-    if ((v3->i5 & 0x83) == 1)
+    if ((v3->flags & 0x83) == 1)
     {
-        v4 = TIM_gf_dt * v3->i4 + a2->volume;
+        v4 = TIM_gf_dt * v3->rate + a2->volume;
         goto LABEL_6;
     }
-    if ((v3->i5 & 0x83) == 2)
+    if ((v3->flags & 0x83) == 2)
     {
-        v4 = pow(10.0, v3->i4 * TIM_gf_dt) * a2->volume;
+        v4 = pow(10.0, v3->rate * TIM_gf_dt) * a2->volume;
     LABEL_6:
         a2->volume = (float)v4;
     }
@@ -707,30 +707,30 @@ void SND_SModifierFadeUpdate(tSndModifierElem* a1, tSoundInstanceElem* a2, int x
         a2->volume = 0.0;
     }
     v6 = a2->volume;
-    if (v3->i4 <= 0.0)
+    if (v3->rate <= 0.0)
     {
-        if (v6 <= v3->i2)
+        if (v6 <= v3->targetVolume)
         {
-            a2->volume = v3->i2;
-            v9 = (v3->i5 & 0x20) == 0;
-            v3->i5 &= ~0x10u;
+            a2->volume = v3->targetVolume;
+            v9 = (v3->flags & 0x20) == 0;
+            v3->flags &= ~0x10u;
             if (!v9)
                 SND_Stop((unsigned int)((char*)a2 - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem));
-            if ((v3->i5 & 8) != 0)
+            if ((v3->flags & 8) != 0)
                 a2->flags |= 0x280u;
         }
     }
-    else if (v6 >= v3->i2)
+    else if (v6 >= v3->targetVolume)
     {
-        a2->volume = v3->i2;
-        v3->i5 &= ~0x10u;
+        a2->volume = v3->targetVolume;
+        v3->flags &= ~0x10u;
     }
 }
 
 void SND_SModifierFadeInitInstance(struct sSndModifierElem* a1, void* linkedsound, int dataSize, struct sSoundInstanceElem* a2)
 {
     tSoundModifierDataFade* lsf = (tSoundModifierDataFade*)linkedsound;
-    SND_SetVol(((unsigned int)(a2 - (struct sSoundInstanceElem*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)), lsf->i1);
+    SND_SetVol(((unsigned int)(a2 - (struct sSoundInstanceElem*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)), lsf->startVolume);
 }
 
 void SND_SModifierFadeInUpdate(tSndModifierElem* a1, tSoundInstanceElem* a2, int x)
@@ -742,21 +742,21 @@ void SND_SModifierFadeInUpdate(tSndModifierElem* a1, tSoundInstanceElem* a2, int
     double v6;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    if ((v2->i5 & 0x10) == 0)
+    if ((v2->flags & 0x10) == 0)
         return;
-    if ((v2->i5 & 0x83) == 1)
+    if ((v2->flags & 0x83) == 1)
     {
-        v5 = TIM_gf_dt * v2->i4 + a2->volume;
+        v5 = TIM_gf_dt * v2->rate + a2->volume;
     }
     else
     {
-        if ((v2->i5 & 0x83) != 2)
+        if ((v2->flags & 0x83) != 2)
         {
-            if ((v2->i5 & 0x83) == 0x80)
+            if ((v2->flags & 0x83) == 0x80)
             {
-                v3 = TIM_gf_dt + v2->i6;
-                v2->i6 = (float)v3;
-                v6 = v3 * v2->i4 + MATH_gd_magicDoubleForRound;
+                v3 = TIM_gf_dt + v2->elapsedTime;
+                v2->elapsedTime = (float)v3;
+                v6 = v3 * v2->rate + MATH_gd_magicDoubleForRound;
                 v4 = 255 - (*(uint32_t *)&v6);
                 if (255 - (*(uint32_t*)&v6) >= 0)
                 {
@@ -767,13 +767,13 @@ void SND_SModifierFadeInUpdate(tSndModifierElem* a1, tSoundInstanceElem* a2, int
                 {
                     v4 = 0;
                 }
-                a2->volume = SND_f_GetVolFromAtt(SND_SModifier_FadeTable[v4]) * (v2->i2 - v2->i1) + v2->i1;
-                if (v2->i6 > (double)v2->i3)
-                    a2->volume = v2->i2;
+                a2->volume = SND_f_GetVolFromAtt(SND_SModifier_FadeTable[v4]) * (v2->targetVolume - v2->startVolume) + v2->startVolume;
+                if (v2->elapsedTime > (double)v2->duration)
+                    a2->volume = v2->targetVolume;
             }
             goto LABEL_14;
         }
-        v5 = pow(10.0, v2->i4 * TIM_gf_dt) * a2->volume;
+        v5 = pow(10.0, v2->rate * TIM_gf_dt) * a2->volume;
     }
     a2->volume = (float)v5;
 LABEL_14:
@@ -786,10 +786,10 @@ LABEL_14:
     {
         a2->volume = 0.0;
     }
-    if (a2->volume >= (double)v2->i2)
+    if (a2->volume >= (double)v2->targetVolume)
     {
-        a2->volume = v2->i2;
-        v2->i5 &= ~0x10u;
+        a2->volume = v2->targetVolume;
+        v2->flags &= ~0x10u;
     }
 }
 
@@ -799,14 +799,14 @@ void SND_SModifierFadeInOrOutNotifyPause(tSndModifierElem* a1, tSoundInstanceEle
     int v3;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    v3 = v2->i5;
+    v3 = v2->flags;
     if ((v3 & 0x10) != 0)
     {
-        v2->i5 = v3 & ~0x10u | 0x40;
+        v2->flags = v3 & ~0x10u | 0x40;
     }
     else if ((v3 & 0x40) != 0)
     {
-        v2->i5 = v3 & ~0x40u | 0x10;
+        v2->flags = v3 & ~0x40u | 0x10;
     }
 }
 
@@ -818,14 +818,14 @@ void SND_SModifierFadeInNotifyPlay(tSndModifierElem* a1, tSoundInstanceElem* a2)
     float v5;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    v3 = v2->i5 & ~0x40u;
-    v4 = (v2->i5 & 0x10) == 0;
-    v2->i5 = v3;
+    v3 = v2->flags & ~0x40u;
+    v4 = (v2->flags & 0x10) == 0;
+    v2->flags = v3;
     if (v4)
     {
-        v2->i5 = v3 | 0x10;
-        v5 = v2->i1;
-        v2->i6 = 0.0;
+        v2->flags = v3 | 0x10;
+        v5 = v2->startVolume;
+        v2->elapsedTime = 0.0;
         SND_SetVol(((unsigned int)((char*)a2 - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)), v5);
     }
 }
@@ -833,7 +833,7 @@ void SND_SModifierFadeInNotifyPlay(tSndModifierElem* a1, tSoundInstanceElem* a2)
 void  SND_SModifierFadeInNotifyStop(tSndModifierElem* a1, tSoundInstanceElem* x)
 {
     tSoundModifierDataFade* lsf = (tSoundModifierDataFade*)(a1->linkedSoundData);
-    lsf->i5 &= ~0x50u;
+    lsf->flags &= ~0x50u;
 }
 
 void SND_SModifierFadeOutUpdate(struct sSndModifierElem* a1, struct sSoundInstanceElem* a2, int x)
@@ -846,21 +846,21 @@ void SND_SModifierFadeOutUpdate(struct sSndModifierElem* a1, struct sSoundInstan
     double v7;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    if ((v2->i5 & 0x10) == 0)
+    if ((v2->flags & 0x10) == 0)
         return;
-    if ((v2->i5 & 0x83) == 1)
+    if ((v2->flags & 0x83) == 1)
     {
-        v5 = TIM_gf_dt * v2->i4 + a2->volume;
+        v5 = TIM_gf_dt * v2->rate + a2->volume;
     }
     else
     {
-        if ((v2->i5 & 0x83) != 2)
+        if ((v2->flags & 0x83) != 2)
         {
-            if ((v2->i5 & 0x83) == 128)
+            if ((v2->flags & 0x83) == 128)
             {
-                v3 = TIM_gf_dt + v2->i6;
-                v2->i6 = (float)v3;
-                v7 = v3 * v2->i4 + MATH_gd_magicDoubleForRound;
+                v3 = TIM_gf_dt + v2->elapsedTime;
+                v2->elapsedTime = (float)v3;
+                v7 = v3 * v2->rate + MATH_gd_magicDoubleForRound;
                 v4 = (*(uint32_t*)&v7);
                 if ((*(int32_t*)&v7) < 256)
                 {
@@ -871,13 +871,13 @@ void SND_SModifierFadeOutUpdate(struct sSndModifierElem* a1, struct sSoundInstan
                 {
                     v4 = 255;
                 }
-                a2->volume = SND_f_GetVolFromAtt(SND_SModifier_FadeTable[v4]) * (v2->i1 - v2->i2) + v2->i2;
-                if (v2->i6 > (double)v2->i3)
-                    a2->volume = v2->i2;
+                a2->volume = SND_f_GetVolFromAtt(SND_SModifier_FadeTable[v4]) * (v2->startVolume - v2->targetVolume) + v2->targetVolume;
+                if (v2->elapsedTime > (double)v2->duration)
+                    a2->volume = v2->targetVolume;
             }
             goto LABEL_14;
         }
-        v5 = pow(10.0, v2->i4 * TIM_gf_dt) * a2->volume;
+        v5 = pow(10.0, v2->rate * TIM_gf_dt) * a2->volume;
     }
     a2->volume = (float)v5;
 LABEL_14:
@@ -890,14 +890,14 @@ LABEL_14:
     {
         a2->volume = 0.0;
     }
-    if (a2->volume <= (double)v2->i2)
+    if (a2->volume <= (double)v2->targetVolume)
     {
-        a2->volume = v2->i2;
-        v6 = (v2->i5 & 0x20) == 0;
-        v2->i5 &= ~0x10u;
+        a2->volume = v2->targetVolume;
+        v6 = (v2->flags & 0x20) == 0;
+        v2->flags &= ~0x10u;
         if (!v6)
             SND_Stop((unsigned int)((char*)a2 - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem));
-        if ((v2->i5 & 8) != 0)
+        if ((v2->flags & 8) != 0)
             a2->flags |= 0x280u;
     }
 }
@@ -907,8 +907,8 @@ void SND_SModifierFadeOutNotifyPlay(tSndModifierElem* a1, tSoundInstanceElem* a2
     tSoundModifierDataFade* v2;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    v2->i5 &= ~0x50u;
-    v2->i6 = 0.0;
+    v2->flags &= ~0x50u;
+    v2->elapsedTime = 0.0;
 }
 
 void SND_SModifierFadeOutNotifyStop(tSndModifierElem* a1, tSoundInstanceElem* a2)
@@ -916,8 +916,8 @@ void SND_SModifierFadeOutNotifyStop(tSndModifierElem* a1, tSoundInstanceElem* a2
     tSoundModifierDataFade* v2;
 
     v2 = (tSoundModifierDataFade*)a1->linkedSoundData;
-    v2->i5 = v2->i5 & ~0x40u | 0x10;
-    v2->i6 = 0.0;
+    v2->flags = v2->flags & ~0x40u | 0x10;
+    v2->elapsedTime = 0.0;
 }
 
 void SND_SModifierPlayInit(tSndModifierElem* a1, tSoundModifierDataPlayer* a2, int x)
@@ -933,7 +933,7 @@ void SND_SModifierPlayInit(tSndModifierElem* a1, tSoundModifierDataPlayer* a2, i
     {
         v4 = (tSoundModifierDataPlayer*)MEM_p_Alloc(sizeof(tSoundModifierDataPlayer));
         memcpy(v4, a2, 28u);
-        v4->i6 = 0;
+        v4->dataVersion = 0;
     }
     else
     {
@@ -945,7 +945,7 @@ void SND_SModifierPlayInit(tSndModifierElem* a1, tSoundModifierDataPlayer* a2, i
     v4->timeRemainTillStart = 0.0;
     v3 = v4;
 LABEL_6:
-    v5 = v3->i6;
+    v5 = v3->dataVersion;
     if (!v5)
     {
         v3->flags = 64;
@@ -953,7 +953,7 @@ LABEL_6:
     }
     if (v5 == 1)
         LABEL_10:
-    v3->i6 = 2;
+    v3->dataVersion = 2;
     if (v3->vol >= 0.0000001)
     {
         if (v3->vol > 1.0)
@@ -1028,10 +1028,10 @@ void SND_SModifierExtPlayerInit(tSndModifierElem* a1, tSoundModifierDataExtPlaye
 
     v3 = a2;
     v4 = 0;
-    if (a2->i6 <= 0.0000099999997)
-        a2->i6 = 0.0;
-    if (a2->i7 <= 0.0000099999997)
-        a2->i7 = 0.0;
+    if (a2->fadeInDuration <= 0.0000099999997)
+        a2->fadeInDuration = 0.0;
+    if (a2->fadeOutDuration <= 0.0000099999997)
+        a2->fadeOutDuration = 0.0;
     if (a2->trackID != -1 || (a2->gen.flags & 0x20000) != 0)
     {
         v5 = a2->gen.flags;
@@ -1050,24 +1050,24 @@ void SND_SModifierExtPlayerInit(tSndModifierElem* a1, tSoundModifierDataExtPlaye
     case 84:
         v4 = (tSoundModifierDataExtPlayer*)MEM_p_Alloc(sizeof(tSoundModifierDataExtPlayer));
         memcpy(v4, a2, 84u);
-        v4->i25 = 0;
+        v4->dataVersion = 0;
         break;
     case 108:
         v4 = (tSoundModifierDataExtPlayer*)MEM_p_Alloc(sizeof(tSoundModifierDataExtPlayer));
         memcpy(v4, a2, 108u);
-        v4->i25 = 1;
+        v4->dataVersion = 1;
         break;
     case 112:
         v4 = (tSoundModifierDataExtPlayer*)MEM_p_Alloc(sizeof(tSoundModifierDataExtPlayer));
         memcpy(v4, a2, 112u);
-        v4->i25 = 2;
+        v4->dataVersion = 2;
         break;
     default:
         goto LABEL_18;
     }
     v3 = v4;
 LABEL_18:
-    switch (v3->i25)
+    switch (v3->dataVersion)
     {
     case 0:
         v3->interpolationFactor = 0.5;
@@ -1079,7 +1079,7 @@ LABEL_18:
         goto LABEL_20;
     case 1:
     LABEL_20:
-        v3->i1 = v3->i1 & 0x80B | 0x40;
+        v3->flags = v3->flags & 0x80B | 0x40;
         goto LABEL_21;
     case 2:
     LABEL_21:
@@ -1087,17 +1087,17 @@ LABEL_18:
         goto LABEL_22;
     case 3:
     LABEL_22:
-        v3->i25 = 3;
+        v3->dataVersion = 3;
         memcpy(v6, v3, sizeof(tSoundModifierDataExtPlayer));
         break;
     default:
         break;
     }
     v7 = v6->gen.flags & 0x5F1B700C;
-    v8 = v6->i1 & 0xFCB;
+    v8 = v6->flags & 0xFCB;
     v6->idx = -1;
     v6->gen.flags = v7;
-    v6->i1 = v8;
+    v6->flags = v8;
     if (v4)
         MEM_Free(v4);
 }
@@ -1114,7 +1114,7 @@ void SND_SModifierExtPlayerApplyOnInstance(tSndModifierElem* sndModElem, tSoundM
     
     SND_SetVol(extPlayer->idx, extPlayer->vol2);
     SND_SetFlags(0, extPlayer->idx, extPlayer->gen.flags);
-    SND_SetFlags(0, extPlayer->idx, extPlayer->i1 & 0xFCB | 0x40000000);
+    SND_SetFlags(0, extPlayer->idx, extPlayer->flags & 0xFCB | 0x40000000);
     
     if (sndInstElem->gao)
     {
@@ -1183,38 +1183,38 @@ void SND_SModifierExtPlayerApplyOnInstance(tSndModifierElem* sndModElem, tSoundM
         SND_i_InstanceSetf(extPlayer->idx, 4103, extPlayer->middleCoefficient);
     }
 
-    if ((extPlayer->i1 & 3) != 0)
+    if ((extPlayer->flags & 3) != 0)
         SND_i_InstanceSetf(extPlayer->idx, 4104, extPlayer->unkIsInActiveVolume);
 
     if (extPlayer->trackID != -1 && extPlayer->trackID)
         SND_SetTrack(extPlayer->idx, extPlayer->trackID);
 
-    if (extPlayer->i6 == 0.0f)
+    if (extPlayer->fadeInDuration == 0.0f)
     {
         SND_SetVol(extPlayer->idx, extPlayer->vol);
     }
     else
     {
-        fadeData.i3 = extPlayer->i6;
-        fadeData.i2 = extPlayer->vol;
-        fadeData.i1 = extPlayer->vol2;
-        fadeData.i5 = 1;
+        fadeData.duration = extPlayer->fadeInDuration;
+        fadeData.targetVolume = extPlayer->vol;
+        fadeData.startVolume = extPlayer->vol2;
+        fadeData.flags = 1;
         fadeData.gen.flags = 0;
         fadeData.gen.sndKey = extPlayer->gen.sndKey;
         fadeData.gen.sndIndexInAllocatedSounds = extPlayer->gen.sndIndexInAllocatedSounds;
         SND_SModifierAddInInstance(extPlayer->idx, 3, &fadeData, 36);// fade in
     }
 
-    if (extPlayer->i7 != 0.0f)
+    if (extPlayer->fadeOutDuration != 0.0f)
     {
-        fadeData.i3 = extPlayer->i7;
-        fadeData.i2 = extPlayer->vol2;
-        fadeData.i1 = extPlayer->vol;
-        fadeData.i5 = 128;
-        if ((extPlayer->i3 & 0x10) != 0)
-            fadeData.i5 = 160;
-        if ((extPlayer->i3 & 0x20) != 0)
-            fadeData.i5 |= 8u;
+        fadeData.duration = extPlayer->fadeOutDuration;
+        fadeData.targetVolume = extPlayer->vol2;
+        fadeData.startVolume = extPlayer->vol;
+        fadeData.flags = 128;
+        if ((extPlayer->flags2 & 0x10) != 0)
+            fadeData.flags = 160;
+        if ((extPlayer->flags2 & 0x20) != 0)
+            fadeData.flags |= 8u;
         fadeData.gen.flags = 0;
         fadeData.gen.sndKey = extPlayer->gen.sndKey;
         fadeData.gen.sndIndexInAllocatedSounds = extPlayer->gen.sndIndexInAllocatedSounds;
@@ -1224,7 +1224,7 @@ void SND_SModifierExtPlayerApplyOnInstance(tSndModifierElem* sndModElem, tSoundM
     if (extPlayer->familyID)
         SND_LinkToFamilly(extPlayer->familyID, extPlayer->idx);
 
-    if ((extPlayer->i3 & 1) != 0)
+    if ((extPlayer->flags2 & 1) != 0)
     {
         if ((extPlayer->gen.flags & 0x20000) != 0)
         {
@@ -1268,7 +1268,7 @@ void SND_SModifier3DSettingsApplyOnInstance(tSndModifierElem* a1, void* linkedso
     float a2a;
 
     v5 = (tSoundModifierData3DSettings*)a1->linkedSoundData;
-    v6 = v5->i1;
+    v6 = v5->interpolationFactor;
     v7 = (unsigned int)((char*)a2 - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem);
     if (v6 >= 0.0)
     {
@@ -1280,7 +1280,7 @@ void SND_SModifier3DSettingsApplyOnInstance(tSndModifierElem* a1, void* linkedso
         v6 = 0.0;
     }
     a1a = (float)((1.0 - v6) * a2->nearArr[0] + v6 * a2->farArr[0]);
-    v8 = v5->i1;
+    v8 = v5->interpolationFactor;
     if (v8 >= 0.0)
     {
         if (v8 > 1.0)
@@ -1291,7 +1291,7 @@ void SND_SModifier3DSettingsApplyOnInstance(tSndModifierElem* a1, void* linkedso
         v8 = 0.0;
     }
     a2a = (float)((1.0 - v8) * a2->nearArr[0] + v8 * a2->farArr[0]);
-    v9 = v5->i1;
+    v9 = v5->interpolationFactor;
     if (v9 >= 0.0)
     {
         if (v9 > 1.0)
@@ -1395,11 +1395,11 @@ void SND_SModifierInitModule()
     v1->gen.sndKey = -1;
     v1->gen.sndIndexInAllocatedSounds = -1;
     v1->gen.flags = 0;
-    v1->i5 = 1;
-    v1->i1 = 0.0;
-    v1->i2 = 1.0;
-    v1->i3 = 1.0;
-    v1->i4 = 1.0;
+    v1->flags = 1;
+    v1->startVolume = 0.0;
+    v1->targetVolume = 1.0;
+    v1->duration = 1.0;
+    v1->rate = 1.0;
     SND_gs_SoundModifiers[3].sndModifierModelIntf = (tSoundModifierElemIntf*)MEM_p_Alloc(sizeof(tSoundModifierElemIntf));
     memcpy(SND_gs_SoundModifiers[3].sndModifierModelIntf, SND_gs_SoundModifiers[1].sndModifierModelIntf, sizeof(tSoundModifierElemIntf));
     SND_gs_SoundModifiers[3].sndModifierModelIntf->Type = 3;
@@ -1427,11 +1427,11 @@ void SND_SModifierInitModule()
     v2->gen.sndKey = -1;
     v2->gen.flags = 0;
     v2->gen.sndIndexInAllocatedSounds = -1;
-    v2->i5 = 0x80;
-    v2->i1 = 1.0;
-    v2->i2 = 0.0;
-    v2->i3 = 1.0;
-    v2->i4 = 1.0;
+    v2->flags = 0x80;
+    v2->startVolume = 1.0;
+    v2->targetVolume = 0.0;
+    v2->duration = 1.0;
+    v2->rate = 1.0;
     SND_gs_SoundModifiers[2].sndModifierModelIntf = (tSoundModifierElemIntf*)MEM_p_Alloc(sizeof(tSoundModifierElemIntf));
     memcpy(SND_gs_SoundModifiers[2].sndModifierModelIntf, SND_gs_SoundModifiers[0].sndModifierModelIntf, sizeof(tSoundModifierElemIntf));
     SND_gs_SoundModifiers[2].sndModifierModelIntf->Type = 2;
@@ -1451,7 +1451,7 @@ void SND_SModifierInitModule()
     v3->vol = 0.5f;
     v3->freq = 44100;
     v3->flags = 64;
-    v3->i6 = 2;
+    v3->dataVersion = 2;
     v3->timeRemainTillStart = 0.0;
     SND_gs_SoundModifiers[5].sndModifierModelIntf = (tSoundModifierElemIntf*)MEM_p_Alloc(sizeof(tSoundModifierElemIntf));
     memcpy(SND_gs_SoundModifiers[5].sndModifierModelIntf, SND_gs_SoundModifiers[2].sndModifierModelIntf, sizeof(tSoundModifierElemIntf));
@@ -1469,8 +1469,8 @@ void SND_SModifierInitModule()
     v4->idx = -1;
     v4->trackID = -1;
     v4->gen.flags = 0x100000;
-    v4->i1 = 64;
-    v4->i3 = 16;
+    v4->flags = 64;
+    v4->flags2 = 16;
     v4->ffar = 20.0f;
     v4->ffar2 = 20.0f;
     v4->ffar3 = 20.0f;
@@ -1478,8 +1478,8 @@ void SND_SModifierInitModule()
     v4->fnear2 = 0.0;
     v4->fnear3 = 0.0;
     v4->unkIsInActiveVolume = 2.0f;
-    v4->i6 = 0.0;
-    v4->i7 = 0.0;
+    v4->fadeInDuration = 0.0;
+    v4->fadeOutDuration = 0.0;
     v4->vol = 0.5;
     v4->vol2 = 0.0;
     v4->familyID = 0;
@@ -1491,7 +1491,7 @@ void SND_SModifierInitModule()
     v4->farCoefficient = 0.0;
     v4->middleCoefficient = 0.5f;
     v4->nearfar = 0.0;
-    v4->i25 = 3;
+    v4->dataVersion = 3;
     v4->timeRemainTillStart = 0.0;
     SND_gs_SoundModifiers[6].sndModifierModelIntf = (tSoundModifierElemIntf*)MEM_p_Alloc(sizeof(tSoundModifierElemIntf));
     memcpy(SND_gs_SoundModifiers[6].sndModifierModelIntf, SND_gs_SoundModifiers[0].sndModifierModelIntf, sizeof(tSoundModifierElemIntf));
@@ -1503,7 +1503,7 @@ void SND_SModifierInitModule()
     SND_gs_SoundModifiers[6].linkedSoundData = (char *)v5;
     SND_gs_SoundModifiers[6].linkedSoundDataSize = sizeof(tSoundModifierData3DSettings);
     v5->middleCoefficient = 0.5f;
-    v5->i1 = 0.5f;
+    v5->interpolationFactor = 0.5f;
     v5->i2 = 0.5f;
     v5->i3 = 0.5f;
     v5->gen.flags = 0;

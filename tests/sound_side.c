@@ -129,7 +129,7 @@ static void dump_faders(void)
         tMutesSetupStruct* f = &SND_Mutes_B30600_fadergroups[i];
         d("F%d en=%d s1=%08X s2=%08X fl=%d el=%08X i6=%08X i7=%08X t=%08X\n",
           i, f->muteEnabled, fbits(f->muteSetUp1), fbits(f->muteSetUp2), f->flags,
-          fbits(f->elapsedTime), fbits(f->i6), fbits(f->i7),
+          fbits(f->elapsedTime), fbits(f->fadeCurveRate), fbits(f->fadeFrom),
           fbits(f->muteSetUp2ToSetWithThis));
     }
 }
@@ -189,7 +189,7 @@ static void dump_tracks(void)
           "f1=%08X f2=%08X\n",
           i, t->flags, t->trackID, heap_off(t->sndBufferElem),
           heap_off(t->trackResource), intf_id(t->soundIntf), t->trackResourceNum,
-          t->stereoToMono_sub499C20, t->unk1, fbits(t->f1), fbits(t->f2));
+          t->stereoToMono_sub499C20, t->attenuated, fbits(t->attenuationFactor), fbits(t->f2));
     }
     for (i = 0; i < 4; ++i)
         d("R%d busy=%d s=%ld m=%ld\n", i, SND_gast_TrackResources[i].isBusy,
@@ -224,15 +224,15 @@ static void dump_families(void)
     for (i = 0; i < SND_gi_AndFamillyNb && i < 16; ++i)
     {
         tSoundFamilyStruct* f = &SND_gast_AndFamillyList[i];
-        d("A%d i1=%08X i2=%08X n=%d p=%ld\n", i, f->i1, f->i2, f->innerNum,
+        d("A%d i1=%08X i2=%08X n=%d p=%ld\n", i, f->requiredMask, f->anyMaskUnion, f->innerNum,
           heap_off(f->unkIntArrPtr));
         for (j = 0; j < f->innerNum && j < 8; ++j)
         {
             tSoundFamilyInnerStruct* in = f->unkIntArrPtr ? f->unkIntArrPtr[j] : 0;
-            d("  B%d bits=%08X p=%ld", j, f->i4[j], heap_off(in));
+            d("  B%d bits=%08X p=%ld", j, f->anyMask[j], heap_off(in));
             if (heap_off(in) >= 0)
                 d(" rc=%d m1=%d,%08X,%08X m2=%d,%08X,%08X t1=%08X t2=%08X",
-                  in->i1, in->muteSetup1.muteEnabled, fbits(in->muteSetup1.muteSetUp1),
+                  in->refCount, in->muteSetup1.muteEnabled, fbits(in->muteSetup1.muteSetUp1),
                   fbits(in->muteSetup1.muteSetUp2), in->muteSetup2.muteEnabled,
                   fbits(in->muteSetup2.muteSetUp1), fbits(in->muteSetup2.muteSetUp2),
                   fbits(in->muteSetup1TimeMultiplier), fbits(in->muteSetup2TimeMultiplier));
@@ -258,8 +258,8 @@ static void dump_globals(void)
       SND_gst_LSGlobal.isSoundStillUsedElsewhere);
     d("le mode=%d out=%08X in=%08X i4=%08X i5=%08X i6=%08X\n",
       SND_gst_LoadingEffect.mode, fbits(SND_gst_LoadingEffect.f_fadeOutTime),
-      fbits(SND_gst_LoadingEffect.f_fadeInTime), fbits(SND_gst_LoadingEffect.i4),
-      fbits(SND_gst_LoadingEffect.i5), fbits(SND_gst_LoadingEffect.i6));
+      fbits(SND_gst_LoadingEffect.f_fadeInTime), fbits(SND_gst_LoadingEffect.fadeRate),
+      fbits(SND_gst_LoadingEffect.fadeLevel), fbits(SND_gst_LoadingEffect.i6));
     d("fx a=%08X,%d,%d,%d,%08X,%d b=%08X,%d,%d,%d,%08X,%d\n",
       SND_gst_FxParam.flags, SND_gst_FxParam.mode, SND_gst_FxParam.delay,
       SND_gst_FxParam.feedback, fbits(SND_gst_FxParam.vol), SND_gst_FxParam.wetPan,
@@ -798,7 +798,7 @@ void SIDE_RUN(int c)
                 tSoundFamilyInnerStruct* in =
                     (tSoundFamilyInnerStruct*)MEM_p_Alloc(sizeof(tSoundFamilyInnerStruct));
                 memset(in, 0, sizeof(tSoundFamilyInnerStruct));
-                in->i1 = 1 + (i & 1);
+                in->refCount = 1 + (i & 1);
                 in->muteSetup1.muteSetUp1 = 1.0f;
                 in->muteSetup1.muteSetUp2 = 0.5f;
                 in->muteSetup2.muteSetUp1 = 1.0f;
@@ -807,10 +807,10 @@ void SIDE_RUN(int c)
                 in->muteSetup2TimeMultiplier = -10000.0f;
                 f->unkIntArrPtr[i] = in;
             }
-            f->i4[1] = 1;
-            f->i4[2] = 12;
+            f->anyMask[1] = 1;
+            f->anyMask[2] = 12;
             f->innerNum = 3;
-            f->i2 = 15;
+            f->anyMaskUnion = 15;
             dump_families();
             SND_pst_GetOrArray(0x4000, 1);
             dump_families();
@@ -881,7 +881,7 @@ void SIDE_RUN(int c)
         SND_gst_LSGlobal.soundInstanceIndex = (k & 7);
         SND_gst_LSGlobal.soundElemIndex = ((k >> 1) & 7);
         SND_gst_LoadingEffect.mode = (k % 4);
-        SND_gst_LoadingEffect.i5 = 0.25f * (float)(k & 3);
+        SND_gst_LoadingEffect.fadeLevel = 0.25f * (float)(k & 3);
         d("isLI %d isLS %d\n", SND_b_IsLoadingInstance(k & 7), SND_b_IsLoadingSound(k & 7));
         SND_LoadingSoundNotifyBeginLoading();
         for (i = 0; i < 8; ++i)

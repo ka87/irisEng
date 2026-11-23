@@ -471,14 +471,14 @@ static void dump_mdf(tSoundMdfStruct* g)
       "ii5=%d freq2=%d pan=%d fl2=%08X ii11=%08X idx=%d inst=%d "
       "n=%08X,%08X,%08X f=%08X,%08X,%08X act=%08X trk=%d nf=%08X,%08X,%08X "
       "xx=%08X f4=%08X b0=%08X si=%d bank=%d rem=%08X\n",
-      g->i1, g->flags, g->modifierID, g->i4, fbits(g->volume), fbits(g->volume2),
-      fbits(g->ii2), fbits(g->distPrefetchVolume), fbits(g->ii4), g->ii5, g->freq2,
-      g->pan, g->flags2, g->ii11, g->idx, g->sndInstanceID,
+      g->dataVersion, g->flags, g->modifierID, g->sndKey, fbits(g->volume), fbits(g->volume2),
+      fbits(g->fadeInTime), fbits(g->distPrefetchVolume), fbits(g->fadeOutTime), g->familyMask, g->freq2,
+      g->pan, g->flags2, g->muteFactorFlags, g->idx, g->sndInstanceID,
       fbits(g->near1), fbits(g->near2), fbits(g->near3),
       fbits(g->far1), fbits(g->far2), fbits(g->far3),
-      fbits(g->unkIsInActiveVolume), g->trackID,
+      fbits(g->dtFar), g->trackID,
       fbits(g->nearFarFactor), fbits(g->nearFar2factor), fbits(g->nearFar3factor),
-      fbits(g->xx), fbits(g->f4), fbits(g->b0), g->soundIndex, obj_id(g->soundBank),
+      fbits(g->farCoefficient), fbits(g->middleCoefficient), fbits(g->minPan), g->soundIndex, obj_id(g->soundBank),
       fbits(g->timeRemainTillStart));
 }
 
@@ -516,14 +516,14 @@ static void g_chain(int sub)
     memset(&set3d, 0, sizeof(set3d));
     memset(&empty, 0, sizeof(empty));
 
-    fade.i1 = rf(0.0f, 1.0f); fade.i2 = rf(0.0f, 1.0f);
-    fade.i3 = rf(0.0f, 4.0f); fade.i5 = (int[]){1, 2, 0x80, 0x90}[ri(4)];
+    fade.startVolume = rf(0.0f, 1.0f); fade.targetVolume = rf(0.0f, 1.0f);
+    fade.duration = rf(0.0f, 4.0f); fade.flags = (int[]){1, 2, 0x80, 0x90}[ri(4)];
     player.vol = rf(-0.5f, 1.5f); player.freq = ri(80000) - 20000;
     player.fnear = rf(-5.0f, 5.0f); player.ffar = rf(-50.0f, 50.0f);
-    player.i6 = ri(4); player.timeRemainTillStart = rf(-1.0f, 2000000.0f);
-    ext.i25 = ri(5); ext.trackID = ri(3) - 1; ext.gen.flags = (int)r32();
-    ext.i6 = rf(0.0f, 1.0f); ext.i7 = rf(0.0f, 1.0f); ext.i1 = (int)r32();
-    set3d.i1 = rf(-0.5f, 1.5f); set3d.farCoefficient = rf(0.0f, 1.0f);
+    player.dataVersion = ri(4); player.timeRemainTillStart = rf(-1.0f, 2000000.0f);
+    ext.dataVersion = ri(5); ext.trackID = ri(3) - 1; ext.gen.flags = (int)r32();
+    ext.fadeInDuration = rf(0.0f, 1.0f); ext.fadeOutDuration = rf(0.0f, 1.0f); ext.flags = (int)r32();
+    set3d.interpolationFactor = rf(-0.5f, 1.5f); set3d.farCoefficient = rf(0.0f, 1.0f);
     set3d.middleCoefficient = rf(0.0f, 1.0f); set3d.nearfar = rf(0.0f, 10.0f);
     set3d.gen.flags = (int)r32();
 
@@ -617,10 +617,10 @@ static void g_addsmd(int sub)
             memset(&f, 0, sizeof(f));
             f.gen.sndKey = *(int*)(smd_blob + w);
             f.gen.flags = flags;
-            f.i1 = rf(0.0f, 1.0f);
-            f.i2 = rf(0.0f, 1.0f);
-            f.i3 = rf(0.1f, 2.0f);
-            f.i5 = (int[]){1, 2, 0x80}[ri(3)] | 0x10;
+            f.startVolume = rf(0.0f, 1.0f);
+            f.targetVolume = rf(0.0f, 1.0f);
+            f.duration = rf(0.1f, 2.0f);
+            f.flags = (int[]){1, 2, 0x80}[ri(3)] | 0x10;
             memcpy(smd_blob + w, &f, sizeof(f));
         }
         else if (type == 2)
@@ -633,7 +633,7 @@ static void g_addsmd(int sub)
             pl.vol = rf(0.0f, 1.0f);
             pl.fnear = rf(-4.0f, 4.0f);
             pl.ffar = rf(-40.0f, 40.0f);
-            pl.i6 = ri(4);
+            pl.dataVersion = ri(4);
             memcpy(smd_blob + w, &pl, sizeof(pl));
         }
         else if (type == 5)
@@ -642,11 +642,11 @@ static void g_addsmd(int sub)
             memset(&ex, 0, sizeof(ex));
             ex.gen.sndKey = *(int*)(smd_blob + w);
             ex.gen.flags = flags;
-            ex.i25 = ri(5);
+            ex.dataVersion = ri(5);
             ex.trackID = ri(3) - 1;
             ex.vol = rf(0.0f, 1.0f);
-            ex.i1 = (int)(r32() & 0xFFFu);
-            ex.i3 = (int)(r32() & 0x3Fu);
+            ex.flags = (int)(r32() & 0xFFFu);
+            ex.flags2 = (int)(r32() & 0x3Fu);
             memcpy(smd_blob + w, &ex, sizeof(ex));
         }
         else if (type == 6)
@@ -655,7 +655,7 @@ static void g_addsmd(int sub)
             memset(&st, 0, sizeof(st));
             st.gen.sndKey = *(int*)(smd_blob + w);
             st.gen.flags = flags;
-            st.i1 = rf(-0.2f, 1.2f);
+            st.interpolationFactor = rf(-0.2f, 1.2f);
             st.farCoefficient = rf(0.0f, 1.0f);
             st.middleCoefficient = rf(0.0f, 1.0f);
             st.nearfar = rf(0.0f, 9.0f);
@@ -735,12 +735,12 @@ static void g_create(int sub)
     g.idx = (sub % 13 == 12) ? -1 : ri(SOUNDS);
     g.volume = rf(0.0f, 1.0f);
     g.volume2 = rf(0.0f, 1.0f);
-    g.ii2 = (sub % 3) ? rf(0.0f, 3.0f) : 0.0f;
-    g.ii4 = (sub % 4) ? rf(0.0f, 3.0f) : 0.0f;
-    g.ii5 = ri(4) ? (int)(r32() & 0xFFu) : 0;
+    g.fadeInTime = (sub % 3) ? rf(0.0f, 3.0f) : 0.0f;
+    g.fadeOutTime = (sub % 4) ? rf(0.0f, 3.0f) : 0.0f;
+    g.familyMask = ri(4) ? (int)(r32() & 0xFFu) : 0;
     g.freq2 = ri(2) ? 22050 : 0;
     g.pan = ri(2) ? ri(200) - 100 : 0;
-    g.ii11 = (int)(r32() & 0xFFFFu);
+    g.muteFactorFlags = (int)(r32() & 0xFFFFu);
     g.flags = (int)(r32() & 0x7FFu);
     g.trackID = (int[]){-1, 0, 7, 1040}[ri(4)];
     g.near1 = rf(0.0f, 5.0f);  g.far1 = rf(5.0f, 50.0f);
@@ -749,11 +749,11 @@ static void g_create(int sub)
     g.nearFarFactor = rf(0.0f, 1.0f);
     g.nearFar2factor = rf(0.0f, 1.0f);
     g.nearFar3factor = rf(0.0f, 1.0f);
-    g.unkIsInActiveVolume = rf(0.0f, 4.0f);
-    g.xx = rf(0.0f, 1.0f);
-    g.f4 = rf(0.0f, 1.0f);
-    g.b0 = rf(0.0f, 9.0f);
-    g.i4 = 0x5000 + ri(8);
+    g.dtFar = rf(0.0f, 4.0f);
+    g.farCoefficient = rf(0.0f, 1.0f);
+    g.middleCoefficient = rf(0.0f, 1.0f);
+    g.minPan = rf(0.0f, 9.0f);
+    g.sndKey = 0x5000 + ri(8);
     g.sndInstanceID = -1;
     sm_track_playing = ri(2);
 
@@ -844,12 +844,12 @@ static void g_fade(int sub)
     memset(&data, 0, sizeof(data));
     data.gen.sndKey = 0x77;
     data.gen.sndIndexInAllocatedSounds = ri(SOUNDS);
-    data.i1 = (sub % 7 == 6) ? 0.0f : rf(-0.2f, 1.2f);
-    data.i2 = (sub % 11 == 10) ? data.i1 : rf(-0.2f, 1.2f);
-    data.i3 = (sub % 13 == 12) ? 0.0f : rf(0.05f, 2.0f);
-    if (sub & 4) data.i3 = -data.i3;
-    data.i5 = mode | 0x10 | ((sub & 8) ? 0x20 : 0) | ((sub & 16) ? 8 : 0);
-    data.i6 = 0.0f;
+    data.startVolume = (sub % 7 == 6) ? 0.0f : rf(-0.2f, 1.2f);
+    data.targetVolume = (sub % 11 == 10) ? data.startVolume : rf(-0.2f, 1.2f);
+    data.duration = (sub % 13 == 12) ? 0.0f : rf(0.05f, 2.0f);
+    if (sub & 4) data.duration = -data.duration;
+    data.flags = mode | 0x10 | ((sub & 8) ? 0x20 : 0) | ((sub & 16) ? 8 : 0);
+    data.elapsedTime = 0.0f;
 
     type = (int[]){1, 3, 4}[(sub / 32) % 3];
     elem.sndModifierModelIntf = SND_gs_SoundModifiers[type].sndModifierModelIntf;
@@ -874,8 +874,8 @@ static void g_fade(int sub)
         if (elem.sndModifierModelIntf->Update)
             elem.sndModifierModelIntf->Update(&elem, inst, 0);
         d("s%02d vol=%08X i5=%08X i6=%08X\n", step, fbits(inst->volume),
-          ((tSoundModifierDataFade*)elem.linkedSoundData)->i5,
-          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->i6));
+          ((tSoundModifierDataFade*)elem.linkedSoundData)->flags,
+          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->elapsedTime));
     }
     TIM_gf_dt = 0.0f;
     dump_instances();
@@ -893,10 +893,10 @@ static void g_fade_overrun(int sub)
     state_init(7500u + sub);
     memset(&elem, 0, sizeof(elem));
     memset(&data, 0, sizeof(data));
-    data.i1 = 0.0f;
-    data.i2 = 1.0f;
-    data.i3 = 1.0f;
-    data.i5 = 0x80 | 0x10;
+    data.startVolume = 0.0f;
+    data.targetVolume = 1.0f;
+    data.duration = 1.0f;
+    data.flags = 0x80 | 0x10;
     elem.sndModifierModelIntf = SND_gs_SoundModifiers[type].sndModifierModelIntf;
     elem.sndModifierModelIntf->Init(&elem, &data, 36);
 
@@ -918,8 +918,8 @@ static void g_fade_overrun(int sub)
             elem.sndModifierModelIntf->NotifyPlay(&elem, inst);
         elem.sndModifierModelIntf->Update(&elem, inst, 0);
         d("o%03d vol=%08X i5=%08X i6=%08X\n", step, fbits(inst->volume),
-          ((tSoundModifierDataFade*)elem.linkedSoundData)->i5,
-          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->i6));
+          ((tSoundModifierDataFade*)elem.linkedSoundData)->flags,
+          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->elapsedTime));
     }
     TIM_gf_dt = 0.0f;
 }
@@ -955,7 +955,7 @@ static void g_player(int sub)
         player.fnear = rf(-9.0f, 9.0f);
         player.ffar = rf(-60.0f, 60.0f);
         player.flags = (int)(r32() & 0xFFFFu);
-        player.i6 = (sub / 2) % 4;
+        player.dataVersion = (sub / 2) % 4;
         player.timeRemainTillStart = (sub & 4) ? 2000000.0f : rf(-2.0f, 5.0f);
         size = (int[]){28, 36, 40}[(sub / 8) % 3];
         elem.sndModifierModelIntf = SND_gs_SoundModifiers[2].sndModifierModelIntf;
@@ -972,12 +972,12 @@ static void g_player(int sub)
         ext.gen.sndKey = 0x91;
         ext.gen.flags = (int)r32();
         ext.gen.sndIndexInAllocatedSounds = ri(SOUNDS);
-        ext.i1 = (int)(r32() & 0xFFFFu);
-        ext.i3 = (int)(r32() & 0x3Fu);
+        ext.flags = (int)(r32() & 0xFFFFu);
+        ext.flags2 = (int)(r32() & 0x3Fu);
         ext.vol = rf(0.0f, 1.0f);
         ext.vol2 = rf(0.0f, 1.0f);
-        ext.i6 = (sub & 4) ? rf(0.0f, 2.0f) : 0.0f;
-        ext.i7 = (sub & 8) ? rf(0.0f, 2.0f) : 0.0f;
+        ext.fadeInDuration = (sub & 4) ? rf(0.0f, 2.0f) : 0.0f;
+        ext.fadeOutDuration = (sub & 8) ? rf(0.0f, 2.0f) : 0.0f;
         ext.freq = (sub & 16) ? 32000 : 0;
         ext.pan = (sub & 32) ? 55 : 0;
         ext.fnear = rf(0.0f, 4.0f);  ext.ffar = rf(4.0f, 40.0f);
@@ -992,7 +992,7 @@ static void g_player(int sub)
         ext.farCoefficient = rf(0.0f, 1.0f);
         ext.middleCoefficient = rf(0.0f, 1.0f);
         ext.nearfar = rf(0.0f, 9.0f);
-        ext.i25 = (sub / 4) % 5;
+        ext.dataVersion = (sub / 4) % 5;
         ext.timeRemainTillStart = rf(0.0f, 3.0f);
         size = (int[]){84, 108, 112, 116}[(sub / 16) % 4];
         elem.sndModifierModelIntf = SND_gs_SoundModifiers[5].sndModifierModelIntf;
@@ -1022,7 +1022,7 @@ static void g_3d(int sub)
     set3d.gen.sndKey = 0xA1;
     set3d.gen.flags = (int)r32();
     set3d.gen.sndIndexInAllocatedSounds = ri(SOUNDS);
-    set3d.i1 = (int[]){-1, 0, 1, 2}[sub & 3] + rf(-0.2f, 0.2f);
+    set3d.interpolationFactor = (int[]){-1, 0, 1, 2}[sub & 3] + rf(-0.2f, 0.2f);
     set3d.i2 = rf(0.0f, 1.0f);
     set3d.i3 = rf(0.0f, 1.0f);
     set3d.farCoefficient = rf(0.0f, 1.0f);
@@ -1060,13 +1060,13 @@ static void g_instanciate(int sub)
     memset(&player, 0, sizeof(player));
     memset(&ext, 0, sizeof(ext));
 
-    fade.i1 = rf(0.0f, 1.0f); fade.i2 = rf(0.0f, 1.0f);
-    fade.i3 = rf(0.1f, 2.0f); fade.i5 = (int[]){1, 2, 0x80}[ri(3)] | 0x10;
-    player.vol = rf(0.0f, 1.0f); player.freq = 44100; player.i6 = ri(3);
+    fade.startVolume = rf(0.0f, 1.0f); fade.targetVolume = rf(0.0f, 1.0f);
+    fade.duration = rf(0.1f, 2.0f); fade.flags = (int[]){1, 2, 0x80}[ri(3)] | 0x10;
+    player.vol = rf(0.0f, 1.0f); player.freq = 44100; player.dataVersion = ri(3);
     player.fnear = rf(0.0f, 4.0f); player.ffar = rf(4.0f, 40.0f);
-    ext.i25 = 3; ext.trackID = -1; ext.vol = rf(0.0f, 1.0f);
+    ext.dataVersion = 3; ext.trackID = -1; ext.vol = rf(0.0f, 1.0f);
     ext.gen.flags = (int)(r32() & 0x1F10000Fu);
-    ext.i1 = (int)(r32() & 0xFFFu); ext.i3 = (int)(r32() & 0x3Fu);
+    ext.flags = (int)(r32() & 0xFFFu); ext.flags2 = (int)(r32() & 0x3Fu);
     ext.ffar = 20.0f; ext.ffar2 = 20.0f; ext.ffar3 = 20.0f;
     ext.interpolationFactor = 0.5f;
     ext.interpolationFactor2 = 0.5f;
@@ -1188,11 +1188,11 @@ static void g_fadeout(int sub)
     memset(&data, 0, sizeof(data));
     data.gen.sndKey = 0x44;
     data.gen.sndIndexInAllocatedSounds = 2;
-    data.i1 = 1.0f;
-    data.i2 = (sub % 5 == 4) ? 0.25f : 0.0f;
-    data.i3 = (float[]){1.0f, 0.5f, 2.0f, 0.3f}[(sub / 3) % 4];
-    data.i5 = mode | 0x10 | ((sub & 16) ? 0x20 : 0) | ((sub & 32) ? 8 : 0);
-    data.i6 = 0.0f;
+    data.startVolume = 1.0f;
+    data.targetVolume = (sub % 5 == 4) ? 0.25f : 0.0f;
+    data.duration = (float[]){1.0f, 0.5f, 2.0f, 0.3f}[(sub / 3) % 4];
+    data.flags = mode | 0x10 | ((sub & 16) ? 0x20 : 0) | ((sub & 32) ? 8 : 0);
+    data.elapsedTime = 0.0f;
 
     elem.sndModifierModelIntf = SND_gs_SoundModifiers[4].sndModifierModelIntf;
     elem.sndModifierModelIntf->Init(&elem, &data, 36);
@@ -1203,7 +1203,7 @@ static void g_fadeout(int sub)
     inst->volume = 1.0f;
     if (elem.sndModifierModelIntf->NotifyPlay)
         elem.sndModifierModelIntf->NotifyPlay(&elem, inst);
-    ((tSoundModifierDataFade*)elem.linkedSoundData)->i5 |= 0x10;
+    ((tSoundModifierDataFade*)elem.linkedSoundData)->flags |= 0x10;
 
     TIM_gf_dt = (float[]){1.0f / 255.0f, 0.01f, 0.1f, 0.25f}[(sub / 12) % 4];
     for (step = 0; step < 300; ++step)
@@ -1212,8 +1212,8 @@ static void g_fadeout(int sub)
             elem.sndModifierModelIntf->NotifyPause(&elem, inst);
         elem.sndModifierModelIntf->Update(&elem, inst, 0);
         d("q%03d vol=%08X i5=%08X i6=%08X\n", step, fbits(inst->volume),
-          ((tSoundModifierDataFade*)elem.linkedSoundData)->i5,
-          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->i6));
+          ((tSoundModifierDataFade*)elem.linkedSoundData)->flags,
+          fbits(((tSoundModifierDataFade*)elem.linkedSoundData)->elapsedTime));
     }
     TIM_gf_dt = 0.0f;
     dump_instances();
