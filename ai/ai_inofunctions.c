@@ -376,225 +376,207 @@ tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* node)
     return node + 1;
 }
 
-/* NOT REWRITTEN, DELIBERATELY. Renaming this function's locals would
-   change what it does.
+/* The save slot accessor the menus read every field through.
 
-   Its second branch computes a save code and then returns v3[a2] with
-   a2 in 100..115 and v3 declared int[87], so the value handed back is
-   whatever sits past the end of that array in the frame. The third loop
-   likewise writes v10[15] where v10 is int[11]. Both reach outside
-   their arrays, so the result depends on the frame layout, and renaming
-   or reordering the locals moves what they land on.
-
-   The shape says the decompiler split one buffer into several locals:
-   in the original, the bits built in v10 and the code read out of v3
-   were almost certainly the same storage. Reconstructing that is a
-   guess, so the function is left exactly as it was, pending a decision.
-   Everything around it in this file is rewritten. */
-int AI_EvalFunc_SAVEDataGet_C(int a1, int a2)
+   Selectors below 100 are one field of the slot's index record each.
+   Selectors 100..115 are the sixteen characters of the slot's code,
+   which is not stored anywhere: it is derived from four of the
+   record's words and the play time, folded, and then scrambled. */
+int AI_EvalFunc_SAVEDataGet_C(int slot, int field)
 {
+    /* The scramble keys. Which one a pass uses is chosen by the
+       seconds, so a slot saved a second later gets a different code. */
+    static const int savKeys[8] = { 37, 31, 29, 23, 19, 17, 11, 7 };
+
+    int code[16];
     int result;
-    int v3[87];
-    int v4;
-    int v5;
-    int v6;
-    int v7[8];
-    int v8;
-    int v9;
-    int v10[11];
-    int v11;
-    int v12;
-    int v13;
-    int v14;
-    int v15;
-    int v16;
-    int v17;
-    int v18;
-    int v19;
-    int v20;
-    unsigned int v21;
+    unsigned int used;
+    int i1, i2, i3, i8, i9;
+    int totalMinutes;
+    int total;
+    unsigned int fold;
+    int key, keyBack;
+    int pos, bit, word;
+    int posBack, bitBack, wordBack;
+    int bitValue, bitValueBack;
     int i;
 
-    if (a2 < 100)
+    if (field < 100)
     {
-        v3[86] = a2;
-        switch (a2)
+        switch (field)
         {
         case 0:
             SAV_LoadData(0);
             result = 0;
             break;
         case 1:
-            v21 = 0;
+            used = 0;
             for (i = 0; i < 10; ++i)
             {
                 if (SAV_gst_Data[i].superiorAtOrdering)
-                    ++v21;
+                    ++used;
             }
-            result = v21;
+            result = (int)used;
             break;
         case 2:
-            result = SAV_gst_Data[a1].superiorAtOrdering;
+            result = SAV_gst_Data[slot].superiorAtOrdering;
             break;
         case 3:
-            result = SAV_gst_Data[a1].s1;
+            result = SAV_gst_Data[slot].s1;
             break;
         case 4:
-            result = SAV_gst_Data[a1].s2;
+            result = SAV_gst_Data[slot].s2;
             break;
         case 5:
-            result = SAV_gst_Data[a1].sec;
+            result = SAV_gst_Data[slot].sec;
             break;
         case 6:
-            result = SAV_gst_Data[a1].min;
+            result = SAV_gst_Data[slot].min;
             break;
         case 7:
-            result = SAV_gst_Data[a1].hour;
+            result = SAV_gst_Data[slot].hour;
             break;
         case 8:
-            result = SAV_gst_Data[a1].mday;
+            result = SAV_gst_Data[slot].mday;
             break;
         case 9:
-            result = SAV_gst_Data[a1].month + 1;
+            result = SAV_gst_Data[slot].month + 1;
             break;
         case 10:
-            result = SAV_gst_Data[a1].year;
+            result = SAV_gst_Data[slot].year;
             break;
         case 11:
-            result = SAV_gst_Data[a1].s3;
+            result = SAV_gst_Data[slot].s3;
             break;
         case 12:
-            result = SAV_gst_Data[a1].s4;
+            result = SAV_gst_Data[slot].s4;
             break;
         case 13:
-            result = SAV_gst_Data[a1].i1;
+            result = SAV_gst_Data[slot].i1;
             break;
         case 14:
             SAV_LoadData(1);
             result = 0;
             break;
         case 20:
-            result = SAV_gst_Data[a1].i2;
+            result = SAV_gst_Data[slot].i2;
             break;
         case 21:
-            result = SAV_gst_Data[a1].i3;
+            result = SAV_gst_Data[slot].i3;
             break;
         case 22:
-            result = SAV_gst_Data[a1].i4;
+            result = SAV_gst_Data[slot].i4;
             break;
         case 23:
-            result = SAV_gst_Data[a1].i5;
+            result = SAV_gst_Data[slot].i5;
             break;
         case 24:
-            result = SAV_gst_Data[a1].i6;
+            result = SAV_gst_Data[slot].i6;
             break;
         case 25:
-            result = SAV_gst_Data[a1].i7;
+            result = SAV_gst_Data[slot].i7;
             break;
         case 26:
-            result = SAV_gst_Data[a1].i8;
+            result = SAV_gst_Data[slot].i8;
             break;
         case 27:
-            result = SAV_gst_Data[a1].i9;
+            result = SAV_gst_Data[slot].i9;
             break;
         default:
             result = 0;
             break;
         }
+        return result;
     }
-    else
+
+    if (field > 115)
+        return 0;
+
+    i1 = SAV_gst_Data[slot].i1;
+    i2 = SAV_gst_Data[slot].i2;
+    i3 = SAV_gst_Data[slot].i3;
+    i8 = SAV_gst_Data[slot].i8;
+    i9 = SAV_gst_Data[slot].i9;
+
+    /* Thirteen six-bit groups out of four of the record's words. Three
+       of them are stitched out of two or three separate runs of bits. */
+    code[0]  = (i2 & 0x7E0000) >> 17;
+    code[1]  = ((i2 & 0x10000) >> 11) | ((i2 & 0x3) << 3)
+             | ((i3 & 0x7000000) >> 24);
+    code[2]  = (i2 & 0x3F00) >> 8;
+    code[3]  = (i3 & 0xFC0000) >> 18;
+    code[4]  = (i3 & 0x3F000) >> 12;
+    code[5]  = (i3 & 0xFC0) >> 6;
+    code[6]  = i3 & 0x3F;
+    code[7]  = (i9 & 0xFC) >> 2;
+    code[8]  = ((i9 & 0x3) << 4) | ((i8 & 0x1E000000) >> 25);
+    code[9]  = ((i8 & 0x1000000) >> 19) | ((i8 & 0x1F00) >> 8);
+    code[10] = ((i8 & 0x1F0000) >> 14) | ((i8 & 0xC) >> 2);
+    code[11] = (i8 & 0x3) << 4;                 /* the fold completes it */
+
+    /* Three more are the play time. The hours saturate rather than
+       carry, so a slot past 63 hours stops counting them. */
+    code[15] = i1 % 60;
+    totalMinutes = (i1 - code[15]) / 60;
+    code[13] = totalMinutes % 60;
+    code[14] = (totalMinutes - code[13]) / 60;
+    if (code[14] > 63)
+        code[14] = 63;
+
+    /* A ten-bit fold of everything that went in, so that a code with a
+       character altered does not read back as a valid one. */
+    total = i2 + i3 + i8 + i9 + code[13] + code[14] + code[15];
+    fold = ((unsigned int)(total & 0xFFC00000) >> 22)
+         + ((total & 0x3FF000) >> 12)
+         + ((total & 0xFFC) >> 2)
+         + (total & 0x3);
+    code[11] |= (fold & 0x3C0) >> 6;
+    code[12] = fold & 0x3F;
+
+    /* The scramble treats code[0..14] as one ninety-bit field, six bits
+       to the entry. code[15] is left out of it and used as the key, so
+       it is the one group that still reads as the seconds afterwards. */
+    key = savKeys[code[15] & 0x7];
+    for (i = 0; i < 40; ++i)
     {
-        /* Descending, and the order is load-bearing: the table is
-           indexed by v7[v15 & 7], and by v7[i] against v7[7 - i] as
-           a mirrored pair, so reversing it changes every code the
-           generator produces. */
-        v7[0] = 37;
-        v7[1] = 31;
-        v7[2] = 29;
-        v7[3] = 23;
-        v7[4] = 19;
-        v7[5] = 17;
-        v7[6] = 11;
-        v7[7] = 7;
-        if (a2 <= 115)
-        {
-            v10[0] = (SAV_gst_Data[a1].i2 & 0x7E0000) >> 17;
-            v10[1] = ((SAV_gst_Data[a1].i3 & 0x7000000) >> 24) | (8 * (SAV_gst_Data[a1].i2 & 3)) | ((SAV_gst_Data[a1].i2 & 0x10000) >> 11);
-            v10[2] = (SAV_gst_Data[a1].i2 & 0x3F00) >> 8;
-            v10[3] = (SAV_gst_Data[a1].i3 & 0xFC0000) >> 18;
-            v10[4] = (SAV_gst_Data[a1].i3 & 0x3F000) >> 12;
-            v10[5] = (SAV_gst_Data[a1].i3 & 0xFC0) >> 6;
-            v10[6] = SAV_gst_Data[a1].i3 & 0x3F;
-            v10[7] = (SAV_gst_Data[a1].i9 & 0xFC) >> 2;
-            v10[8] = ((SAV_gst_Data[a1].i8 & 0x1E000000) >> 25) | (16 * (SAV_gst_Data[a1].i9 & 3));
-            v10[9] = ((SAV_gst_Data[a1].i8 & 0x1F00) >> 8) | ((SAV_gst_Data[a1].i8 & 0x1000000) >> 19);
-            v10[10] = ((SAV_gst_Data[a1].i8 & 0xC) >> 2) | ((SAV_gst_Data[a1].i8 & 0x1F0000) >> 14);
-            v11 = 16 * (SAV_gst_Data[a1].i8 & 3);
-            v15 = SAV_gst_Data[a1].i1 % 60;
-            i = (SAV_gst_Data[a1].i1 - v15) / 60;
-            v13 = i % 60;
-            v14 = (i - i % 60) / 60;
-            if (v14 > 63)
-                v14 = 63;
-            i = SAV_gst_Data[a1].i2;
-            i += SAV_gst_Data[a1].i3;
-            i += SAV_gst_Data[a1].i8;
-            i += SAV_gst_Data[a1].i9;
-            i += v13;
-            i += v14;
-            i += v15;
-            v21 = (i & 3) + ((i & 0xFFC) >> 2) + ((i & 0x3FF000) >> 12) + ((i & 0xFFC00000) >> 22);
-            v11 |= (int)(((i & 3) + ((i & 0xFFC) >> 2) + ((i & 0x3FF000) >> 12) + ((i & 0xFFC00000) >> 22)) & 0x3C0) >> 6;
-            v12 = ((i & 3)
-                + (uint8_t)((i & 0xFFC) >> 2)
-                + (uint8_t)((i & 0x3FF000) >> 12)
-                + (uint8_t)((i & 0xFFC00000) >> 22)) & 0x3F;
-            v16 = v7[v15 & 7];
-            for (i = 0; i < 40; ++i)
-            {
-                v17 = v16 * (i + 1) % 90;
-                v20 = v17 % 6;
-                v19 = (v17 - v17 % 6) / 6;
-                v8 = ~((v10[v19] >> (v17 % 6)) & 1);
-                v10[(v17 - v20) / 6] = ((v8 & 1) << (v17 % 6)) | ~(1 << (v17 % 6)) & v10[(v17 - v20) / 6];
-                v10[v19] &= 0x3Fu;
-            }
-            v17 = (v15 >> 3) & 7;
-            v16 = v7[v17];
-            v18 = v7[7 - v17];
-            for (i = 0; i < 30; ++i)
-            {
-                v17 = ((i + 1) * v16 + 45) % 90;
-                v20 = v17 % 6;
-                v19 = (v17 - v17 % 6) / 6;
-                v5 = ((i + 1) * v18 + 45) % 90;
-                v4 = v5 % 6;
-                v9 = (v5 - v5 % 6) / 6;
-                v8 = (v10[v19] >> (v17 % 6)) & 1;
-                v6 = (v10[v9] >> (v5 % 6)) & 1;
-                v10[(v17 - v20) / 6] = (v6 << (v17 % 6)) | ~(1 << (v17 % 6)) & v10[(v17 - v20) / 6];
-                v10[v9] = (v8 << v4) | ~(1 << v4) & v10[v9];
-            }
-            for (i = 0; i < 6; ++i)
-            {
-                v17 = 13 * (i + 1);
-                v20 = v17 % 6;
-                v19 = (v17 - v17 % 6) / 6;
-                v4 = i;
-                v9 = 15;
-                v8 = (v10[v19] >> (v17 % 6)) & 1;
-                v6 = (v15 >> i) & 1;
-                v10[(v17 - v20) / 6] = (v6 << (v17 % 6)) | ~(1 << (v17 % 6)) & v10[(v17 - v20) / 6];
-                v10[v9] = (v8 << v4) | ~(1 << v4) & v10[v9];
-            }
-            result = v3[a2];
-        }
-        else
-        {
-            result = 0;
-        }
+        pos = ((i + 1) * key) % 90;
+        bit = pos % 6;
+        word = (pos - bit) / 6;
+        bitValue = ~((code[word] >> bit) & 1);
+        code[word] = (code[word] & ~(1 << bit)) | ((bitValue & 1) << bit);
+        code[word] &= 0x3F;
     }
-    return result;
+
+    key = savKeys[(code[15] >> 3) & 0x7];
+    keyBack = savKeys[7 - ((code[15] >> 3) & 0x7)];
+    for (i = 0; i < 30; ++i)
+    {
+        pos = (key * (i + 1) + 45) % 90;
+        bit = pos % 6;
+        word = (pos - bit) / 6;
+        posBack = (keyBack * (i + 1) + 45) % 90;
+        bitBack = posBack % 6;
+        wordBack = (posBack - bitBack) / 6;
+        bitValue = (code[word] >> bit) & 1;
+        bitValueBack = (code[wordBack] >> bitBack) & 1;
+        code[word] = (code[word] & ~(1 << bit)) | (bitValueBack << bit);
+        code[wordBack] = (code[wordBack] & ~(1 << bitBack))
+                       | (bitValue << bitBack);
+    }
+
+    /* And six bits traded with the key group itself. */
+    for (i = 0; i < 6; ++i)
+    {
+        pos = 13 * (i + 1);
+        bit = pos % 6;
+        word = (pos - bit) / 6;
+        bitValue = (code[word] >> bit) & 1;
+        bitValueBack = (code[15] >> i) & 1;
+        code[word] = (code[word] & ~(1 << bit)) | (bitValueBack << bit);
+        code[15] = (code[15] & ~(1 << i)) | (bitValue << i);
+    }
+
+    return code[field - 100];
 }
 
 tAINode* AI_EvalFunc_SAVEDataGet(tAINode* node)

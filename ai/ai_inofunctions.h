@@ -15,7 +15,7 @@ void AI_EvalFunc_SAVESaveSlotExt_C(int slotOrMode, int value1, int value2, int v
 void AI_EvalFunc_SAVEUnvalidate_C();
 void AI_EvalFunc_SAVELoadSlot_C(int slot);
 void AI_EvalFunc_SAVEValidate_C();
-int AI_EvalFunc_SAVEDataGet_C(int a1, int a2);
+int AI_EvalFunc_SAVEDataGet_C(int slot, int field);
 void AI_EvalFunc_SAVEValidateAl_C();
 BOOL AI_EvalFunc_IoKeyPressed_C(char key);
 BOOL AI_EvalFunc_IoKeyJustPressed_C(char key);
