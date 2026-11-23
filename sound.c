@@ -1514,7 +1514,7 @@ int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMo
     {
         wavHdrStructDest->wfex.cbSize = 0;
         wavHdrStructDest->wfex.wBitsPerSample = thdrDest1->wBitsPerSample;
-        if (memcmp(&(thdrDest->dataId), "data", 4))
+        if (memcmp(&(thdrDest1->dataId), "data", 4))
             return -1;
         wavHdrStructDest->fullSoundSize = thdrDest1->dataChunkSize;
         headerLen = 44;
