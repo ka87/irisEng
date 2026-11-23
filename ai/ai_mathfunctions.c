@@ -469,18 +469,15 @@ tAINode* AI_EvalFunc_MATHMatrixVecLocalToGlobal(tAINode* node)
 }
 
 float AI_EvalFunc_MATHFloatLimit_C(float num, float min, float max) {
-
-    if (num <= max)
-    {
-        if (num >= min)
-            return num;
-        else
-            return min;
-    }
-    else
-    {
+    /* Both tests are written against num so that a non-number fails
+       each of them and comes back unchanged rather than clamped: this
+       one does not swallow a bad value, and callers that want it
+       swallowed use the maximum instead. */
+    if (num > max)
         return max;
-    }
+    if (num < min)
+        return min;
+    return num;
 }
 
 tAINode* AI_EvalFunc_MATHFloatLimit(tAINode* node)
@@ -516,10 +513,16 @@ tAINode* AI_EvalFunc_MATHFloatMin(tAINode* node)
 }
 
 float AI_EvalFunc_MATHFloatMax_C(float num1, float num2) {
-    if (num2 < num1)
-        return num1;
-    else
+    /* num2 is the script's first argument and num1 its second: the
+       stack pops in reverse. The test is written so that a comparison
+       involving a non-number, which is false whichever way round it is
+       put, falls to num1 -- scripts rely on that to swallow a value
+       that has gone bad, and returning it instead carries the damage
+       into whatever the result feeds. */
+    if (num2 >= num1)
         return num2;
+    else
+        return num1;
 }
 
 tAINode* AI_EvalFunc_MATHFloatMax(tAINode* node)
