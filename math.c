@@ -165,12 +165,21 @@ void MATH_CrossProduct(Vec3* dest, Vec3* src1, Vec3* src2)
 
 void MATH_NormalizeEqualVector(Vec3* v)
 {
+    long double len2;
     long double len;
 
-    len = sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
-    v->x = (float)(1.0 / len * v->x);
-    v->y = (float)(1.0 / len * v->y);
-    v->z = (float)(1.0 / len * v->z);
+    /* A vector with no length is left exactly as it was: dividing by
+       zero here would put NaN into the caller's vector, and several
+       callers test the result against the null vector afterwards and
+       rely on it still being null. */
+    len2 = v->x * v->x + v->y * v->y + v->z * v->z;
+    if (len2 > 0.0)
+    {
+        len = sqrt(len2);
+        v->x = (float)(1.0 / len * v->x);
+        v->y = (float)(1.0 / len * v->y);
+        v->z = (float)(1.0 / len * v->z);
+    }
 }
 
 BOOL MATH_b_NulVector(Vec3* v)
@@ -1262,10 +1271,14 @@ void MATH_MakeRotationMatrix_UsingSight(Mtx4x4* dest, Vec3* sight, Vec3* banking
         dest->v1.y = dest->v3.x * dest->v2.z - dest->v3.z * dest->v2.x;
         dest->v1.z = dest->v2.x * dest->v3.y - dest->v2.y * dest->v3.x;
     }
-    rightLen = sqrt(dest->v1.x * dest->v1.x + dest->v1.y * dest->v1.y + dest->v1.z * dest->v1.z);
-    dest->v1.x = (float)(1.0 / rightLen * dest->v1.x);
-    dest->v1.y = (float)(1.0 / rightLen * dest->v1.y);
-    dest->v1.z = (float)(1.0 / rightLen * dest->v1.z);
+    rightLen = dest->v1.x * dest->v1.x + dest->v1.y * dest->v1.y + dest->v1.z * dest->v1.z;
+    if (rightLen > 0.0)
+    {
+        rightLen = sqrt(rightLen);
+        dest->v1.x = (float)(1.0 / rightLen * dest->v1.x);
+        dest->v1.y = (float)(1.0 / rightLen * dest->v1.y);
+        dest->v1.z = (float)(1.0 / rightLen * dest->v1.z);
+    }
     dest->v3.x = dest->v1.y * dest->v2.z - dest->v1.z * dest->v2.y;
     dest->v3.y = dest->v2.x * dest->v1.z - dest->v2.z * dest->v1.x;
     dest->v3.z = dest->v2.y * dest->v1.x - dest->v1.y * dest->v2.x;
@@ -1298,10 +1311,14 @@ void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* sight, Vec3* bankin
         mtx->v2.x = -sight->x;
         mtx->v2.y = -sight->y;
         mtx->v2.z = -sight->z;
-        sightLen = sqrt(mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y + mtx->v2.z * mtx->v2.z);
-        mtx->v2.x = (float)(1.0 / sightLen * mtx->v2.x);
-        mtx->v2.y = (float)(1.0 / sightLen * mtx->v2.y);
-        mtx->v2.z = (float)(1.0 / sightLen * mtx->v2.z);
+        sightLen = mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y + mtx->v2.z * mtx->v2.z;
+        if (sightLen > 0.0)
+        {
+            sightLen = sqrt(sightLen);
+            mtx->v2.x = (float)(1.0 / sightLen * mtx->v2.x);
+            mtx->v2.y = (float)(1.0 / sightLen * mtx->v2.y);
+            mtx->v2.z = (float)(1.0 / sightLen * mtx->v2.z);
+        }
     }
     mtx->v1.x = mtx->v2.y * mtx->v3.z - mtx->v2.z * mtx->v3.y;
     mtx->v1.y = mtx->v2.z * mtx->v3.x - mtx->v3.z * mtx->v2.x;
@@ -1315,10 +1332,14 @@ void MATH_MakeRotationMatrix_UsingBanking(Mtx4x4* mtx, Vec3* sight, Vec3* bankin
         mtx->v1.y = mtx->v2.z * mtx->v3.x - mtx->v3.z * mtx->v2.x;
         mtx->v1.z = mtx->v3.y * mtx->v2.x - mtx->v2.y * mtx->v3.x;
     }
-    rightLen = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
-    mtx->v1.x = (float)(1.0 / rightLen * mtx->v1.x);
-    mtx->v1.y = (float)(1.0 / rightLen * mtx->v1.y);
-    mtx->v1.z = (float)(1.0 / rightLen * mtx->v1.z);
+    rightLen = mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z;
+    if (rightLen > 0.0)
+    {
+        rightLen = sqrt(rightLen);
+        mtx->v1.x = (float)(1.0 / rightLen * mtx->v1.x);
+        mtx->v1.y = (float)(1.0 / rightLen * mtx->v1.y);
+        mtx->v1.z = (float)(1.0 / rightLen * mtx->v1.z);
+    }
     mtx->v2.x = mtx->v1.z * mtx->v3.y - mtx->v1.y * mtx->v3.z;
     mtx->v2.y = mtx->v3.z * mtx->v1.x - mtx->v1.z * mtx->v3.x;
     mtx->v2.z = mtx->v3.x * mtx->v1.y - mtx->v1.x * mtx->v3.y;
@@ -1415,24 +1436,36 @@ void MATH_Orthonormalize(Mtx4x4* mtx)
     double len2; 
     double len3;
 
-    len1 = sqrt(mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z);
-    mtx->v1.x = (float)(1.0 / len1 * mtx->v1.x);
-    mtx->v1.y = (float)(1.0 / len1 * mtx->v1.y);
-    mtx->v1.z = (float)(1.0 / len1 * mtx->v1.z);
+    len1 = mtx->v1.x * mtx->v1.x + mtx->v1.y * mtx->v1.y + mtx->v1.z * mtx->v1.z;
+    if (len1 > 0.0)
+    {
+        len1 = sqrt(len1);
+        mtx->v1.x = (float)(1.0 / len1 * mtx->v1.x);
+        mtx->v1.y = (float)(1.0 / len1 * mtx->v1.y);
+        mtx->v1.z = (float)(1.0 / len1 * mtx->v1.z);
+    }
     mtx->v2.x = mtx->v1.z * mtx->v3.y - mtx->v1.y * mtx->v3.z;
     mtx->v2.y = mtx->v1.x * mtx->v3.z - mtx->v1.z * mtx->v3.x;
     mtx->v2.z = mtx->v3.x * mtx->v1.y - mtx->v3.y * mtx->v1.x;
-    len2 = sqrt(mtx->v2.z * mtx->v2.z + mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y);
-    mtx->v2.x = (float)(1.0 / len2 * mtx->v2.x);
-    mtx->v2.y = (float)(1.0 / len2 * mtx->v2.y);
-    mtx->v2.z = (float)(1.0 / len2 * mtx->v2.z);
+    len2 = mtx->v2.z * mtx->v2.z + mtx->v2.x * mtx->v2.x + mtx->v2.y * mtx->v2.y;
+    if (len2 > 0.0)
+    {
+        len2 = sqrt(len2);
+        mtx->v2.x = (float)(1.0 / len2 * mtx->v2.x);
+        mtx->v2.y = (float)(1.0 / len2 * mtx->v2.y);
+        mtx->v2.z = (float)(1.0 / len2 * mtx->v2.z);
+    }
     mtx->v3.x = mtx->v2.z * mtx->v1.y - mtx->v2.y * mtx->v1.z;
     mtx->v3.y = mtx->v1.z * mtx->v2.x - mtx->v2.z * mtx->v1.x;
     mtx->v3.z = mtx->v1.x * mtx->v2.y - mtx->v2.x * mtx->v1.y;
-    len3 = sqrt(mtx->v3.z * mtx->v3.z + mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y);
-    mtx->v3.x = (float)(1.0 / len3 * mtx->v3.x);
-    mtx->v3.y = (float)(1.0 / len3 * mtx->v3.y);
-    mtx->v3.z = (float)(1.0 / len3 * mtx->v3.z);
+    len3 = mtx->v3.z * mtx->v3.z + mtx->v3.x * mtx->v3.x + mtx->v3.y * mtx->v3.y;
+    if (len3 > 0.0)
+    {
+        len3 = sqrt(len3);
+        mtx->v3.x = (float)(1.0 / len3 * mtx->v3.x);
+        mtx->v3.y = (float)(1.0 / len3 * mtx->v3.y);
+        mtx->v3.z = (float)(1.0 / len3 * mtx->v3.z);
+    }
 }
 
 void MATH_Slerp(Quat4* dest, float factor, Quat4* src1, Quat4* src2, float theta, float invSinTheta)

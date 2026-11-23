@@ -488,6 +488,7 @@ for one in tests/run_sdl3.sh \
            tests/run_gfxsun.sh \
            tests/run_font.sh \
            tests/run_matrixmath.sh \
+           tests/run_degenvec.sh \
            tests/run_gridheight.sh \
            tests/run_d3dtex.sh \
            tests/run_depthblur.sh \
