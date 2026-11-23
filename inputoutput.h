@@ -25,6 +25,14 @@ typedef struct sJoySimulateCurrentStruct
     float amountYRight;
 } tJoySimulateCurrentStruct;
 
+/* One slot's line in the index file: enough to draw the load menu
+   without opening the save itself, plus the figures the code shown on
+   the summary screen is worked out from.
+
+   Everything below the timestamp comes from the script that asks for
+   the save. Three of them arrive with the save itself; the rest are
+   handed over beforehand and wait in the SAV_idx_* globals until a
+   slot is written. */
 typedef struct sSavIdxElem
 {
     char superiorAtOrdering;
@@ -34,28 +42,43 @@ typedef struct sSavIdxElem
     char mday;
     char month;
     int16_t year;
-    int16_t s1;
-    int16_t s2;
-    int16_t s3;
-    int16_t s4;
-    int i1;
-    int i2;
-    int i3;
-    int i4;
-    int i5;
-    int i6;
-    int i7;
-    int i8;
-    int i9;
+    int16_t worldId;          /* which map, for the name on the menu */
+    int16_t worldEntranceId;  /* which way in, for reloading the spot */
+    int16_t s3;               /* a script field reads it, nothing writes it */
+    int16_t s4;               /* likewise */
+    int playTimeSeconds;      /* total elapsed play, shown as h:mm:ss */
+    /* Three counts packed a byte apiece: collectibles, photographs
+       taken, and a pair of one-off finds. */
+    int progressCounts;
+    int miniGameBestScore;    /* highest reached, kept as a maximum */
+    /* Best lap times, in hundredths. The fourth is never written:
+       whatever sets it writes the first a second time instead, so the
+       first lap record is lost and the fourth stays zero in every
+       save. That is how saves are produced, so it stays. */
+    int raceBestTime1;
+    int raceBestTime2;
+    int raceBestTime3;
+    int raceBestTime4;
+    int codeChars;            /* four characters, one per byte */
+    int deathCount;           /* capped at 255 before it gets here */
     uint8_t gap[12];
 } tSavIdxElem;
 
+/* The index file is ten of these and nothing else, so the record
+   has to stay exactly this wide: a byte either way and every slot
+   after the first is read from the wrong place, with no error to
+   say so. */
+_Static_assert(sizeof(tSavIdxElem) == 64,
+               "the save index record must stay 64 bytes wide");
+
+/* What a script hands over when it asks for a slot to be written.
+   The three values go straight into that slot's index line. */
 typedef struct sSavSlotDesc
 {
     int id;
-    int i2;
-    int i3;
-    int i4;
+    int worldId;
+    int worldEntranceId;
+    int playTimeSeconds;
 } tSavSlotDesc;
 
 typedef struct sPhotoElem
@@ -98,14 +121,14 @@ int INO_gi_DiscError;
 
 int SAVE_gi_DefaultSlot;
 
-int SAV_idx_Field_i2;
-int SAV_idx_Field_i3;
-int SAV_idx_Field_i4;
-int SAV_idx_Field_i5;
-int SAV_idx_Field_i6;
-int SAV_idx_Field_i7;
-int SAV_idx_Field_i8;
-int SAV_idx_Field_i9;
+int SAV_idx_ProgressCounts;
+int SAV_idx_MiniGameBestScore;
+int SAV_idx_RaceBestTime1;
+int SAV_idx_RaceBestTime2;
+int SAV_idx_RaceBestTime3;
+int SAV_idx_RaceBestTime4;
+int SAV_idx_CodeChars;
+int SAV_idx_DeathCount;
 
 int INO_gi_SavButton[8];
 extern int INO_ge_SavSetNextState;
