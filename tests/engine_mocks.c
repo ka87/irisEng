@@ -117,12 +117,17 @@ void MATH_NormalizeVector(Vec3* dest, Vec3* src)
 
 void MATH_NormalizeEqualVector(Vec3* v)
 {
+    long double len2;
     long double len;
 
-    len = sqrt(v->x * v->x + v->y * v->y + v->z * v->z);
-    v->x = (float)(1.0 / len * v->x);
-    v->y = (float)(1.0 / len * v->y);
-    v->z = (float)(1.0 / len * v->z);
+    len2 = v->x * v->x + v->y * v->y + v->z * v->z;
+    if (len2 > 0.0)
+    {
+        len = sqrt(len2);
+        v->x = (float)(1.0 / len * v->x);
+        v->y = (float)(1.0 / len * v->y);
+        v->z = (float)(1.0 / len * v->z);
+    }
 }
 
 void MATH_VecMultScalarWithoutBuffer(Vec3* vec, float scalar)

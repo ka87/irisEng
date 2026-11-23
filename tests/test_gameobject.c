@@ -493,12 +493,14 @@ static void scene_build(unsigned int seed)
 /* --------------------------------------------------- the comparison */
 
 #define PLANE_FLOAT_DIFFS 14
+#define PLANE_FLOAT_RESCUED 192
 
 static int g_cases;
 static int g_bad;
 static unsigned long g_fLo;      /* a scene window compared as floats */
 static unsigned long g_fHi;
 static int g_fDiffs;             /* how many of those floats differed */
+static int g_fRescued;           /* ...of which the frozen copy made NaN */
 static double g_fWorstRel;
 static double g_fWorstAbs;
 static Scene g_snap[2];
@@ -575,6 +577,17 @@ static void check(const char* what)
         memcpy(&fb, b + i, 4);
         if (memcmp(&fa, &fb, 4) == 0)
             continue;
+        if (!(fa - fa == 0.0f) && fb - fb == 0.0f)
+        {
+            /* The frozen copy normalizes a zero-length vector and gets
+               NaN out of it; the engine leaves such a vector alone.
+               Counted apart because every comparison against a NaN
+               below is false, so neither the tolerance nor the
+               worst-case figures can see these at all -- which is what
+               the pinned counts are here to catch. */
+            ++g_fRescued;
+            continue;
+        }
         abs_ = fabs((double)fa - (double)fb);
         rel = fabs((double)fb) > 1e-30 ? abs_ / fabs((double)fb) : abs_;
         ++g_fDiffs;
@@ -1380,6 +1393,8 @@ int main(void)
     printf("gameobject: %d cases, %d differing\n", g_cases, g_bad);
     printf("  normalised plane floats: %d differing, worst %.3g relative, %.3g absolute\n",
            g_fDiffs, g_fWorstRel, g_fWorstAbs);
+    printf("  ...and %d the frozen copy turned into NaN and the engine does not\n",
+           g_fRescued);
     /* The four restored MATH_NormalizeEqualVector calls sum the squares
        x+y+z where the inlined copies summed z+y+x, which moves the last
        bit of a plane normal. The count is pinned, not just reported: a
@@ -1388,6 +1403,16 @@ int main(void)
     {
         printf("  plane float difference count moved: %d, expected %d\n",
                g_fDiffs, PLANE_FLOAT_DIFFS);
+        ++g_bad;
+    }
+    /* Pinned for the same reason as the count above, and in the same
+       way the frozen copy is never edited to follow the engine: these
+       are the floats where the two deliberately disagree, so the
+       number of them is a fact to hold still, not one to track. */
+    if (g_fRescued != PLANE_FLOAT_RESCUED)
+    {
+        printf("  rescued plane float count moved: %d, expected %d\n",
+               g_fRescued, PLANE_FLOAT_RESCUED);
         ++g_bad;
     }
     return g_bad ? 1 : 0;

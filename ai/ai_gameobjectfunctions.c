@@ -1714,6 +1714,14 @@ void AI_EvalFunc_OBJ_BankingGeneralSet_C(struct sGameObjectMain* gao, Vec3* bank
         OBJ_ComputeGlobalWithLocal(gao, gao->matrices, 1);
     }
 
+    /* Neither vector may be null by the time the matrix is built: a
+       null one would be normalized into NaN and poison the whole
+       orientation. A degenerate vector is replaced with an axis. */
+    if (MATH_b_NulVectorWithEpsilon(banking, 1.0e-07f))
+        banking->x = 1.0f;
+    if (MATH_b_NulVectorWithEpsilon(up, 1.0e-07f))
+        up->z = 1.0f;
+
     OBJ_BankingGeneralSet(gao, banking, up);
 
     if (hierarchical)
