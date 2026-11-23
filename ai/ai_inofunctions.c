@@ -422,10 +422,10 @@ int AI_EvalFunc_SAVEDataGet_C(int slot, int field)
             result = SAV_gst_Data[slot].superiorAtOrdering;
             break;
         case 3:
-            result = SAV_gst_Data[slot].s1;
+            result = SAV_gst_Data[slot].worldId;
             break;
         case 4:
-            result = SAV_gst_Data[slot].s2;
+            result = SAV_gst_Data[slot].worldEntranceId;
             break;
         case 5:
             result = SAV_gst_Data[slot].sec;
@@ -452,35 +452,35 @@ int AI_EvalFunc_SAVEDataGet_C(int slot, int field)
             result = SAV_gst_Data[slot].s4;
             break;
         case 13:
-            result = SAV_gst_Data[slot].i1;
+            result = SAV_gst_Data[slot].playTimeSeconds;
             break;
         case 14:
             SAV_LoadData(1);
             result = 0;
             break;
         case 20:
-            result = SAV_gst_Data[slot].i2;
+            result = SAV_gst_Data[slot].progressCounts;
             break;
         case 21:
-            result = SAV_gst_Data[slot].i3;
+            result = SAV_gst_Data[slot].miniGameBestScore;
             break;
         case 22:
-            result = SAV_gst_Data[slot].i4;
+            result = SAV_gst_Data[slot].raceBestTime1;
             break;
         case 23:
-            result = SAV_gst_Data[slot].i5;
+            result = SAV_gst_Data[slot].raceBestTime2;
             break;
         case 24:
-            result = SAV_gst_Data[slot].i6;
+            result = SAV_gst_Data[slot].raceBestTime3;
             break;
         case 25:
-            result = SAV_gst_Data[slot].i7;
+            result = SAV_gst_Data[slot].raceBestTime4;
             break;
         case 26:
-            result = SAV_gst_Data[slot].i8;
+            result = SAV_gst_Data[slot].codeChars;
             break;
         case 27:
-            result = SAV_gst_Data[slot].i9;
+            result = SAV_gst_Data[slot].deathCount;
             break;
         default:
             result = 0;
@@ -492,11 +492,11 @@ int AI_EvalFunc_SAVEDataGet_C(int slot, int field)
     if (field > 115)
         return 0;
 
-    i1 = SAV_gst_Data[slot].i1;
-    i2 = SAV_gst_Data[slot].i2;
-    i3 = SAV_gst_Data[slot].i3;
-    i8 = SAV_gst_Data[slot].i8;
-    i9 = SAV_gst_Data[slot].i9;
+    i1 = SAV_gst_Data[slot].playTimeSeconds;
+    i2 = SAV_gst_Data[slot].progressCounts;
+    i3 = SAV_gst_Data[slot].miniGameBestScore;
+    i8 = SAV_gst_Data[slot].codeChars;
+    i9 = SAV_gst_Data[slot].deathCount;
 
     /* Thirteen six-bit groups out of four of the record's words. Three
        of them are stitched out of two or three separate runs of bits. */
@@ -746,9 +746,9 @@ void AI_EvalFunc_SAVESaveSlotExt_C(int slotOrMode, int value1, int value2, int v
     if (slotOrMode >= 0)
     {
         INO_gst_SavSlotDesc.id = slotOrMode;
-        INO_gst_SavSlotDesc.i2 = value1;
-        INO_gst_SavSlotDesc.i3 = value2;
-        INO_gst_SavSlotDesc.i4 = value3;
+        INO_gst_SavSlotDesc.worldId = value1;
+        INO_gst_SavSlotDesc.worldEntranceId = value2;
+        INO_gst_SavSlotDesc.playTimeSeconds = value3;
         INO_SavSetCardStatus(SAVE_gi_DefaultSlot, 16);
         return;
     }
@@ -756,18 +756,18 @@ void AI_EvalFunc_SAVESaveSlotExt_C(int slotOrMode, int value1, int value2, int v
     switch (slotOrMode)
     {
     case -1:
-        SAV_idx_Field_i2 = value1;
-        SAV_idx_Field_i3 = value2;
-        SAV_idx_Field_i8 = value3;
+        SAV_idx_ProgressCounts = value1;
+        SAV_idx_MiniGameBestScore = value2;
+        SAV_idx_CodeChars = value3;
         break;
     case -2:
-        SAV_idx_Field_i4 = value1;
-        SAV_idx_Field_i5 = value2;
-        SAV_idx_Field_i6 = value3;
+        SAV_idx_RaceBestTime1 = value1;
+        SAV_idx_RaceBestTime2 = value2;
+        SAV_idx_RaceBestTime3 = value3;
         break;
     case -3:
-        SAV_idx_Field_i4 = value1;
-        SAV_idx_Field_i9 = value2;
+        SAV_idx_RaceBestTime1 = value1;
+        SAV_idx_DeathCount = value2;
         break;
     }
 }

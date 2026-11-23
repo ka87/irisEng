@@ -180,14 +180,14 @@ static void snapshot(tIoState* s, long ret, int side)
     memcpy(s->prevPad, INO_gst_PrevPad, sizeof(s->prevPad));
     memcpy(s->data, SAV_gst_Data, sizeof(s->data));
     s->slotDesc = INO_gst_SavSlotDesc;
-    s->idxFields[0] = SAV_idx_Field_i2;
-    s->idxFields[1] = SAV_idx_Field_i3;
-    s->idxFields[2] = SAV_idx_Field_i4;
-    s->idxFields[3] = SAV_idx_Field_i5;
-    s->idxFields[4] = SAV_idx_Field_i6;
-    s->idxFields[5] = SAV_idx_Field_i7;
-    s->idxFields[6] = SAV_idx_Field_i8;
-    s->idxFields[7] = SAV_idx_Field_i9;
+    s->idxFields[0] = SAV_idx_ProgressCounts;
+    s->idxFields[1] = SAV_idx_MiniGameBestScore;
+    s->idxFields[2] = SAV_idx_RaceBestTime1;
+    s->idxFields[3] = SAV_idx_RaceBestTime2;
+    s->idxFields[4] = SAV_idx_RaceBestTime3;
+    s->idxFields[5] = SAV_idx_RaceBestTime4;
+    s->idxFields[6] = SAV_idx_CodeChars;
+    s->idxFields[7] = SAV_idx_DeathCount;
     s->photos = SAV_gst_Photos;
     s->photosValidate = SAV_gst_PhotosValidate;
     s->fileDescFp = (long)(intptr_t)INO_gst_SavFileDesc.fp;
@@ -345,25 +345,25 @@ static void ioSetup(int side, unsigned seed, int photoReady)
         SAV_gst_Data[i].mday = (char)(1 + rnd(&st) % 28);
         SAV_gst_Data[i].month = (char)(rnd(&st) % 12);
         SAV_gst_Data[i].year = (int16_t)(2000 + rnd(&st) % 4);
-        SAV_gst_Data[i].s1 = (int16_t)rnd(&st);
-        SAV_gst_Data[i].s2 = (int16_t)rnd(&st);
+        SAV_gst_Data[i].worldId = (int16_t)rnd(&st);
+        SAV_gst_Data[i].worldEntranceId = (int16_t)rnd(&st);
         SAV_gst_Data[i].s3 = 0;
         SAV_gst_Data[i].s4 = 0;
-        SAV_gst_Data[i].i1 = (int)rnd(&st);
-        SAV_gst_Data[i].i9 = (int)rnd(&st);
+        SAV_gst_Data[i].playTimeSeconds = (int)rnd(&st);
+        SAV_gst_Data[i].deathCount = (int)rnd(&st);
     }
     INO_gst_SavSlotDesc.id = (int)(seed % 12);
-    INO_gst_SavSlotDesc.i2 = (int)rnd(&st);
-    INO_gst_SavSlotDesc.i3 = (int)rnd(&st);
-    INO_gst_SavSlotDesc.i4 = (int)rnd(&st);
-    SAV_idx_Field_i2 = (int)rnd(&st);
-    SAV_idx_Field_i3 = (int)rnd(&st);
-    SAV_idx_Field_i4 = (int)rnd(&st);
-    SAV_idx_Field_i5 = (int)rnd(&st);
-    SAV_idx_Field_i6 = (int)rnd(&st);
-    SAV_idx_Field_i7 = (int)rnd(&st);
-    SAV_idx_Field_i8 = (int)rnd(&st);
-    SAV_idx_Field_i9 = (int)rnd(&st);
+    INO_gst_SavSlotDesc.worldId = (int)rnd(&st);
+    INO_gst_SavSlotDesc.worldEntranceId = (int)rnd(&st);
+    INO_gst_SavSlotDesc.playTimeSeconds = (int)rnd(&st);
+    SAV_idx_ProgressCounts = (int)rnd(&st);
+    SAV_idx_MiniGameBestScore = (int)rnd(&st);
+    SAV_idx_RaceBestTime1 = (int)rnd(&st);
+    SAV_idx_RaceBestTime2 = (int)rnd(&st);
+    SAV_idx_RaceBestTime3 = (int)rnd(&st);
+    SAV_idx_RaceBestTime4 = (int)rnd(&st);
+    SAV_idx_CodeChars = (int)rnd(&st);
+    SAV_idx_DeathCount = (int)rnd(&st);
 
     /* The slot file's scratch buffer has to exist: three of the card
        states copy through it without checking. */
