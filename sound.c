@@ -845,7 +845,7 @@ void SND_StreamStopAll()
         SND_gpst_Interface.win.ShutdownStreams();
         for (idx = 0; idx < SND_gi_TrackNb; ++idx)  // SND_TrackResetAllMute inline
         {
-            SND_gax_TrackPlayingList[idx].unk1 = 0;
+            SND_gax_TrackPlayingList[idx].attenuated = 0;
             if (SND_gax_TrackPlayingList[idx].flags != 1)
             {
                 instanceIdx = SND_gax_TrackPlayingList[idx].trackID;
@@ -1399,43 +1399,43 @@ void SND_ReadRIFFHeader(char** cursor, void* hdrDest)
     tSoundHeaderDataCase2* thdrDest2 = (tSoundHeaderDataCase2*)hdrDest;
 
     // itt midnegy mire castolom, mert az összes eleje ugyanaz
-    thdrDest->i1 = LOA_ReadLong(cursor, 0, 1);
-    thdrDest->i2 = LOA_ReadLong(cursor, 0, 1);
-    thdrDest->i3 = LOA_ReadLong(cursor, 0, 1);
-    thdrDest->i4 = LOA_ReadLong(cursor, 0, 1);
+    thdrDest->riffId = LOA_ReadLong(cursor, 0, 1);
+    thdrDest->riffChunkSize = LOA_ReadLong(cursor, 0, 1);
+    thdrDest->waveId = LOA_ReadLong(cursor, 0, 1);
+    thdrDest->fmtId = LOA_ReadLong(cursor, 0, 1);
     fmtSize = LOA_ReadLong(cursor, 0, 1);
-    thdrDest->i5 = fmtSize;
+    thdrDest->fmtChunkSize = fmtSize;
     switch (fmtSize)
     {
     case 14:
-        thdrDest->is1 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest->is2 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest->ii1 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest->ii2 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest->is3 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest->ii3 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest->ii4 = LOA_ReadLong(cursor, 0, 1);
+        thdrDest->wFormatTag = LOA_ReadShort(cursor, 0, 1);
+        thdrDest->nChannels = LOA_ReadShort(cursor, 0, 1);
+        thdrDest->nSamplesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest->nAvgBytesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest->nBlockAlign = LOA_ReadShort(cursor, 0, 1);
+        thdrDest->dataId = LOA_ReadLong(cursor, 0, 1);
+        thdrDest->dataChunkSize = LOA_ReadLong(cursor, 0, 1);
         break;
     case 16:
-        thdrDest1->is1 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest1->is2 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest1->ii1 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest1->ii2 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest1->is3 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest1->is4 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest1->ii3 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest1->ii4 = LOA_ReadLong(cursor, 0, 1);
+        thdrDest1->wFormatTag = LOA_ReadShort(cursor, 0, 1);
+        thdrDest1->nChannels = LOA_ReadShort(cursor, 0, 1);
+        thdrDest1->nSamplesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest1->nAvgBytesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest1->nBlockAlign = LOA_ReadShort(cursor, 0, 1);
+        thdrDest1->wBitsPerSample = LOA_ReadShort(cursor, 0, 1);
+        thdrDest1->dataId = LOA_ReadLong(cursor, 0, 1);
+        thdrDest1->dataChunkSize = LOA_ReadLong(cursor, 0, 1);
         break;
     case 18:
-        thdrDest2->is1 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest2->is2 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest2->ii1 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest2->ii2 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest2->is3 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest2->is4 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest2->is5 = LOA_ReadShort(cursor, 0, 1);
-        thdrDest2->ii3 = LOA_ReadLong(cursor, 0, 1);
-        thdrDest2->ii4 = LOA_ReadLong(cursor, 0, 1);
+        thdrDest2->wFormatTag = LOA_ReadShort(cursor, 0, 1);
+        thdrDest2->nChannels = LOA_ReadShort(cursor, 0, 1);
+        thdrDest2->nSamplesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest2->nAvgBytesPerSec = LOA_ReadLong(cursor, 0, 1);
+        thdrDest2->nBlockAlign = LOA_ReadShort(cursor, 0, 1);
+        thdrDest2->wBitsPerSample = LOA_ReadShort(cursor, 0, 1);
+        thdrDest2->cbSize = LOA_ReadShort(cursor, 0, 1);
+        thdrDest2->dataId = LOA_ReadLong(cursor, 0, 1);
+        thdrDest2->dataChunkSize = LOA_ReadLong(cursor, 0, 1);
         break;
     default:
         break;
@@ -1489,45 +1489,45 @@ int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMo
     tSoundHeaderDataCase1* thdrDest1 = (tSoundHeaderDataCase1*)wawHdrRaw;
     tSoundHeaderDataCase2* thdrDest2 = (tSoundHeaderDataCase2*)wawHdrRaw;
 
-    if (memcmp(&(thdrDest->i1), "RIFF", 4)
-        || memcmp(&(thdrDest->i4), "fmt ", 4)
-        || memcmp(&(thdrDest->i3), "WAVE", 4)
-        || thdrDest->i5 < 14u)      // 4 subchunksize
+    if (memcmp(&(thdrDest->riffId), "RIFF", 4)
+        || memcmp(&(thdrDest->fmtId), "fmt ", 4)
+        || memcmp(&(thdrDest->waveId), "WAVE", 4)
+        || thdrDest->fmtChunkSize < 14u)      // 4 subchunksize
     {
         return -1;
     }
-    wavHdrStructDest->wfex.nAvgBytesPerSec = thdrDest->ii2;
-    wavHdrStructDest->wfex.nBlockAlign = thdrDest->is3;
-    wavHdrStructDest->wfex.nChannels = thdrDest->is2;
-    wavHdrStructDest->wfex.nSamplesPerSec = thdrDest->ii1;
-    wavHdrStructDest->wfex.wFormatTag = thdrDest->is1;
-    if (thdrDest->i5 == 14)
+    wavHdrStructDest->wfex.nAvgBytesPerSec = thdrDest->nAvgBytesPerSec;
+    wavHdrStructDest->wfex.nBlockAlign = thdrDest->nBlockAlign;
+    wavHdrStructDest->wfex.nChannels = thdrDest->nChannels;
+    wavHdrStructDest->wfex.nSamplesPerSec = thdrDest->nSamplesPerSec;
+    wavHdrStructDest->wfex.wFormatTag = thdrDest->wFormatTag;
+    if (thdrDest->fmtChunkSize == 14)
     {
         wavHdrStructDest->wfex.cbSize = 0;
-        wavHdrStructDest->wfex.wBitsPerSample = 8 * (thdrDest->ii2 / (unsigned int)thdrDest->is3 / thdrDest->is2);
-        if (memcmp(&(thdrDest->ii3), "data", 4))
+        wavHdrStructDest->wfex.wBitsPerSample = 8 * (thdrDest->nAvgBytesPerSec / (unsigned int)thdrDest->nBlockAlign / thdrDest->nChannels);
+        if (memcmp(&(thdrDest->dataId), "data", 4))
             return -1;
-        wavHdrStructDest->fullSoundSize = thdrDest->ii4;
+        wavHdrStructDest->fullSoundSize = thdrDest->dataChunkSize;
         headerLen = 42;
     }
-    else if (thdrDest1->i5 == 16)
+    else if (thdrDest1->fmtChunkSize == 16)
     {
         wavHdrStructDest->wfex.cbSize = 0;
-        wavHdrStructDest->wfex.wBitsPerSample = thdrDest1->is4;
-        if (memcmp(&(thdrDest->ii3), "data", 4))
+        wavHdrStructDest->wfex.wBitsPerSample = thdrDest1->wBitsPerSample;
+        if (memcmp(&(thdrDest->dataId), "data", 4))
             return -1;
-        wavHdrStructDest->fullSoundSize = thdrDest1->ii4;
+        wavHdrStructDest->fullSoundSize = thdrDest1->dataChunkSize;
         headerLen = 44;
     }
     else
     {
-        if (thdrDest2->i5 != 18)
+        if (thdrDest2->fmtChunkSize != 18)
             DBG_assert(0, __FILE__, __LINE__, "0", "Wave Header format unknown", 0, 1);
-        wavHdrStructDest->wfex.cbSize = thdrDest2->is5;
-        wavHdrStructDest->wfex.wBitsPerSample = thdrDest2->is4;
-        if (memcmp(&(thdrDest2->ii3), "data", 4)) // if (memcmp(&(thdrDest->ii3), "data", 4))
+        wavHdrStructDest->wfex.cbSize = thdrDest2->cbSize;
+        wavHdrStructDest->wfex.wBitsPerSample = thdrDest2->wBitsPerSample;
+        if (memcmp(&(thdrDest2->dataId), "data", 4)) // if (memcmp(&(thdrDest->dataId), "data", 4))
             return -1;
-        wavHdrStructDest->fullSoundSize = thdrDest2->ii4;
+        wavHdrStructDest->fullSoundSize = thdrDest2->dataChunkSize;
         headerLen = 46;
     }
     result = fileStartOffset + headerLen;
@@ -2144,7 +2144,7 @@ void SND_DelMdFBankUser(struct sSoundMdfStruct* sndMdf)
 
 static void SND_FamillyInnerRelease(tSoundFamilyInnerStruct* inner)
 {
-    if (inner->i1 == 1)
+    if (inner->refCount == 1)
         MEM_Free(inner);
 }
 
@@ -2365,9 +2365,9 @@ int SND_i_TrackNew()
     SND_gax_TrackPlayingList[idx].trackResource = 0;
     SND_gax_TrackPlayingList[idx].trackResourceNum = 0;
     SND_gax_TrackPlayingList[idx].stereoToMono_sub499C20 = 0;
-    SND_gax_TrackPlayingList[idx].unk1 = 0;
+    SND_gax_TrackPlayingList[idx].attenuated = 0;
     SND_gax_TrackPlayingList[idx].f2 = 1.0f;
-    SND_gax_TrackPlayingList[idx].f1 = 0.5f;
+    SND_gax_TrackPlayingList[idx].attenuationFactor = 0.5f;
     return idx;
 }
 
@@ -3198,7 +3198,7 @@ void SND_PlayMdF(struct sSoundMdfStruct* sndMdf)
             sndMdf->flags = newFlags;
             if ((newFlags & 0x10000) != 0)
                 SND_EngineSyncMdF(sndMdf, 0);
-            if (sndMdf->ii2 == 0.0)
+            if (sndMdf->fadeInTime == 0.0)
                 SND_SetVol(sndMdf->sndInstanceID, sndMdf->volume);
             if (sndMdf->timeRemainTillStart != 0.0)
                 SND_i_InstanceSetf(sndMdf->sndInstanceID, 4114, sndMdf->timeRemainTillStart);
@@ -4064,7 +4064,7 @@ void SND_FadeUpdate()
         {
             elapsed = TIM_gf_dt + fader->elapsedTime;
             fader->elapsedTime = (float)elapsed;
-            rounded = elapsed * fader->i6 + MATH_gd_magicDoubleForRound;
+            rounded = elapsed * fader->fadeCurveRate + MATH_gd_magicDoubleForRound;
             step = (*(uint32_t *)&rounded);
             if ((*(int32_t*)&rounded) >= 0)
             {
@@ -4080,7 +4080,7 @@ void SND_FadeUpdate()
             {
                 step = 0;
             }
-            start = fader->i7;
+            start = fader->fadeFrom;
             fader->muteSetUp1 = 1.0;
             level = (start - fader->muteSetUp2ToSetWithThis) * SND_gf_FadeOut[step] + fader->muteSetUp2ToSetWithThis;
             fader->muteSetUp2 = (float)level;
@@ -4094,7 +4094,7 @@ void SND_FadeUpdate()
             continue;
         elapsed = TIM_gf_dt + fader->elapsedTime;
         fader->elapsedTime = (float)elapsed;
-        rounded = elapsed * fader->i6 + MATH_gd_magicDoubleForRound;
+        rounded = elapsed * fader->fadeCurveRate + MATH_gd_magicDoubleForRound;
         step = *(uint32_t *)(&rounded);
         if ((*(int32_t *)&rounded) >= 0)
         {
@@ -4110,7 +4110,7 @@ void SND_FadeUpdate()
         {
             step = 0;
         }
-        start = fader->i7;
+        start = fader->fadeFrom;
         fader->muteSetUp1 = 1.0;
         level = (start - fader->muteSetUp2ToSetWithThis) * SND_gf_FadeOut[step] + fader->muteSetUp2ToSetWithThis;
         fader->muteSetUp2 = (float)level;
@@ -4265,27 +4265,27 @@ void SND_LoadingSoundUpdate()
     SND_DeleteOldLoadingSound();
     if (SND_gst_LoadingEffect.mode == 1)
     {
-        if (SND_gst_LoadingEffect.i5 == 0.0)
+        if (SND_gst_LoadingEffect.fadeLevel == 0.0)
             return;
-        faded = SND_gst_LoadingEffect.i5 - SND_gst_LoadingEffect.i4 * 0.02;
-        SND_gst_LoadingEffect.i5 = (float)faded;
+        faded = SND_gst_LoadingEffect.fadeLevel - SND_gst_LoadingEffect.fadeRate * 0.02;
+        SND_gst_LoadingEffect.fadeLevel = (float)faded;
         if (faded < 0.0)
-            SND_gst_LoadingEffect.i5 = 0.0;
-        level = SND_gst_LoadingEffect.i5;
-        inverse = (float)(1.0 - SND_gst_LoadingEffect.i5);
+            SND_gst_LoadingEffect.fadeLevel = 0.0;
+        level = SND_gst_LoadingEffect.fadeLevel;
+        inverse = (float)(1.0 - SND_gst_LoadingEffect.fadeLevel);
         SND_MuteSetUp(6, inverse, level);
         return;
     }
     if (SND_gst_LoadingEffect.mode == 2)
     {
-        if (SND_gst_LoadingEffect.i5 < 1.0)
+        if (SND_gst_LoadingEffect.fadeLevel < 1.0)
         {
-            faded = SND_gst_LoadingEffect.i4 * 0.02 + SND_gst_LoadingEffect.i5;
-            SND_gst_LoadingEffect.i5 = (float)faded;
+            faded = SND_gst_LoadingEffect.fadeRate * 0.02 + SND_gst_LoadingEffect.fadeLevel;
+            SND_gst_LoadingEffect.fadeLevel = (float)faded;
             if (faded > 1.0)
-                SND_gst_LoadingEffect.i5 = 1.0;
-            level = SND_gst_LoadingEffect.i5;
-            inverse = (float)(1.0 - SND_gst_LoadingEffect.i5);
+                SND_gst_LoadingEffect.fadeLevel = 1.0;
+            level = SND_gst_LoadingEffect.fadeLevel;
+            inverse = (float)(1.0 - SND_gst_LoadingEffect.fadeLevel);
             SND_MuteSetUp(6, inverse, level);
             return;
         }
@@ -4782,8 +4782,8 @@ void SND_LoadingSoundInitModule()
     SND_gst_LoadingEffect.f_fadeOutTime = 0.2f;
     SND_gst_LoadingEffect.f_fadeInTime = 1.0;
     SND_gst_LoadingEffect.i6 = 1.0;
-    SND_gst_LoadingEffect.i4 = 1.0;
-    SND_gst_LoadingEffect.i5 = 1.0;
+    SND_gst_LoadingEffect.fadeRate = 1.0;
+    SND_gst_LoadingEffect.fadeLevel = 1.0;
     wavHdr.wfex.nChannels = 1;
     wavHdr.wfex.nSamplesPerSec = 48000;
     wavHdr.wfex.nAvgBytesPerSec = 96000;
@@ -5037,13 +5037,13 @@ void SND_LoadingSoundNotifyEndLoading()
         {
             if (SND_gst_LSGlobal.soundInstanceIndex >= 0)
             {
-                SND_gst_LoadingEffect.i4 = (float)((1.0 - SND_gst_LoadingEffect.i5) / SND_gst_LoadingEffect.f_fadeInTime);
-                SND_MuteSetUp(6, 1.0, SND_gst_LoadingEffect.i5);
+                SND_gst_LoadingEffect.fadeRate = (float)((1.0 - SND_gst_LoadingEffect.fadeLevel) / SND_gst_LoadingEffect.f_fadeInTime);
+                SND_MuteSetUp(6, 1.0, SND_gst_LoadingEffect.fadeLevel);
                 SND_MuteEnable(6, 1);
                 SND_gst_LoadingEffect.mode = 2;
                 return;
             }
-            SND_gst_LoadingEffect.i4 = 1.0;
+            SND_gst_LoadingEffect.fadeRate = 1.0;
         }
         SND_gst_LoadingEffect.mode = 0;
         SND_MuteEnable(6, 0);
@@ -5053,8 +5053,8 @@ void SND_LoadingSoundNotifyEndLoading()
 void SND_LoadingSoundNotifyBeginLoading()
 {
     SND_gst_LoadingEffect.mode = 1;
-    SND_gst_LoadingEffect.i5 = 1.0;
-    SND_gst_LoadingEffect.i4 = (float)(1.0 / SND_gst_LoadingEffect.f_fadeOutTime);
+    SND_gst_LoadingEffect.fadeLevel = 1.0;
+    SND_gst_LoadingEffect.fadeRate = (float)(1.0 / SND_gst_LoadingEffect.f_fadeOutTime);
     SND_MuteSetUp(6, 1.0, 1.0);
     SND_MuteEnable(6, 1);
     SND_PlaySoundLooping(SND_gst_LSGlobal.soundInstanceIndex);
@@ -5422,7 +5422,7 @@ static tSoundFamilyInnerStruct* SND_pst_FamillyInnerNew()
     result = (tSoundFamilyInnerStruct*)MEM_p_Alloc(sizeof(tSoundFamilyInnerStruct));
     if (result)
     {
-        result->i1 = 0;
+        result->refCount = 0;
         result->muteSetup1.muteEnabled = 0;
         result->muteSetup1.muteSetUp1 = 1.0f;
         result->muteSetup1.muteSetUp2 = 0.5f;
@@ -5477,7 +5477,7 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
         do
         {
             familly = scan;
-            if (mask == scan->i1)
+            if (mask == scan->requiredMask)
                 break;
             ++idx;
             ++scan;
@@ -5501,13 +5501,13 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
         }
         familly = &list[famillyNb];
         SND_gi_AndFamillyNb = famillyNb + 1;
-        familly->i1 = mask;
+        familly->requiredMask = mask;
         familly->innerNum = 0;
-        familly->i2 = 0;
-        familly->i4[0] = bits;
+        familly->anyMaskUnion = 0;
+        familly->anyMask[0] = bits;
         familly->unkIntArrPtr = 0;
     }
-    if ((bits & familly->i2) == 0)
+    if ((bits & familly->anyMaskUnion) == 0)
     {
         newInner = SND_pst_FamillyInnerNew();
         oldInnerNum = familly->innerNum;
@@ -5521,9 +5521,9 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
         memset(&familly->unkIntArrPtr[innerNumBefore], 0, innerSize);
         familly->unkIntArrPtr[familly->innerNum] = newInner;
         linked = familly->unkIntArrPtr[familly->innerNum];
-        ++linked->i1;
-        familly->i4[familly->innerNum++] = bits;
-        familly->i2 |= bits;
+        ++linked->refCount;
+        familly->anyMask[familly->innerNum++] = bits;
+        familly->anyMaskUnion |= bits;
         return familly;
     }
     remaining = bits;
@@ -5531,8 +5531,8 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     wanted = bits;
     if (familly->innerNum > 0)
     {
-        bitsPtr = familly->i4;
-        bitsPtrSaved = familly->i4;
+        bitsPtr = familly->anyMask;
+        bitsPtrSaved = familly->anyMask;
         while (1)
         {
             entryBits = *bitsPtr;
@@ -5546,17 +5546,17 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
                         inner = familly->unkIntArrPtr[innerIdx];
                         if (inner != shared)
                         {
-                            if (inner->i1 <= 1)
+                            if (inner->refCount <= 1)
                             {
                                 SND_FamillyInnerRelease(familly->unkIntArrPtr[innerIdx]);
                                 bitsPtr = bitsPtrSaved;
-                                ++shared->i1;
+                                ++shared->refCount;
                                 familly->unkIntArrPtr[innerIdx] = shared;
                                 *bitsPtrSaved = keptBits;
                             }
                             else
                             {
-                                --inner->i1;
+                                --inner->refCount;
                                 familly->unkIntArrPtr[innerIdx] = shared;
                                 *bitsPtr = keptBits;
                             }
@@ -5572,7 +5572,7 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
                     wanted &= ~entryBits;
                     if (!wanted)
                     {
-                        familly->i2 |= bits;
+                        familly->anyMaskUnion |= bits;
                         return familly;
                     }
                 }
@@ -5586,13 +5586,13 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     }
     if (!remaining)
     {
-        familly->i2 |= bits;
+        familly->anyMaskUnion |= bits;
         return familly;
     }
     if (!shared)
         shared = SND_pst_FamillyInnerNew();
     familly->unkIntArrPtr = (tSoundFamilyInnerStruct**)MEM_p_Realloc(familly->unkIntArrPtr, 4 * familly->innerNum + 4);
-    familly->i4[familly->innerNum] = remaining;
+    familly->anyMask[familly->innerNum] = remaining;
     inners = familly->unkIntArrPtr;
     newInnerNum = familly->innerNum + 1;
     familly->innerNum = newInnerNum;
@@ -5600,8 +5600,8 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     // stores one past its end and leaves the slot i4[] was filled for uninitialised
     inners[newInnerNum] = shared;
     added = familly->unkIntArrPtr[familly->innerNum];
-    ++added->i1;
-    familly->i2 |= bits;
+    ++added->refCount;
+    familly->anyMaskUnion |= bits;
     return familly;
 }
 
@@ -5621,7 +5621,7 @@ void SND_MuteOnFamilly(int mask, int x)
         idx = 0;
         if (familly->innerNum > 0)
         {
-            bitsPtr = familly->i4;
+            bitsPtr = familly->anyMask;
             do
             {
                 if ((x & *bitsPtr) != 0)
@@ -5668,7 +5668,7 @@ void SND_MuteOffFamilly(int mask, int bits)
         idx = 0;
         if (familly->innerNum > 0)
         {
-            bitsPtr = familly->i4;
+            bitsPtr = familly->anyMask;
             do
             {
                 if ((bits & *bitsPtr) != 0)
@@ -5734,7 +5734,7 @@ void SND_SetfFamilly(int mask, int bits, int type, float value)
     familly = SND_pst_GetOrArray(mask, bits);
     for (idx = 0; idx < familly->innerNum; ++idx)
     {
-        if ((bits & familly->i4[idx]) == 0)
+        if ((bits & familly->anyMask[idx]) == 0)
             continue;
         switch (type)
         {
@@ -5777,7 +5777,7 @@ float SND_f_GetfFamilly(int mask, int bits, int type)
         innerNum = familly->innerNum;
         for (i = 0; i < innerNum; ++i)
         {
-            if ((bits & familly->i4[i]) != 0)
+            if ((bits & familly->anyMask[i]) != 0)
             {
                 switch (type)
                 {
@@ -5844,7 +5844,7 @@ void SND_FadeInFamilly(int mask, int bits)
         idx = 0;
         if (familly->innerNum > 0)
         {
-            bitsPtr = familly->i4;
+            bitsPtr = familly->anyMask;
             do
             {
                 if ((bits & *bitsPtr) != 0)
@@ -5894,7 +5894,7 @@ void SND_FadeOutFamilly(int mask, int bits)
         idx = 0;
         if (familly->innerNum > 0)
         {
-            bitsPtr = familly->i4;
+            bitsPtr = familly->anyMask;
             do
             {
                 if ((bits & *bitsPtr) != 0)
@@ -5979,11 +5979,11 @@ int SND_i_TrackSeti(unsigned int trackKey, int type, int value)
     }
     if (type == 2)
     {
-        muted = track->unk1;
+        muted = track->attenuated;
         if (value && !muted)
-            track->unk1 = 1;
+            track->attenuated = 1;
         else if (!value && muted)
-            track->unk1 = 0;
+            track->attenuated = 0;
         else
             return 0;
         instanceIdx = track->trackID;
@@ -6011,7 +6011,7 @@ int SND_i_TrackGeti(unsigned int trackKey, int type)
     if (type == 1)
         return ((unsigned int)track->flags >> 5) & 1;
     if (type == 2)
-        return track->unk1 != 0;
+        return track->attenuated != 0;
     if (type != 5)
         return -1;
     return track->trackID;
@@ -6043,10 +6043,10 @@ void SND_TrackSetFadeOut(int key, float duration)
                     inst = &SND_gst_Params.soundInstances[instanceIdxAlias];
                     if ((flags & 0x400) != 0)
                     {
-                        fade.i3 = duration;
-                        fade.i2 = 0.0;
-                        fade.i1 = inst->volume;
-                        fade.i5 = 0x80;
+                        fade.duration = duration;
+                        fade.targetVolume = 0.0;
+                        fade.startVolume = inst->volume;
+                        fade.flags = 0x80;
                         fade.gen.flags = 0;
                         fade.gen.sndKey = SND_gst_Params.allocatedSounds[inst->allocatedSoundsIdx].soundKey;
                         fade.gen.sndIndexInAllocatedSounds = inst->allocatedSoundsIdx;
@@ -6074,7 +6074,7 @@ int SND_i_TrackSetf(int trackKey, int type, float value)
         return 0;
     if (type == 3)
     {
-        track->f1 = value;
+        track->attenuationFactor = value;
         instanceIdx = track->trackID;
         if (instanceIdx >= 0)
             SND_SetInstVolume(&SND_gst_Params.soundInstances[instanceIdx]);
@@ -6118,7 +6118,7 @@ float SND_f_TrackGetf(unsigned int trackKey, int type)
     {
         if (type != 3)
             return -1.0f;
-        result = track->f1;
+        result = track->attenuationFactor;
     }
     return (float)result;
 }
@@ -6431,8 +6431,8 @@ void SND_Fade(int group, float from, float to, float duration)
         {
             fg->muteSetUp2ToSetWithThis = to;
             fg->elapsedTime = 0.0;
-            fg->i7 = from;
-            fg->i6 = (256.0f / duration);
+            fg->fadeFrom = from;
+            fg->fadeCurveRate = (256.0f / duration);
             if (to <= from)
                 fg->flags = 2;
             else

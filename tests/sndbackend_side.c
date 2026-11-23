@@ -305,8 +305,8 @@ static void dump_globals(void)
         d("  L%d key=%d val=%d\n", i, dsndSBList.keyValPtr[i].key != 0,
           dsndSBList.keyValPtr[i].val != 0);
     d("G raster %d %d %d %d %d %d %d %d\n",
-      sndRasterStat.i1, sndRasterStat.i2, sndRasterStat.i3, sndRasterStat.i4,
-      sndRasterStat.i5, sndRasterStat.i6, sndRasterStat.i7, sndRasterStat.i8);
+      sndRasterStat.trackBytes, sndRasterStat.i2, sndRasterStat.loadingSoundBytes, sndRasterStat.i4,
+      sndRasterStat.soundBytes, sndRasterStat.i6, sndRasterStat.totalBytes, sndRasterStat.budgetLeft);
     d("G rb1=%d rb2=%d fileid=%d\n", rasterbas1.actElemNum, rasterbas2.actElemNum,
       SND_gi_RasterCurrentFileId);
     for (i = 0; i < 8 && sndPlayList && i < sndEventsNum; ++i)
@@ -339,7 +339,7 @@ static void dump_sbe(const char* tag, tSndSoundBufferElem* sbe)
            positions were armed on, and the rewrite has none. */
         d("%s  misc fh=%ld dtm=%d full=%u sum=%d u6=%d size=%d up=%d\n", tag,
           (long)(size_t)m->fileHandle,
-          m->distanceToMove, m->fullSize, m->sumSize, m->unk6, m->soundBufferSize, m->sizeToUpload);
+          m->distanceToMove, m->fullSize, m->sumSize, m->startDecodedOffset, m->soundBufferSize, m->sizeToUpload);
         d("%s  misc e1=%ld e2=%ld off=%d pos=%d cur=%u rem=%d loop=%d rap=%d stop=%d idx=%d\n", tag,
           (long)(size_t)m->eventHandle1, (long)(size_t)m->eventHandle2,
           m->currOffset, m->currentPlayPosition, m->currSize, m->shouldBeRemovedFromPlayList,
@@ -360,10 +360,10 @@ static void dump_fx(const char* tag, tSoundFxParams* p)
 {
     int i;
     d("%s fx flags=%X mode=%d delay=%d fb=%d vol=%08X wetpan=%d i7=%d\n", tag,
-      p->flags, p->mode, p->delay, p->feedback, fbits(p->vol), p->wetPan, p->i7);
-    if (p->i8)
-        for (i = 0; i < p->i7 && i < 16; ++i)
-            d("%s   slot%d=%d\n", tag, i, sbe_id(p->i8[i]));
+      p->flags, p->mode, p->delay, p->feedback, fbits(p->vol), p->wetPan, p->voiceListCount);
+    if (p->voiceList)
+        for (i = 0; i < p->voiceListCount && i < 16; ++i)
+            d("%s   slot%d=%d\n", tag, i, sbe_id(p->voiceList[i]));
 }
 
 /* ------------------------------------------------------------ fixture */
@@ -522,8 +522,8 @@ static void fixture_reset(unsigned seed)
     for (i = 0; i < TRACKS; ++i)
     {
         fx_tracks[i].trackID = i;
-        fx_tracks[i].unk1 = i & 1;
-        fx_tracks[i].f1 = 0.5f + 0.25f * (float)i;
+        fx_tracks[i].attenuated = i & 1;
+        fx_tracks[i].attenuationFactor = 0.5f + 0.25f * (float)i;
         fx_tracks[i].sndBufferElem = &fx_buffers[i];
     }
     for (i = 0; i < 8; ++i)
@@ -531,8 +531,8 @@ static void fixture_reset(unsigned seed)
         fx_buffers[i].format = 1 + (i & 1);
         fx_buffers[i].unk2SetTo64InCreate = 64;
     }
-    fx_params.i7 = 16;
-    fx_params.i8 = fx_fxSlots;
+    fx_params.voiceListCount = 16;
+    fx_params.voiceList = fx_fxSlots;
     fx_params.flags = 1;
 }
 
@@ -796,7 +796,7 @@ void SIDE_RUN(int c)
         sbe->miscData->readThroughWithMultipleLoop = (sub & 2) ? 1 : 0;
         sbe->miscData->fullSize = (unsigned)(1200 * (1 + (sub % 5)));
         sbe->miscData->sumSize = 120 * (sub % 7);
-        sbe->miscData->unk6 = 120 * (sub % 3);
+        sbe->miscData->startDecodedOffset = 120 * (sub % 3);
         SND_gst_Params.soundRenderMode = (sub & 4) ? 1 : 2;
         wsnd_read_bytes = 36 * (1 + (sub % 11));
         /* decoded comes out a multiple of 120, so this is a value the
@@ -811,7 +811,7 @@ void SIDE_RUN(int c)
             sbe->miscData->sizeToUpload = 480;
             sbe->miscData->fullSize = (unsigned)(240 * (1 + (sub % 7)));
             sbe->miscData->sumSize = 0;
-            sbe->miscData->unk6 = 0;
+            sbe->miscData->startDecodedOffset = 0;
             wsnd_read_bytes = 1 << 20;
         }
         /* One in thirteen gets the sizes a real streamed sound has:
@@ -828,7 +828,7 @@ void SIDE_RUN(int c)
             sbe->miscData->soundBufferSize = 307200;
             sbe->miscData->fullSize = 1971840;
             sbe->miscData->sumSize = 0;
-            sbe->miscData->unk6 = 0;
+            sbe->miscData->startDecodedOffset = 0;
             wsnd_read_bytes = 1 << 20;
         }
         memset(scratch, 0, sizeof(scratch));

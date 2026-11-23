@@ -698,11 +698,11 @@ int pcSND_DisableReverbIf_i7_not_match_with_idx(tSoundFxParams* a1, tSndSoundBuf
     int v3;
     tSndSoundBufferElem** v4;
 
-    v2 = a1->i7;
+    v2 = a1->voiceListCount;
     v3 = 0;
     if (v2 > 0)
     {
-        v4 = a1->i8;
+        v4 = a1->voiceList;
         do
         {
             if (*v4 == a2)
@@ -714,7 +714,7 @@ int pcSND_DisableReverbIf_i7_not_match_with_idx(tSoundFxParams* a1, tSndSoundBuf
     if (v3 != v2)
     {
         pcSND_DisableReverbAndRestartPlaying(a1, a2);
-        a1->i8[v3] = NULL;
+        a1->voiceList[v3] = NULL;
     }
     return 0;
 }
@@ -803,7 +803,7 @@ int pcSND_SB_Play(tSndSoundBufferElem* a1, int a2)
 
 int sub_49CEF0()
 {
-    return 6000000 - sndRasterStat.i7;
+    return 6000000 - sndRasterStat.totalBytes;
 }
 
 void pcSND_AddToSNDRaster(IDirectSoundBuffer* a1, int a2)
@@ -824,21 +824,21 @@ void pcSND_AddToSNDRaster(IDirectSoundBuffer* a1, int a2)
                 goto LABEL_10;
             if (SND_gi_RasterCurrentFileId == 8)
             {
-                sndRasterStat.i3 += a2;
+                sndRasterStat.loadingSoundBytes += a2;
             LABEL_11:
-                sndRasterStat.i7 += a2;
-                sndRasterStat.i8 = sub_49CEF0();
+                sndRasterStat.totalBytes += a2;
+                sndRasterStat.budgetLeft = sub_49CEF0();
                 return;
             }
             v2 = SND_gi_RasterCurrentFileId == 0x2000;
         }
         if (!v2)
         {
-            sndRasterStat.i5 += a2;
+            sndRasterStat.soundBytes += a2;
             goto LABEL_11;
         }
     LABEL_10:
-        sndRasterStat.i1 += a2;
+        sndRasterStat.trackBytes += a2;
         goto LABEL_11;
     }
 }
@@ -1299,21 +1299,21 @@ void pcSND_SNDRasterRelease(IDirectSoundBuffer* a1)
                     goto LABEL_12;
                 if (a3 == 8)
                 {
-                    sndRasterStat.i3 -= v3;
+                    sndRasterStat.loadingSoundBytes -= v3;
                 LABEL_13:
-                    sndRasterStat.i7 -= v3;
-                    sndRasterStat.i8 = sub_49CEF0();
+                    sndRasterStat.totalBytes -= v3;
+                    sndRasterStat.budgetLeft = sub_49CEF0();
                     return;
                 }
                 v1 = a3 == 0x2000;
             }
             if (!v1)
             {
-                sndRasterStat.i5 -= v3;
+                sndRasterStat.soundBytes -= v3;
                 goto LABEL_13;
             }
         LABEL_12:
-            sndRasterStat.i1 -= v3;
+            sndRasterStat.trackBytes -= v3;
             goto LABEL_13;
         }
     }
@@ -1604,9 +1604,9 @@ void pcSND_fillSoundBuffer(int a1, tSbeMiscData* a2, tSndSoundBufferElem* a3)
     if (v4)
     {
         a3->dsndSBIF->lpVtbl->Lock(a3->dsndSBIF, 0, v4->soundBufferSize, &v8, &a3a, &DistanceToMoveHigh, &audioBytes, 2);
-        v5 = pcSND_CalcSizeToReadByFormat(v4->unk6, sbe->format);
+        v5 = pcSND_CalcSizeToReadByFormat(v4->startDecodedOffset, sbe->format);
         SetFilePointer(v4->fileHandle, v4->distanceToMove + v5, &totalSizeAfterDecompress, 0);
-        v4->sumSize = v4->unk6;
+        v4->sumSize = v4->startDecodedOffset;
         pcSND_ReadAndDecompressSoundData(a3a, sbe, 0, &v7, (int16_t*)v8);
         v6 = v7;
         if (v7 < a3a)
@@ -1635,7 +1635,7 @@ void pcSND_fillSoundBuffer(int a1, tSbeMiscData* a2, tSndSoundBufferElem* a3)
         v4->currOffset += a3a;
         if (v4->currOffset >= v4->soundBufferSize)
             v4->currOffset -= v4->soundBufferSize;
-        v4->currSize = v4->unk6;
+        v4->currSize = v4->startDecodedOffset;
         v4->currentPlayPosition = 0;
     }
 }
@@ -1797,7 +1797,7 @@ void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int fullsoundlen, int a
         v9->currOffset = 0;
         v9->currentPlayPosition = 0;
         v9->currSize = 0;
-        v9->unk6 = v11;
+        v9->startDecodedOffset = v11;
         v9->fullSize = fullsoundlena;
         v9->distanceToMove = a3;
         v9->sumSize = 0;
@@ -2268,11 +2268,11 @@ int pcSND_i_FxInit()
 {
     BYTE Data[4];
 
-    SND_gst_FxParam.i7 = 16;
-    SND_gst_FxDefaultParam.i7 = 16;
-    SND_gst_FxDefaultParam.i8 = (tSndSoundBufferElem**)MEM_p_Alloc(64u);
-    SND_gst_FxParam.i8 = (tSndSoundBufferElem**)MEM_p_Alloc(4 * SND_gst_FxParam.i7);
-    memset(SND_gst_FxParam.i8, 0, 4 * SND_gst_FxParam.i7);
+    SND_gst_FxParam.voiceListCount = 16;
+    SND_gst_FxDefaultParam.voiceListCount = 16;
+    SND_gst_FxDefaultParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(64u);
+    SND_gst_FxParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(4 * SND_gst_FxParam.voiceListCount);
+    memset(SND_gst_FxParam.voiceList, 0, 4 * SND_gst_FxParam.voiceListCount);
     fxWetVol = 0.0;
     memset(&gFXGlobal, 0, sizeof(gFXGlobal));
     if (pcSND_GetFXSettingsFromRegistry_sub_49FD00(Data))
@@ -2284,12 +2284,12 @@ int pcSND_i_FxInit()
 
 void pcSND_FxClose()
 {
-    if (SND_gst_FxParam.i8)
-        MEM_Free(SND_gst_FxParam.i8);
-    SND_gst_FxParam.i8 = 0;
-    if (SND_gst_FxDefaultParam.i8)
-        MEM_Free(SND_gst_FxDefaultParam.i8);
-    SND_gst_FxDefaultParam.i8 = 0;
+    if (SND_gst_FxParam.voiceList)
+        MEM_Free(SND_gst_FxParam.voiceList);
+    SND_gst_FxParam.voiceList = 0;
+    if (SND_gst_FxDefaultParam.voiceList)
+        MEM_Free(SND_gst_FxDefaultParam.voiceList);
+    SND_gst_FxDefaultParam.voiceList = 0;
 }
 
 void pcSND_fxStructSet(EAXLISTENERPROPERTIES* a1, int a2)
@@ -2520,10 +2520,10 @@ void pcSND_DummyFXFunc(tSoundFxParams* a1)
     tSndSoundBufferElem** v1;
     int v2;
 
-    if (gFXGlobal.fxEnabled && (a1->flags & 1) != 0 && a1->i7 > 0)
+    if (gFXGlobal.fxEnabled && (a1->flags & 1) != 0 && a1->voiceListCount > 0)
     {
-        v1 = a1->i8;
-        v2 = a1->i7;
+        v1 = a1->voiceList;
+        v2 = a1->voiceListCount;
         do
         {
             if (*v1) {
@@ -2806,18 +2806,18 @@ int pcSND_i_FxEnable(tSoundFxParams* xx)
 
     if (gFXGlobal.fxEnabled)
     {
-        v1 = xx->i7;
+        v1 = xx->voiceListCount;
         v2 = 0;
         xx->flags |= 1u;
         if (v1 > 0)
         {
             do
             {
-                v3 = xx->i8[v2];
+                v3 = xx->voiceList[v2];
                 if (v3)
                     pcSND_SNDPropertyEnableRoomReverb(xx, v3);
                 ++v2;
-            } while (v2 < xx->i7);
+            } while (v2 < xx->voiceListCount);
         }
     }
     return 0;
@@ -2830,17 +2830,17 @@ int pcSND_i_FxDisable(tSoundFxParams* a1)
 
     if (gFXGlobal.fxEnabled)
     {
-        v1 = a1->i7;
+        v1 = a1->voiceListCount;
         v2 = 0;
         a1->flags &= ~1u;
         if (v1 > 0)
         {
             do
             {
-                if (a1->i8[v2])
-                    pcSND_DisableReverbAndRestartPlaying(a1, a1->i8[v2]);
+                if (a1->voiceList[v2])
+                    pcSND_DisableReverbAndRestartPlaying(a1, a1->voiceList[v2]);
                 ++v2;
-            } while (v2 < a1->i7);
+            } while (v2 < a1->voiceListCount);
         }
     }
     return 0;
@@ -3063,9 +3063,9 @@ void pcSND_Track_SetVolume(tSndSoundBufferElem* arg0, int a1)
     if (v2 != -1)
     {
         v3 = &SND_gax_TrackPlayingList[v2];
-        if (v3->unk1)
+        if (v3->attenuated)
         {
-            v5 = SND_f_GetVolFromAtt(a1) * v3->f1;
+            v5 = SND_f_GetVolFromAtt(a1) * v3->attenuationFactor;
             v4 = SND_l_GetAttFromVol(v5);
             SND_gpst_Interface.win.Setvolume(v3->sndBufferElem, v4);
         }
