@@ -248,7 +248,7 @@ struct sZListElem* SOFT_pst_ZList_AddNode(float z, int num, int isObject)
 
     if (!isObject)
     {
-        if ((int)(zListData->objElems) > (int)zListData->currMeshOffset) // a meshelems után az objelems jön, szóval ha megtelt a meshElems, akkor a currMeshOffset rálóg az objelemsre. Ezzel nézi meg ohgy megtelt-e
+        if ((char*)zListData->objElems > (char*)zListData->currMeshOffset) // a meshelems után az objelems jön, szóval ha megtelt a meshElems, akkor a currMeshOffset rálóg az objelemsre. Ezzel nézi meg ohgy megtelt-e
         {
             zListData->currPtr->data = zListData->currMeshOffset;
             zListData->currMeshOffset += num;
@@ -263,7 +263,7 @@ struct sZListElem* SOFT_pst_ZList_AddNode(float z, int num, int isObject)
 
     if (isObject == 1)
     {
-        if ((int)(&zListData[1]) > (int)zListData->currObjOffset) // ezzel azt nézi meg, hogy mivel az objElems amire az objoffset mutat nem nagyobb-e mint az egé struktúra. Az objElems a struktúravégén van, szóval ha már több nem fér bele akkor túllóg a struktúrán
+        if ((char*)&zListData[1] > (char*)zListData->currObjOffset) // ezzel azt nézi meg, hogy mivel az objElems amire az objoffset mutat nem nagyobb-e mint az egé struktúra. Az objElems a struktúravégén van, szóval ha már több nem fér bele akkor túllóg a struktúrán
         {
             zListData->currPtr->data = zListData->currObjOffset;
             ++zListData->currObjOffset;
@@ -400,7 +400,7 @@ void SOFT_ZList_Draw()
             {
                 do
                 {
-                    if ((int)(pCurrZElem->data) >= (int)(zListData->objElems)) // check type by offset in struct
+                    if ((char*)pCurrZElem->data >= (char*)zListData->objElems) // check type by offset in struct
                     {
                         if (ZList_V != GFX_gpst_Geo->vertices)
                         {
@@ -480,7 +480,7 @@ void SOFT_ZList_Draw()
                             i_Identity = TRUE;
                         }
 
-                        ZList_T->uv1 = (uint16_t)(((int)ZList_V - (int)(GFX_gpst_Geo->vertices)) / sizeof(Vec3));
+                        ZList_T->uv1 = (uint16_t)(ZList_V - GFX_gpst_Geo->vertices);
                         ZList_T->v1 = ZList_T->uv1;
                         ZList_T->uv2 = ZList_T->v1 + 1;
                         ZList_T->v2 = ZList_T->uv2;
