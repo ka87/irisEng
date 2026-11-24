@@ -56,11 +56,21 @@ void SDL_SignalSemaphore(SDL_Semaphore* sem)
         ++sem->count;
 }
 
+/* The renderer's depth list, which the temporary allocator starts
+   again whenever it rewinds its buffer -- so these two are reached,
+   and counted rather than refused, and the driver checks the count.
+   Everything that comes out of that buffer is the renderer's working
+   storage, so rewinding it without telling the renderer would leave
+   the list pointing into memory about to be handed out again. */
+int MOCK_ZListInits;
+int MOCK_ZListClears;
+
+void SOFT_ZList_Clear() { ++MOCK_ZListClears; }
+void SOFT_ZList_Init() { ++MOCK_ZListInits; }
+
 /* Reached only from the defragmenting, texture-preloading and
    out-of-memory paths, with the engine's own signatures so that a
    mismatch cannot hide here. */
-void SOFT_ZList_Clear() { mock_unreachable("SOFT_ZList_Clear"); }
-void SOFT_ZList_Init() { mock_unreachable("SOFT_ZList_Init"); }
 void PreLoadTexReset() { mock_unreachable("PreLoadTexReset"); }
 void PLT_Message(const char* title, const char* text, int error)
 {

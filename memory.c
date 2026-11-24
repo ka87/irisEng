@@ -769,6 +769,12 @@ void MEM_FreeFromEnd(void* ptr)
     }
 }
 
+/* Which of the two readers below belongs to a pointer that came out
+   of MEM_p_AllocTmp. That one has two exits and they leave different
+   things in the word in front of the payload -- a size when the
+   temporary buffer served the request, the real block's address when
+   the aligned allocator served it instead -- and the only thing that
+   says which is where the pointer landed. */
 int MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(void *ptr) {
     if (ptr < MEM_gp_AllocTmpFirst || ptr >= MEM_gp_AllocTmpLast)
         return MEM_MemBlockSizeGetAligned(ptr);
@@ -784,7 +790,11 @@ int MEM_MemBlockSizeGetAligned(void* ptr) {
     return MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(size)].size;
 }
 
-/* The size a temporary allocation wrote in front of itself. */
+/* The word a temporary allocation left in front of itself, read as a
+   size. It is one only for a request the temporary buffer served: for
+   one the aligned allocator served instead, this reads part of the
+   real block's address. The reader above is the one that tells the two
+   apart; this one is for a pointer already known to be the buffer's. */
 int MEM_MemBlockSizeGetTmpAddressSpace(void* ptr) {
     return (int)*((MEM_TmpWord*)ptr - 1);
 }
