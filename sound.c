@@ -133,7 +133,8 @@ void SND_TrackDeleteInstanceFromList(int id)
                     SND_gax_TrackPlayingList[trackIdx].flags &= ~2u;
                     inst->soundIntf = SND_gax_TrackPlayingList[trackIdx].soundIntf;
                     SND_gax_TrackPlayingList[trackIdx].soundIntf = 0;
-                    BAS_bdelete((unsigned int)inst->soundBufElemFromModel, &SND_gst_TrackLookUpTable); // TODO FIXME, biztos?????
+                    BAS_bdelete(SND_ul_RefBits(inst->soundBufElemFromModel),
+                                &SND_gst_TrackLookUpTable);
                     if (SND_gax_TrackPlayingList[trackIdx].stereoToMono_sub499C20)
                         SND_TrackSwitchToMono(trackIdx);
                     SND_TrackReleaseResource(trackIdx);
@@ -1229,7 +1230,7 @@ int SND_l_LoadData(int soundKEy)
         if (!buffer)
             return -1;
         soundElem->flags = 0x200401;
-        soundElem->sndSndBufElem = buffer;
+        soundElem->sndSndBufElem = SND_ref_FromBuffer(buffer);
     }
     return soundIdx;
 }
@@ -1629,7 +1630,7 @@ static int SND_l_StreamLoadSound(int soundKey)
     sound->blockAlign = wavHdr.wfex.nBlockAlign;
     sound->extraDataSize = wavHdr.wfex.cbSize;
     streamIdx = SND_i_StreamAlloc();
-    sound->sndSndBufElem = (tSndSoundBufferElem*)streamIdx; // TODO FIXME ez jó típus itt??, sztem jó mert az összes stream snd fv castolt intekkel operál
+    sound->sndSndBufElem = SND_ref_FromIndex(streamIdx);
     sound->fullsoundLen = wavHdr.fullSoundSize;
     if (streamIdx <= 0)
         result = -1;
@@ -2494,12 +2495,14 @@ void SND_TrackRegisterAndPlayInstance(int idx, int flags, int from, int to)
                     previous = &SND_gst_Params.soundInstances[previousIdx];
                     previous->flags = SND_gst_Params.soundInstances[previousIdx].flags & ~0x808010u;
                     previous->soundIntf = SND_gax_TrackPlayingList[trackIdx].soundIntf;
-                    BAS_bdelete((unsigned int)previous->soundBufElemFromModel, &SND_gst_TrackLookUpTable);
+                    BAS_bdelete(SND_ul_RefBits(previous->soundBufElemFromModel),
+                                &SND_gst_TrackLookUpTable);
                 }
                 SND_gax_TrackPlayingList[trackIdx].trackID = idx;
                 SND_gax_TrackPlayingList[trackIdx].soundIntf = sndInst->soundIntf;
                 SND_gax_TrackPlayingList[trackIdx].flags |= 2u;
-                BAS_binsert((unsigned int)sndInst->soundBufElemFromModel, trackIdx, &SND_gst_TrackLookUpTable);
+                BAS_binsert(SND_ul_RefBits(sndInst->soundBufElemFromModel),
+                            trackIdx, &SND_gst_TrackLookUpTable);
                 SND_Track_Merge(trackIdx, previous, sndInst, flags, from, to);
                 newFlags = sndInst->flags & ~0x828010u;
                 sndInst->soundIntf = &SND_gpst_Interface.track;
@@ -3291,7 +3294,7 @@ int SND_l_LoadLoadingSoundData(int soundKEy)
             wavHdr.dataStartPos = sound->startDataPos;
             SND_gi_RasterCurrentFileId = 8;
             buffer = SND_gpst_Interface.win.Reload(SND_gst_Params.handles, SND_gst_LSGlobal.soundElemElem, &wavHdr, sound->startDataPos);
-            sound->sndSndBufElem = buffer;
+            sound->sndSndBufElem = SND_ref_FromBuffer(buffer);
             if (!buffer)
                 return -1;
             SND_gst_LSGlobal.soundElemElem = buffer;
@@ -3356,7 +3359,8 @@ void SND_l_AddSModifierLoad(int soundKey)
                                 }
                                 sound = &SND_gst_Params.allocatedSounds[soundIdxSaved];
                             }
-                            sound->sndSndBufElem = (tSndSoundBufferElem*)linked->sndIndexInAllocatedSounds;
+                            sound->sndSndBufElem =
+                                SND_ref_FromIndex(linked->sndIndexInAllocatedSounds);
                             SND_gs_SoundModifiers[i->sndModifierModelIntf->Type].sndModifierModelIntf->PlayApplyOnSound(i, i->linkedSoundData, i->linkedSoundDataSize, sound);
                         }
                     }
@@ -3498,7 +3502,8 @@ int SND_l_Request(struct sGameObjectMain* gao, int soundIdx)
     {
         if (sound->sndSndBufElem != (tSndSoundBufferElem*)-1)
         {
-            modifierInstanceIdx = SND_l_Request(0, (int)sound->sndSndBufElem);
+            modifierInstanceIdx =
+                SND_l_Request(0, SND_i_IndexFromRef(sound->sndSndBufElem));
             if (modifierInstanceIdx != -1)
             {
                 modifierInst = &SND_gst_Params.soundInstances[modifierInstanceIdx];
@@ -3929,7 +3934,7 @@ void SND_TrackDestroy(unsigned int trackKey)
                     {
                         if (trackList[trackIdxAlias].trackID == instIdx)
                         {
-                            buffer = (unsigned int)inst->soundBufElemFromModel;
+                            buffer = SND_ul_RefBits(inst->soundBufElemFromModel);
                             inst->soundIntf = trackList[trackIdxAlias].soundIntf;
                             BAS_bdelete(buffer, &SND_gst_TrackLookUpTable);
                         }

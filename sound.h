@@ -12,6 +12,7 @@
 #include "basic_array.h"
 #include "math.h"
 #include "gameobject.h"
+#include "handle.h"
 
 /* Named below in a parameter list and nowhere else, so without this
    each prototype would declare a type of its own, scoped to itself:
@@ -332,6 +333,7 @@ typedef struct sSoundInstanceElem
     Vec3* sndPositionSetInSetPosPtr;
     Vec3 sndInstPosVec;
     Vec3 sndInstPosVecPrevious;
+    /* The same slot as the sound's own: see tSndRef above. */
     struct sSndSoundBufferElem* soundBufElemFromModel;
     float requestTimeStamp;
     struct sGameObjectMain* gao;
@@ -353,13 +355,108 @@ typedef struct sLSGlobalStruct
     int isSoundStillUsedElsewhere;
 } tLSGlobalStruct;
 
+
+/* What a sound's buffer slot holds, and how to read it.
+ *
+ * sndSndBufElem and the instance's soundBufElemFromModel are the same
+ * slot, and it does not hold one kind of thing. Which kind depends on
+ * which of the three interfaces below the sound is using:
+ *
+ *   the plain one   a sound buffer the platform layer made
+ *   the stream one  a one-based index into the stream list
+ *   the track one   whichever of those the track was built from, used
+ *                   as a key into the track lookup table
+ *
+ * and nought or -1 for no sound at all. The slot is read back as a
+ * 32-bit key in that lookup table, so a buffer goes in it as a handle
+ * rather than as its address, and an index goes in tagged -- so the two
+ * can be told apart by whoever reads the slot without already knowing
+ * which it was given.
+ *
+ * The slot keeps its pointer declaration because the frozen copies in
+ * tests/ share these structs and have to agree with the rewrite about
+ * their layout. Nothing dereferences it.
+ */
+typedef struct sSndSoundBufferElem* tSndRef;
+
+/* Whether the slot is encoded at all.
+ *
+ * It follows the translation layer, and has to: a build where a handle
+ * is the address it stands for is a build where the slot holds raw
+ * values, and tagging an index there would encode half of the slot and
+ * not the other half. The frozen copies in tests/ know nothing about
+ * either, so they are built that way and the rewrite agrees with them
+ * about every slot. */
+#ifndef SND_REF_TAGS
+#define SND_REF_TAGS HDL_TRANSLATES
+#endif
+
+/* A buffer the platform layer made, as a slot value. */
+static __inline tSndRef SND_ref_FromBuffer(void* buffer)
+{
+    return (tSndRef)(uintptr_t)HDL_ul_Handle(buffer);
+}
+
+/* A one-based index into a list, as a slot value: tagged, so it is not
+   mistaken for a reference. Nought stays nought, because that is no
+   sound rather than index nought. */
+static __inline tSndRef SND_ref_FromIndex(int index)
+{
+#if SND_REF_TAGS
+    if (!index)
+        return (tSndRef)0;
+    return (tSndRef)(uintptr_t)(((uint32_t)index << HDL_TAG_BITS)
+                                | HDL_TAG_INDEX);
+#else
+    return (tSndRef)(uintptr_t)(uint32_t)index;
+#endif
+}
+
+static __inline uint32_t SND_ul_RefBits(tSndRef ref)
+{
+    return (uint32_t)(uintptr_t)ref;
+}
+
+static __inline BOOL SND_b_RefIsIndex(tSndRef ref)
+{
+#if SND_REF_TAGS
+    return (SND_ul_RefBits(ref) & HDL_TAG_MASK) == HDL_TAG_INDEX;
+#else
+    (void)ref;
+    return 0;        /* nothing is tagged, so nothing can be told apart */
+#endif
+}
+
+/* The index a slot holds, or the value itself where that is no sound. */
+static __inline int SND_i_IndexFromRef(tSndRef ref)
+{
+    uint32_t bits = SND_ul_RefBits(ref);
+
+#if SND_REF_TAGS
+    if (!bits || bits == HDL_NOT_FOUND)
+        return (int)bits;
+    return (int)(bits >> HDL_TAG_BITS);
+#else
+    return (int)bits;
+#endif
+}
+
+/* The buffer a slot refers to. A slot holding an index or one of the
+   reserved values comes back as the value it holds, which is what the
+   translation layer does with anything it did not issue. */
+static __inline struct sSndSoundBufferElem* SND_p_BufferFromRef(tSndRef ref)
+{
+    return (struct sSndSoundBufferElem*)HDL_p_Pointer(SND_ul_RefBits(ref));
+}
+
 typedef struct sSndSoundElem
 {
     int soundKey;
     unsigned int flags;
     int muteFacorFlags;
     int usageCnt;
-    struct sSndSoundBufferElem* sndSndBufElem; // // TODO FIXME ez jó típus itt?? (@SND_l_AddStreamLoad_inner_sub_496680, @SND_l_Request)
+    /* A slot, not a pointer: see tSndRef above. */
+    struct sSndSoundBufferElem* sndSndBufElem;
     int freq;
     int16_t numChannels;
     int16_t bitsPerSample;

@@ -26,7 +26,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -no-pie -fno-pie -DHDL_TRANSLATES=0 -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -108,7 +108,7 @@ $CC $CFLAGS -c basic_array.c        -o "$OUT/snd.bas.o"
 $CC $CFLAGS -c tests/sound_mocks.c  -o "$OUT/snd.mocks.o"
 $CC $CFLAGS -c tests/test_sound.c   -o "$OUT/snd.drv.o"
 
-$CC "$OUT/snd.new.o" "$OUT/snd.base.o" "$OUT/snd.side.new.o" "$OUT/snd.side.base.o" \
+$CC -no-pie "$OUT/snd.new.o" "$OUT/snd.base.o" "$OUT/snd.side.new.o" "$OUT/snd.side.base.o" \
     "$OUT/snd.math.o" "$OUT/snd.bas.o" "$OUT/snd.mocks.o" "$OUT/snd.drv.o" \
     -o "$OUT/sound" "$OUT/sound.handle.o" -lm
 
