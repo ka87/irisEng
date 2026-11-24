@@ -1441,9 +1441,9 @@ void ANI_ResolveRefs(struct sGameObjectMain* gao)
 
     actor = ANI_l_Actor(gao);
     ANI_pst_Load(
-        (int)actor->animPtr[0], // ezek még csak key-ek azért castolunk int-re
-        (int)actor->shape,
-        (int)actor->group,
+        LOA_i_KeyFromRef(actor->animPtr[0]),
+        LOA_i_KeyFromRef(actor->shape),
+        LOA_i_KeyFromRef(actor->group),
         gao, WOR_gpst_CurrentWorld);
 }
 

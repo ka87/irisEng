@@ -2555,12 +2555,16 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
         if ((fileFlags & 2) != 0)
         {
             actor = (tGameObjectActorObject*)gameObject->basic->actorObjectOrVisualObject;
+            /* Three keys parked in the actor's own pointer fields.
+               ANI_ResolveRefs reads them back out and resolves all
+               three together, so they travel in the fields rather
+               than in a local. */
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            actor->animPtr[0] = (tAnim*)Str1;
+            actor->animPtr[0] = (tAnim*)LOA_ref_FromKey(Str1);
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            actor->shape = (tShape*)Str1;
+            actor->shape = (tShape*)LOA_ref_FromKey(Str1);
             Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-            actor->group = (tGroup*)Str1;
+            actor->group = (tGroup*)LOA_ref_FromKey(Str1);
             key = LOA_ReadLong(&currRdrPtr, 0, 1);
             Str1 = key;
             if (key != -1)
@@ -2585,9 +2589,10 @@ struct sGameObjectMain* OBJ_ul_GameObjectCallback(uint32_t Offset)
                     {
                         ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].mtxPtr = NULL;
                         Str1 = LOA_ReadLong(&currRdrPtr, 0, 1);
-                        ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao = (tGameObjectMain*)Str1; // ez csak a key egyelore
+                        /* A key until the resolve pass fills it in. */
+                        ((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao = (tGameObjectMain*)LOA_ref_FromKey(Str1);
                         linkSlot = &(((tMultiPartGameObjectLinks*)(gameObject->basic->multiPartData->multipartGaoObjectPartsOrMatrices))[elemIdx].gao);
-                        if (*linkSlot == (tGameObjectMain*)-1)
+                        if (Str1 == -1)
                             *linkSlot = 0;
                         else
                             LOA_MakeFileRef(Str1, linkSlot, (void* (*)(uint32_t))OBJ_ul_GameObjectCallback, 1);

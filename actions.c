@@ -399,6 +399,7 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
     tTransitionElem* transitionElem;
     char* readPtr;
     uint8_t elemNum;
+    int eventKey;
     int shapeKey;
     int i;
     int k;
@@ -419,9 +420,13 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
 
         for (i = 0; i < elemNum; i++)
         {
-            actionElems[i].eventLists = (tGameObjectEventsList*)LOA_ReadLong(&readPtr, 0, 1);
-            actionElems[i].transition = (BASStruct*)LOA_ReadLong(&readPtr, 0, 1);
-            actionElems[i].shape = (tShape*)LOA_ReadLong(&readPtr, 0, 1);
+            /* Keys, until the second loop below resolves them. */
+            actionElems[i].eventLists = (tGameObjectEventsList*)
+                LOA_ref_FromKey(LOA_ReadLong(&readPtr, 0, 1));
+            actionElems[i].transition = (BASStruct*)
+                LOA_ref_FromKey(LOA_ReadLong(&readPtr, 0, 1));
+            actionElems[i].shape = (tShape*)
+                LOA_ref_FromKey(LOA_ReadLong(&readPtr, 0, 1));
             actionElems[i].changeActionCallAmountToChange = LOA_ReadChar(&readPtr, 0, 1);
             actionElems[i].b2 = LOA_ReadChar(&readPtr, 0, 1);
             actionElems[i].actionFrequency = LOA_ReadChar(&readPtr, 0, 1);
@@ -448,11 +453,16 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
 
     for (i = 0; i < elemNum; i++)
     {
-        if (actionElems[i].eventLists != (tGameObjectEventsList*)-1)
-            LOA_MakeFileRef((int)actionElems[i].eventLists, &actionElems[i].eventLists,
+        /* The guard is on the key the field is holding. It used to
+           compare the field against a pointer of every bit set, which
+           only matched because the cast that put the key there sign
+           extended it; the key itself is what it was testing. */
+        eventKey = LOA_i_KeyFromRef(actionElems[i].eventLists);
+        if (eventKey != -1)
+            LOA_MakeFileRef(eventKey, &actionElems[i].eventLists,
                 (void* (*)(uint32_t))EVE_ul_CallbackLoadListTracks, 1);
 
-        shapeKey = (int)actionElems[i].shape;
+        shapeKey = LOA_i_KeyFromRef(actionElems[i].shape);
         if (shapeKey == -1)
             actionElems[i].shape = 0;
         else
