@@ -21,6 +21,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/collision_b.handle.o"
+
 # Every function and initialised global collision.c defines, taken from
 # the object file so the list cannot drift: nm, types T (text) and D
 # (initialised data).
@@ -42,6 +47,6 @@ $CC $CFLAGS -c math.c -o "$OUT/collision_b.math.o"
 $CC $CFLAGS -c tests/collision_b_mocks.c -o "$OUT/collision_b.mocks.o"
 $CC $CFLAGS -c tests/test_collision_b.c -o "$OUT/collision_b.drv.o"
 $CC "$OUT/collision_b.new.o" "$OUT/collision_b.base.o" "$OUT/collision_b.math.o" \
-    "$OUT/collision_b.mocks.o" "$OUT/collision_b.drv.o" -o "$OUT/collision_b" -lm
+    "$OUT/collision_b.mocks.o" "$OUT/collision_b.drv.o" -o "$OUT/collision_b" "$OUT/collision_b.handle.o" -lm
 
 "$OUT/collision_b"

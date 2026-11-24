@@ -33,7 +33,7 @@ void CAM_Free(struct sGroGeneric* gro)
 {
     if (gro && gro->intf->id == 6 && gro->usageCount <= 0)
     {
-        LOA_DeleteAddress((int)gro);
+        LOA_DeleteAddress(HDL_ul_Handle(gro));
         MEM_Free(gro);
     }
 }

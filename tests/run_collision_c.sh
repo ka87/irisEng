@@ -15,6 +15,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/collision_c.handle.o"
+
 # Every function and file-scope object collision.c defines. The engine
 # globals it only declares stay unprefixed, so the two copies share
 # them exactly as they do in the engine.
@@ -83,6 +88,6 @@ $CC $CFLAGS -c tests/math_mocks.c -o "$OUT/collision_c.mathmocks.o"
 $CC $CFLAGS -c tests/test_collision_c.c -o "$OUT/collision_c.drv.o"
 $CC "$OUT/collision_c.new.o" "$OUT/collision_c.base.o" "$OUT/collision_c.math.o" \
     "$OUT/collision_c.mocks.o" "$OUT/collision_c.mathmocks.o" "$OUT/collision_c.drv.o" \
-    -o "$OUT/collision_c" -lm
+    -o "$OUT/collision_c" "$OUT/collision_c.handle.o" -lm
 
 "$OUT/collision_c"

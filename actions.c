@@ -28,7 +28,7 @@ void ACT_FreeAction(tAction** act)
             if (!actionElems[i].shape->usageCount)
             {
                 MEM_Free(actionElems[i].shape);
-                LOA_DeleteAddress((int)actionElems[i].shape);
+                LOA_DeleteAddress(HDL_ul_Handle(actionElems[i].shape));
                 actionElems[i].shape = NULL;
             }
         }
@@ -50,7 +50,7 @@ void ACT_FreeAction(tAction** act)
             }
         }
         MEM_Free(*act);
-        LOA_DeleteAddress((int)*act);
+        LOA_DeleteAddress(HDL_ul_Handle(*act));
         *act = 0;
     }
 }
@@ -99,7 +99,7 @@ void ACT_FreeActionKit(tActionKit** ak)
         if (!--(*ak)->usageCount)
         {
             MEM_Free(*ak);
-            LOA_DeleteAddress((int)*ak);
+            LOA_DeleteAddress(HDL_ul_Handle(*ak));
             *ak = 0;
         }
     }

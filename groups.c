@@ -52,7 +52,7 @@ void GRP_ObjDetachGroup(tGameObjectMain* gao)
                     }
                 }
             }
-            LOA_DeleteAddress((int)gao->extended->grp);
+            LOA_DeleteAddress(HDL_ul_Handle(gao->extended->grp));
             OBJ_FreeGroup(gao->extended->grp);
         }
         gao->extended->grp = NULL;

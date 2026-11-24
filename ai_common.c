@@ -648,7 +648,7 @@ void AI_FreeVarDes(tAIVars* aiVars)
 {
     if (aiVars)
     {
-        LOA_DeleteAddress((int)aiVars);
+        LOA_DeleteAddress(HDL_ul_Handle(aiVars));
         if (aiVars->varData)
             MEM_Free(aiVars->varData);
         if (aiVars->variables)
@@ -936,9 +936,9 @@ void AI_FreeModel(tAIModel* aiModel)
     unsigned int i;
 
     for (i = 0; i < aiModel->funcNum; i++)
-        LOA_DeleteAddress((int)aiModel->funcs[i]);
+        LOA_DeleteAddress(HDL_ul_Handle(aiModel->funcs[i]));
 
-    LOA_DeleteAddress((int)aiModel);
+    LOA_DeleteAddress(HDL_ul_Handle(aiModel));
     AI_FreeVarDes(aiModel->vars);
 
     for (i = 0; i < aiModel->funcNum; i++)
@@ -967,7 +967,7 @@ void AI_FreeInstance(tAI* ai)
     {
         if (!--ai->model->instanceCnt)
             AI_FreeModel(ai->model);
-        LOA_DeleteAddress((int)ai);
+        LOA_DeleteAddress(HDL_ul_Handle(ai));
         if (ai->instanceAICBList)
             MEM_Free(ai->instanceAICBList);
         if (ai->varsInstance)
@@ -1063,7 +1063,7 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
     char* sideData = NULL;
     int sideSize = 0, sideSpeedMode = 0;
 
-    aiFunc = (tAIFunction*)LOA_ul_SearchAddress(offset);
+    aiFunc = (tAIFunction*)LOA_p_FromStored(LOA_ul_SearchAddress(offset));
     if (aiFunc == (tAIFunction*)-1)
     {
         newAiFunc = (tAIFunction*)MEM_p_Alloc(sizeof(tAIFunction));

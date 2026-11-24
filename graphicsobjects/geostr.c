@@ -67,7 +67,7 @@ void STR_Free(struct sGroGeneric* gro)
         MEM_Free(str->letters);
     if (str->stringNum)
         MEM_Free(str->stringData);
-    LOA_DeleteAddress((int)str);
+    LOA_DeleteAddress(HDL_ul_Handle(str));
     MEM_Free(str);
 }
 

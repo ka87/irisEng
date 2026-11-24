@@ -396,7 +396,7 @@ void SND_FreeSndBank(struct sSndBank** bankPtr)
             }
             SND_MetaBankUserRemove(*bankPtr);
             if (indices)
-                LOA_DeleteAddress((int)*bankPtr);
+                LOA_DeleteAddress(HDL_ul_Handle(*bankPtr));
             MEM_Free(*bankPtr);
             *bankPtr = 0;
         }

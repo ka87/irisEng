@@ -52,7 +52,7 @@ void GRO_UnknownDestroy(tGroGeneric* gro)
 {
     if (gro->usageCount <= 0)
     {
-        LOA_DeleteAddress((int)gro);
+        LOA_DeleteAddress(HDL_ul_Handle(gro));
         MEM_Free(gro);
     }
 }

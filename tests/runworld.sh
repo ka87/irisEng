@@ -23,6 +23,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/world.handle.o"
+
 world_syms="WOR_ActivateObjectIfFlagsAllow WOR_World_DetachObject WOR_ResetKillGO \
 WOR_DelObj WOR_AddDelObj WOR_MakeObjectVisibleIfFlagsAllow WOR_World_ActivateObjects \
 WOR_World_AddLoadedObject WOR_pst_World_Create EOT_SetOfEOT_Init WOR_World_Init \
@@ -59,6 +64,6 @@ $CC $CFLAGS -c tables.c -o "$OUT/world.tables.o"
 $CC $CFLAGS -c tests/world_mocks.c -o "$OUT/world.mocks.o"
 $CC $CFLAGS -c tests/test_world.c -o "$OUT/world.drv.o"
 $CC "$OUT/world.new.o" "$OUT/world.base.o" "$OUT/world.tables.o" \
-    "$OUT/world.mocks.o" "$OUT/world.drv.o" -o "$OUT/world" -lm
+    "$OUT/world.mocks.o" "$OUT/world.drv.o" -o "$OUT/world" "$OUT/world.handle.o" -lm
 
 "$OUT/world"

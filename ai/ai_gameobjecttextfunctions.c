@@ -19,7 +19,7 @@ char* AI_EvalFunc_TEXTToString_C(struct sTextGet* textRef)
         return "";
 
     pos = BIG_ul_SearchKeyToPos(textRef->key);
-    group = (tTextGroupStruct*)LOA_ul_SearchAddress(pos);
+    group = (tTextGroupStruct*)LOA_p_FromStored(LOA_ul_SearchAddress(pos));
     if (group == (tTextGroupStruct*)-1)
         return "";
     if (textRef->idx < group->num)
@@ -880,7 +880,7 @@ void AI_EvalFunc_OBJ_Text2Text_C(struct sGameObjectMain* gao, int strIdx, int fi
         return;
 
     pos = BIG_ul_SearchKeyToPos(textRef->key);
-    group = (tTextGroupStruct*)LOA_ul_SearchAddress(pos);
+    group = (tTextGroupStruct*)LOA_p_FromStored(LOA_ul_SearchAddress(pos));
     STR_ToString(gao, strIdx, firstChar, charNum, &group->texts[group->ids[textRef->idx]]);
 }
 

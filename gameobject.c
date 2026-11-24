@@ -1507,7 +1507,7 @@ void OBJ_FreeGroupGrl(tableDescStruct* table)
     if (table)
     {
         TAB_PFtable_Close(table);
-        LOA_DeleteAddress((int)table);
+        LOA_DeleteAddress(HDL_ul_Handle(table));
         MEM_Free(table);
     }
 }
@@ -1516,7 +1516,7 @@ void OBJ_FreeGroup(tGroup* grp)
 {
     OBJ_FreeGroupGrl(grp->tablePF);
     MEM_Free(grp);
-    LOA_DeleteAddress((int)grp);
+    LOA_DeleteAddress(HDL_ul_Handle(grp));
 }
 
 void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
@@ -1614,7 +1614,7 @@ void OBJ_GameObject_Remove(tGameObjectMain* gao, BOOL refCountDown)
         MEM_Free(gao->extended);
     }
     MEM_Free(gao->boundingVolume);
-    LOA_DeleteAddress((int)gao);
+    LOA_DeleteAddress(HDL_ul_Handle(gao));
     MEM_Free(gao);
 }
 

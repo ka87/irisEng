@@ -223,7 +223,7 @@ void ANI_Free(tGameObjectActorObject* gaoao)
         if (!gaoao->shape2->usageCount)
         {
             MEM_Free(gaoao->shape2);
-            LOA_DeleteAddress((int)gaoao->shape2);
+            LOA_DeleteAddress(HDL_ul_Handle(gaoao->shape2));
             gaoao->shape2 = NULL;
         }
     }
@@ -1958,7 +1958,7 @@ void ANI_DestroyShape(tShape** shape)
     if (!--(*shape)->usageCount)
     {
         MEM_Free(*shape);
-        LOA_DeleteAddress((int)*shape);
+        LOA_DeleteAddress(HDL_ul_Handle(*shape));
         *shape = NULL;
     }
 }

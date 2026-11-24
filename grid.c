@@ -1288,7 +1288,7 @@ void GRI_Destroy(tWorldGridStruct* grid)
     }
     if (grid->compressedGrid)
     {
-        LOA_DeleteAddress((int)grid->compressedGrid);
+        LOA_DeleteAddress(HDL_ul_Handle(grid->compressedGrid));
         MEM_Free(grid->compressedGrid);
     }
     if (grid->ptrInts)
@@ -1299,7 +1299,7 @@ void GRI_Destroy(tWorldGridStruct* grid)
         MEM_Free(grid->capasPtr);
     if (grid->ptrs)
         MEM_Free(grid->ptrs);
-    LOA_DeleteAddress((int)grid);
+    LOA_DeleteAddress(HDL_ul_Handle(grid));
     MEM_Free(grid);
 }
 

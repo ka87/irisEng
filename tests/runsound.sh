@@ -30,6 +30,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/sound.handle.o"
+
 # Every symbol sound.c defines -- functions and file-scope objects -- plus
 # the globals sound.h and gensoundmodifier.h give it tentative definitions
 # for. Extracted rather than listed so a new one cannot be forgotten.
@@ -101,6 +106,6 @@ $CC $CFLAGS -c tests/test_sound.c   -o "$OUT/snd.drv.o"
 
 $CC "$OUT/snd.new.o" "$OUT/snd.base.o" "$OUT/snd.side.new.o" "$OUT/snd.side.base.o" \
     "$OUT/snd.math.o" "$OUT/snd.bas.o" "$OUT/snd.mocks.o" "$OUT/snd.drv.o" \
-    -o "$OUT/sound" -lm
+    -o "$OUT/sound" "$OUT/sound.handle.o" -lm
 
 "$OUT/sound"

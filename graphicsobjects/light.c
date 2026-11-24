@@ -47,7 +47,7 @@ void LIGHT_Free(tGroGeneric* gro)
 {
     if (gro && gro->intf->id == 2 && gro->usageCount <= 0)
     {
-        LOA_DeleteAddress((int)gro);
+        LOA_DeleteAddress(HDL_ul_Handle(gro));
         MEM_Free(gro);
     }
 }

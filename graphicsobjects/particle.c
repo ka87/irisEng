@@ -49,7 +49,7 @@ void PAG_Free(struct sGroGeneric* gro)
 
     if (pag->triangleNum)
         MEM_Free(pag->pagElems);
-    LOA_DeleteAddress((int)gro);
+    LOA_DeleteAddress(HDL_ul_Handle(gro));
     MEM_Free(gro);
 }
 
