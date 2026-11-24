@@ -1332,7 +1332,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
         WOR_World_Destroy(loaded);
         LOA_DeleteAddress(HDL_ul_Handle(target));
         pos = BIG_ul_SearchKeyToPos(worldKey);
-        LOA_AddPosAddress(pos, (unsigned int)target);
+        LOA_AddPosAddress(pos, HDL_ul_Handle(target));
     }
     return target;
 }
