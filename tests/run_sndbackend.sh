@@ -22,11 +22,23 @@
 # search, the doppler shift is math.c's vector helpers and the round
 # constant, and the ADPCM decode is adpcm.c's.
 #
-# -no-pie is load-bearing. sndbackend.c casts a tSndSoundBufferElem* to int
-# and back at seven sites (BAS_binsert, BAS_bsearch, BAS_bdeletegetval and
-# the stream handle API), which is lossless on the 32-bit target. Linked
-# -no-pie the mock arena sits below 4GB, so it is lossless here too;
-# test_sndbackend.c checks that and refuses to run otherwise.
+# -no-pie is load-bearing. sndbackend.c puts a tSndSoundBufferElem* or a
+# voice into a four-byte slot and takes it back out again, which is
+# lossless on the 32-bit target. Linked -no-pie the mock arena sits below
+# 4GB, so it is lossless here too; test_sndbackend.c checks that and
+# refuses to run otherwise.
+#
+# HDL_TRANSLATES=0 for the same reason. The sound-buffer list and the two
+# raster lists hold handles now, and the frozen copy holds truncated
+# addresses, so the two would disagree at every one of those keys by
+# construction -- 24 differences on top of the 84 this test declares as
+# deliberate, measured. Forcing the identity form of the translation
+# layer makes the new copy store what the frozen one does, which under
+# -no-pie is lossless, so the comparison and its declared counts stay
+# exactly as they were.
+#
+# What that gives up is the translating path through those ten sites.
+# tests/test_sndrefs.c, run below, is that path.
 
 set -e
 cd "$(dirname "$0")/.."
@@ -37,7 +49,10 @@ CC=${CC:-gcc}
 # pointers the game build gets. Every translation unit here needs it,
 # or the two would disagree about the layout of a struct they hand to
 # each other.
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN"
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN -DHDL_TRANSLATES=0"
+# The translating build: nothing forced, so the layer is whatever this
+# host's pointer width asks for.
+CFLAGS_T="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -158,11 +173,33 @@ $CC $CFLAGS -c tests/sndbackend_side.c     -o "$OUT/wsnd.side.base.o" $base_defs
 $CC $CFLAGS -c math.c                    -o "$OUT/wsnd.math.o"
 $CC $CFLAGS -c basic_array.c             -o "$OUT/wsnd.bas.o"
 $CC $CFLAGS -c platform/adpcm.c               -o "$OUT/wsnd.adpcm.o"
+$CC $CFLAGS -c handle.c                  -o "$OUT/wsnd.handle.o"
 $CC $CFLAGS -c tests/sndbackend_mocks.c    -o "$OUT/wsnd.mocks.o"
 $CC $CFLAGS -c tests/test_sndbackend.c     -o "$OUT/wsnd.drv.o"
 
 $CC -no-pie "$OUT/wsnd.new.o" "$OUT/wsnd.base.o" "$OUT/wsnd.side.new.o" "$OUT/wsnd.side.base.o" \
     "$OUT/wsnd.math.o" "$OUT/wsnd.bas.o" "$OUT/wsnd.adpcm.o" "$OUT/wsnd.mocks.o" "$OUT/wsnd.drv.o" \
-    -o "$OUT/sndbackend" -lm
+    "$OUT/wsnd.handle.o" -o "$OUT/sndbackend" -lm
 
 "$OUT/sndbackend" "$@"
+
+# And the three lists with the translation layer really on, which is
+# what the differential above gives up to keep its byte comparison and
+# its declared counts. One copy of sndbackend.c, its own names, no
+# -no-pie: a handle here is a number that is nothing like the address it
+# stands for, and the first check in the driver is that it is.
+$CC $CFLAGS_T -c platform/sndbackend.c     -o "$OUT/sndref.snd.o"
+$CC $CFLAGS_T -DSIDE_RUN=wsnd_side_run -DSIDE_CASES=wsnd_side_cases \
+    -DSIDE_RUN_GUARDS=wsnd_side_guards -DWSND_SIDE_NEW=1 \
+    -c tests/sndbackend_side.c   -o "$OUT/sndref.side.o"
+$CC $CFLAGS_T -c math.c                    -o "$OUT/sndref.math.o"
+$CC $CFLAGS_T -c basic_array.c             -o "$OUT/sndref.bas.o"
+$CC $CFLAGS_T -c platform/adpcm.c          -o "$OUT/sndref.adpcm.o"
+$CC $CFLAGS_T -c tests/sndbackend_mocks.c  -o "$OUT/sndref.mocks.o"
+$CC $CFLAGS_T -c handle.c                  -o "$OUT/sndref.handle.o"
+$CC $CFLAGS_T -c tests/test_sndrefs.c      -o "$OUT/sndref.drv.o"
+$CC "$OUT/sndref.snd.o" "$OUT/sndref.side.o" "$OUT/sndref.math.o" \
+    "$OUT/sndref.bas.o" "$OUT/sndref.adpcm.o" "$OUT/sndref.mocks.o" \
+    "$OUT/sndref.drv.o" "$OUT/sndref.handle.o" -o "$OUT/sndrefs" -lm
+
+"$OUT/sndrefs"

@@ -10,6 +10,7 @@
 #include "../dbg.h"
 #include "../platform.h"
 #include "sndbackend.h"
+#include "../handle.h"
 #include "../sndplatform.h"
 
 /* Tracing the sound thread. Off, and one line to turn on: it prints
@@ -736,7 +737,11 @@ int pcSND_i_ChangeRenderMode(int mode)
     SND_gst_Params.soundRenderMode = mode;
     for (i = 0; i < dsndSBList.actElemNum; ++i)
     {
-        sbe = (tSndSoundBufferElem*)dsndSBList.keyValPtr[i].key;
+        /* The key is four bytes, so it is a handle. Resolving it
+           first keeps the guard below comparing the same thing it
+           always did: the element's own address, which the layer
+           gives back whatever that is. */
+        sbe = (tSndSoundBufferElem*)HDL_p_Pointer((uint32_t)dsndSBList.keyValPtr[i].key);
         if (sbe != (tSndSoundBufferElem*)-1)
         {
             (vol = SPL_i_VoiceAttenuation(sbe->voice));
@@ -870,7 +875,7 @@ void pcSND_SB_Stop(tSndSoundBufferElem* sbe)
 
     if (sbe)
     {
-        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        BAS_bdeletegetval((int)HDL_ul_Handle(sbe), &dsndSBList, &wasListed);
         if (sbe->miscData)
         {
             if (wasListed)
@@ -930,7 +935,7 @@ int pcSND_SB_Play(tSndSoundBufferElem* sbe, int flags)
        hardware voice. Every voice is mixed in software now, so there is
        one answer and the other message is gone. */
     OutputDebugStringA("HARDWARE voice\n");
-    BAS_binsert((unsigned int)sbe, (int)sbe, &dsndSBList);
+    BAS_binsert(HDL_ul_Handle(sbe), (int)HDL_ul_Handle(sbe), &dsndSBList);
     return 0;
 }
 
@@ -945,8 +950,8 @@ void pcSND_AddToSNDRaster(struct sSplVoice* buffer, int bytes)
 
     if (SND_gst_Params.soundEnabled)
     {
-        BAS_binsert((unsigned int)buffer, bytes, &rasterbas1);
-        BAS_binsert((unsigned int)buffer, SND_gi_RasterCurrentFileId, &rasterbas2);
+        BAS_binsert(HDL_ul_Handle(buffer), bytes, &rasterbas1);
+        BAS_binsert(HDL_ul_Handle(buffer), SND_gi_RasterCurrentFileId, &rasterbas2);
         fileId = SND_gi_RasterCurrentFileId;
         if (fileId == 0x2000 || fileId == 0x4000 || fileId == 0x80000)
             sndRasterStat.trackBytes += bytes;
@@ -1303,8 +1308,8 @@ void pcSND_SNDRasterRelease(struct sSplVoice* buffer)
 
     if (SND_gst_Params.soundEnabled)
     {
-        BAS_bdeletegetval((int)buffer, &rasterbas2, &fileId);
-        BAS_bdeletegetval((int)buffer, &rasterbas1, &bytes);
+        BAS_bdeletegetval((int)HDL_ul_Handle(buffer), &rasterbas2, &fileId);
+        BAS_bdeletegetval((int)HDL_ul_Handle(buffer), &rasterbas1, &bytes);
         if (fileId != -1 && bytes != -1)
         {
             if (fileId == 0x2000 || fileId == 0x4000 || fileId == 0x80000)
@@ -1353,7 +1358,7 @@ void pcSND_ReleaseSoundBuffer(tSndSoundBufferElem* sbe)
 
     if (sbe)
     {
-        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        BAS_bdeletegetval((int)HDL_ul_Handle(sbe), &dsndSBList, &wasListed);
         if (sbe->miscData)
         {
             if (wasListed)
@@ -1722,7 +1727,7 @@ void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int len, int startPos, 
             gDoSoundGlobal.dword_B303C0 += channels;
             if (streaming > gDoSoundGlobal.dword_B303C4)
                 gDoSoundGlobal.dword_B303C4 = streaming;
-            BAS_binsert((unsigned int)sbe, (int)sbe, &dsndSBList);
+            BAS_binsert(HDL_ul_Handle(sbe), (int)HDL_ul_Handle(sbe), &dsndSBList);
             pcSND_fillSoundBuffer(0, misc, sbe);
             pcSND_SB_SetFrequency(sbe, freq);
             pcSND_UnknownSoundPanAndVolumeSetByUnknown(sbe, pan);
@@ -2924,7 +2929,7 @@ void pcSND_SB_Release(tSndSoundBufferElem* sbe)
 
     if (sbe)
     {
-        BAS_bdeletegetval((int)sbe, &dsndSBList, &wasListed);
+        BAS_bdeletegetval((int)HDL_ul_Handle(sbe), &dsndSBList, &wasListed);
         if (sbe->miscData)
         {
             if (wasListed)

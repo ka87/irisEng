@@ -21,7 +21,11 @@ $CC $CFLAGS -c basic_array.c             -o "$OUT/stride.bas.o"
 $CC $CFLAGS -c math.c                    -o "$OUT/stride.math.o"
 $CC $CFLAGS -c tests/sndbackend_mocks.c  -o "$OUT/stride.mocks.o"
 $CC $CFLAGS -DWSND_SIDE_NEW=1 -c tests/sndbackend_side.c -o "$OUT/stride.side.o"
+# The 32-bit stand-in for an address, which sndbackend.c keeps its three
+# key/value lists in. Nothing here drives those lists; it is linked
+# because the file refers to it.
+$CC $CFLAGS -c handle.c                  -o "$OUT/stride.handle.o"
 $CC -no-pie "$OUT/stride.drv.o" "$OUT/stride.sut.o" "$OUT/stride.adpcm.o" \
     "$OUT/stride.bas.o" "$OUT/stride.math.o" "$OUT/stride.mocks.o" "$OUT/stride.side.o" \
-    -o "$OUT/adpcmstride" -lm
+    "$OUT/stride.handle.o" -o "$OUT/adpcmstride" -lm
 "$OUT/adpcmstride"
