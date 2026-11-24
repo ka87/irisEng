@@ -2609,7 +2609,7 @@ int pcSND_i_FxDisable(tSoundFxParams* params)
 
 int pcSND_Stream_GetStatus(tSndSoundBufferElem* sndBufferElem, int* status)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     *status = 0;
     if (handle > 0)
@@ -2619,7 +2619,7 @@ int pcSND_Stream_GetStatus(tSndSoundBufferElem* sndBufferElem, int* status)
 
 int pcSND_Stream_Play(tSndSoundBufferElem* sndBufferElem, int flags)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0)
         return (handle <= SND_gi_StreamListSize) - 1;
@@ -2632,15 +2632,14 @@ void pcSND_Stream_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSnd
     tSndStreamList* to;
     int newHandle;
 
-    int* destHandle = (int*)dest;
-    int srcHandle = (int)src;
+    int srcHandle = SND_i_IndexFromRef(src);
 
-    *destHandle = 0;
+    *dest = SND_ref_FromIndex(0);
     if (srcHandle > 0 && srcHandle <= SND_gi_StreamListSize)
     {
         from = &SND_gast_StreamList[srcHandle - 1];
         newHandle = SND_i_StreamAlloc();
-        *destHandle = newHandle;
+        *dest = SND_ref_FromIndex(newHandle);
         if (newHandle > 0 && newHandle <= SND_gi_StreamListSize)
         {
             to = &SND_gast_StreamList[newHandle - 1];
@@ -2655,7 +2654,7 @@ void pcSND_Stream_Duplicate(tSndHandles* handles, tSndSoundBufferElem* src, tSnd
 
 void pcSND_Stream_GetFrequency(tSndSoundBufferElem* sndBufferElem, int* freq)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
         *freq = SND_gast_StreamList[handle - 1].freq;
@@ -2664,7 +2663,7 @@ void pcSND_Stream_GetFrequency(tSndSoundBufferElem* sndBufferElem, int* freq)
 void pcSND_Stream_GetPan(tSndSoundBufferElem* sndBufferElem, int* pan, int* front)
 {
     tSndStreamList* stream;
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
@@ -2676,7 +2675,7 @@ void pcSND_Stream_GetPan(tSndSoundBufferElem* sndBufferElem, int* pan, int* fron
 
 void pcSND_Stream_GetCurrPos(tSndSoundBufferElem* sndBufferElem, int* currPos, int* writePos)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
@@ -2687,7 +2686,7 @@ void pcSND_Stream_GetCurrPos(tSndSoundBufferElem* sndBufferElem, int* currPos, i
 
 void pcSND_Stream_SetVolume(tSndSoundBufferElem* sndBufferElem, int att)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
         SND_gast_StreamList[handle - 1].vol = att;
@@ -2697,7 +2696,7 @@ int pcSND_iTrack_GetStatus(tSndSoundBufferElem* key, int* status)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         trackIdx = SND_gpst_Interface.win.GetStatus(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, status);
     return trackIdx;
@@ -2707,7 +2706,7 @@ int pcSND_iTrack_Play(tSndSoundBufferElem* key, int flags)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         trackIdx = SND_gpst_Interface.win.Play(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, flags);
     return trackIdx;
@@ -2717,7 +2716,7 @@ void pcSND_Track_GetFrequency(tSndSoundBufferElem* key, int* freq)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.GetFrequency(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, freq);
 }
@@ -2726,7 +2725,7 @@ void pcSND_Track_GetPan(tSndSoundBufferElem* key, int* pan, int* front)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.GetPan(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pan, front);
 }
@@ -2735,7 +2734,7 @@ void pcSND_Track_GetCurrPos(tSndSoundBufferElem* key, int* currPos, int* writePo
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.GetCurrPos(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, currPos, writePos);
 }
@@ -2747,7 +2746,7 @@ void pcSND_Track_Pause(tSndSoundBufferElem* key)
     int instIdx;
     tSoundInstanceElem* inst;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
     {
         track = &SND_gax_TrackPlayingList[trackIdx];
@@ -2767,7 +2766,7 @@ void pcSND_Track_Release(tSndSoundBufferElem* key)
     int trackIdx;
     tTrackListElem* track;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
     {
         track = &SND_gax_TrackPlayingList[trackIdx];
@@ -2780,7 +2779,7 @@ void pcSND_Track_SetFrequency(tSndSoundBufferElem* key, int freq)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.SetFrequency(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, freq);
 }
@@ -2789,7 +2788,7 @@ void pcSND_Track_SetPan(tSndSoundBufferElem* key, int pan, int front)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.SetPan(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pan, front);
 }
@@ -2798,7 +2797,7 @@ void pcSND_Track_SetCurrPos(tSndSoundBufferElem* key, int pos)
 {
     int trackIdx;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
         SND_gpst_Interface.win.SetCurrPos(SND_gax_TrackPlayingList[trackIdx].sndBufferElem, pos);
 }
@@ -2810,7 +2809,7 @@ void pcSND_Track_SetVolume(tSndSoundBufferElem* key, int att)
     int scaledAtt;
     float vol;
 
-    trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+    trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
     if (trackIdx != -1)
     {
         track = &SND_gax_TrackPlayingList[trackIdx];
@@ -2836,7 +2835,7 @@ void pcSND_Track_Stop(tSndSoundBufferElem* key)
 
     if (key)
     {
-        trackIdx = BAS_bsearch((int)key, &SND_gst_TrackLookUpTable);
+        trackIdx = BAS_bsearch((int)SND_ul_RefBits(key), &SND_gst_TrackLookUpTable);
         if (trackIdx != -1)
         {
             track = &SND_gax_TrackPlayingList[trackIdx];
@@ -2952,7 +2951,7 @@ void pcSND_SB_Release(tSndSoundBufferElem* sbe)
 
 int pcSND_Stream_Release(tSndSoundBufferElem* sndBufferElem)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
@@ -2964,7 +2963,7 @@ int pcSND_Stream_Release(tSndSoundBufferElem* sndBufferElem)
 
 int pcSND_Stream_SetFrequency(tSndSoundBufferElem* sndBufferElem, int freq)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
@@ -2977,7 +2976,7 @@ int pcSND_Stream_SetFrequency(tSndSoundBufferElem* sndBufferElem, int freq)
 void pcSND_Stream_SetPan(tSndSoundBufferElem* sndBufferElem, int pan, int front)
 {
     tSndStreamList* stream;
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
     {
@@ -2989,7 +2988,7 @@ void pcSND_Stream_SetPan(tSndSoundBufferElem* sndBufferElem, int pan, int front)
 
 void pcSND_Stream_SetCurrPos(tSndSoundBufferElem* sndBufferElem, int pos)
 {
-    int handle = (int)sndBufferElem;
+    int handle = SND_i_IndexFromRef(sndBufferElem);
 
     if (handle > 0 && handle <= SND_gi_StreamListSize)
         SND_gast_StreamList[handle - 1].currPos = pos;
@@ -3023,6 +3022,161 @@ void pcSND_Stream_Pause(tSndSoundBufferElem* sndBufferElem) {
 void pcSND_Stream_Stop(tSndSoundBufferElem* sndBufferElem) {
 }
 
+/* The slot the engine hands these, which is not a buffer's address.
+ *
+ * A sound's buffer slot is four bytes wide wherever it is read as a key,
+ * so a buffer goes into it as a handle (see tSndRef in sound.h). The
+ * functions above take a real buffer and are also called from inside
+ * this file with one, so the resolving is done here, in the entries the
+ * interface table actually points at. Where one of them hands a buffer
+ * back, it is turned into a slot value on the way out for the same
+ * reason.
+ *
+ * They are not static so that a test can drive them: an entry that
+ * stopped resolving would behave identically to one that never had to,
+ * for every caller that hands it a raw address, and only a slot built
+ * the way the engine builds one shows the difference.
+ */
+int pcSND_ref_SB_GetStatus(tSndSoundBufferElem* ref, int* status)
+{
+    return pcSND_SB_GetStatus(SND_p_BufferFromRef(ref), status);
+}
+
+int pcSND_ref_SB_Play(tSndSoundBufferElem* ref, int flags)
+{
+    return pcSND_SB_Play(SND_p_BufferFromRef(ref), flags);
+}
+
+tSndSoundBufferElem* pcSND_ref_pst_SB_Create(tSndHandles* handles,
+                                                    tSndWavHdrStruct* sndHdr,
+                                                    int sndStartPos)
+{
+    return SND_ref_FromBuffer(pcSND_pst_SB_Create(handles, sndHdr,
+                                                  sndStartPos));
+}
+
+tSndSoundBufferElem* pcSND_ref_SB_Reload(tSndHandles* handles,
+                                                tSndSoundBufferElem* ref,
+                                                tSndWavHdrStruct* wavHdr,
+                                                int offset)
+{
+    tSndSoundBufferElem* old = SND_p_BufferFromRef(ref);
+    tSndSoundBufferElem* created = pcSND_SB_Reload(handles, old, wavHdr,
+                                                   offset);
+
+    /* The old buffer is gone if a new one took its place, so its handle
+       goes with it. */
+    if (created)
+        HDL_Release(old);
+    return SND_ref_FromBuffer(created);
+}
+
+void pcSND_ref_SB_Duplicate(tSndHandles* handles,
+                                   tSndSoundBufferElem* ref,
+                                   tSndSoundBufferElem** dest)
+{
+    tSndSoundBufferElem* copy = NULL;
+
+    pcSND_SB_Duplicate(handles, SND_p_BufferFromRef(ref), &copy);
+    *dest = SND_ref_FromBuffer(copy);
+}
+
+void pcSND_ref_SB_GetFrequency(tSndSoundBufferElem* ref, int* freq)
+{
+    pcSND_SB_GetFrequency(SND_p_BufferFromRef(ref), freq);
+}
+
+void pcSND_ref_SB_GetPan(tSndSoundBufferElem* ref, int* pan, int* front)
+{
+    pcSND_SB_GetPan(SND_p_BufferFromRef(ref), pan, front);
+}
+
+void pcSND_ref_SB_GetCurrPos(tSndSoundBufferElem* ref, int* currPos,
+                                    int* writePos)
+{
+    pcSND_SB_GetCurrPos(SND_p_BufferFromRef(ref), currPos, writePos);
+}
+
+void pcSND_ref_SB_Pause(tSndSoundBufferElem* ref)
+{
+    pcSND_SB_Pause(SND_p_BufferFromRef(ref));
+}
+
+void pcSND_ref_SB_Release(tSndSoundBufferElem* ref)
+{
+    tSndSoundBufferElem* sbe = SND_p_BufferFromRef(ref);
+
+    pcSND_SB_Release(sbe);
+    HDL_Release(sbe);
+}
+
+void pcSND_ref_SB_SetFrequency(tSndSoundBufferElem* ref, int freq)
+{
+    pcSND_SB_SetFrequency(SND_p_BufferFromRef(ref), freq);
+}
+
+void pcSND_ref_SB_SetPan(tSndSoundBufferElem* ref, int pan, int front)
+{
+    pcSND_SB_SetPan(SND_p_BufferFromRef(ref), pan, front);
+}
+
+void pcSND_ref_SB_SetCurrPos(tSndSoundBufferElem* ref, int pos)
+{
+    pcSND_SB_SetCurrPos(SND_p_BufferFromRef(ref), pos);
+}
+
+void pcSND_ref_SB_SetVolume(tSndSoundBufferElem* ref, int att)
+{
+    pcSND_SB_SetVolume(SND_p_BufferFromRef(ref), att);
+}
+
+void pcSND_ref_SB_Stop(tSndSoundBufferElem* ref)
+{
+    pcSND_SB_Stop(SND_p_BufferFromRef(ref));
+}
+
+void pcSND_ref_StreamReinitAndPlay(tSndSoundBufferElem* ref, int len,
+                                          int startPos, int from, int to,
+                                          char flags, int freq, int pan,
+                                          int att)
+{
+    pcSND_StreamReinitAndPlay(SND_p_BufferFromRef(ref), len, startPos, from,
+                              to, flags, freq, pan, att);
+}
+
+void pcSND_ref_ReleaseTrackSB(tSndSoundBufferElem* oneChannel,
+                                     tSndSoundBufferElem* twoChannel)
+{
+    tSndSoundBufferElem* one = SND_p_BufferFromRef(oneChannel);
+    tSndSoundBufferElem* two = SND_p_BufferFromRef(twoChannel);
+
+    pcSND_ReleaseTrackSB(one, two);
+    HDL_Release(one);
+    HDL_Release(two);
+}
+
+void pcSND_ref_CreateTrackSB(tSndSoundBufferElem** stereo,
+                                    tSndSoundBufferElem** mono)
+{
+    tSndSoundBufferElem* s = NULL;
+    tSndSoundBufferElem* m = NULL;
+
+    pcSND_CreateTrackSB(&s, &m);
+    *stereo = SND_ref_FromBuffer(s);
+    *mono = SND_ref_FromBuffer(m);
+}
+
+void pcSND_ref_StreamGetMonoToStereo(tSndSoundBufferElem** x,
+                                            tSndSoundBufferElem** xx)
+{
+    tSndSoundBufferElem* a = NULL;
+    tSndSoundBufferElem* b = NULL;
+
+    pcSND_StreamGetMonoToStereo(&a, &b);
+    *x = SND_ref_FromBuffer(a);
+    *xx = SND_ref_FromBuffer(b);
+}
+
 int SND_i_SoftInit()
 {
     /* The window has to exist, as it did for DirectSound -- but the
@@ -3034,30 +3188,30 @@ int SND_i_SoftInit()
     SND_gst_Params.soundRenderModeMask |= 3u;
     SND_gpst_Interface.win.ChangeRenderMode = pcSND_i_ChangeRenderMode;
     memcpy(SND_gpst_Interface.win.tag, "win ", 4);
-    SND_gpst_Interface.win.GetStatus = pcSND_SB_GetStatus;
-    SND_gpst_Interface.win.Play = pcSND_SB_Play;
-    SND_gpst_Interface.win.Create = pcSND_pst_SB_Create;
+    SND_gpst_Interface.win.GetStatus = pcSND_ref_SB_GetStatus;
+    SND_gpst_Interface.win.Play = pcSND_ref_SB_Play;
+    SND_gpst_Interface.win.Create = pcSND_ref_pst_SB_Create;
     SND_gpst_Interface.win.Close = pcSND_Close;
     SND_gpst_Interface.win.Init = pcSND_l_Init;
-    SND_gpst_Interface.win.Duplicate = pcSND_SB_Duplicate;
-    SND_gpst_Interface.win.GetFrequency = pcSND_SB_GetFrequency;
-    SND_gpst_Interface.win.GetPan = pcSND_SB_GetPan;
-    SND_gpst_Interface.win.GetCurrPos = pcSND_SB_GetCurrPos;
-    SND_gpst_Interface.win.Pause = pcSND_SB_Pause;
-    SND_gpst_Interface.win.Release = pcSND_SB_Release;
-    SND_gpst_Interface.win.SetFrequency = pcSND_SB_SetFrequency;
-    SND_gpst_Interface.win.SetPan = pcSND_SB_SetPan;
-    SND_gpst_Interface.win.SetCurrPos = pcSND_SB_SetCurrPos;
-    SND_gpst_Interface.win.Setvolume = pcSND_SB_SetVolume;
-    SND_gpst_Interface.win.Stop = pcSND_SB_Stop;
-    SND_gpst_Interface.win.Reload = pcSND_SB_Reload;
+    SND_gpst_Interface.win.Duplicate = pcSND_ref_SB_Duplicate;
+    SND_gpst_Interface.win.GetFrequency = pcSND_ref_SB_GetFrequency;
+    SND_gpst_Interface.win.GetPan = pcSND_ref_SB_GetPan;
+    SND_gpst_Interface.win.GetCurrPos = pcSND_ref_SB_GetCurrPos;
+    SND_gpst_Interface.win.Pause = pcSND_ref_SB_Pause;
+    SND_gpst_Interface.win.Release = pcSND_ref_SB_Release;
+    SND_gpst_Interface.win.SetFrequency = pcSND_ref_SB_SetFrequency;
+    SND_gpst_Interface.win.SetPan = pcSND_ref_SB_SetPan;
+    SND_gpst_Interface.win.SetCurrPos = pcSND_ref_SB_SetCurrPos;
+    SND_gpst_Interface.win.Setvolume = pcSND_ref_SB_SetVolume;
+    SND_gpst_Interface.win.Stop = pcSND_ref_SB_Stop;
+    SND_gpst_Interface.win.Reload = pcSND_ref_SB_Reload;
     SND_gpst_Interface.win.StreamPrefetch = pcSND_StreamPrefetch;
     SND_gpst_Interface.win.StreamPrefetchArray = pcSND_StreamPrefetchArray;
     SND_gpst_Interface.win.StreamFlush = pcSND_StreamFlush;
-    SND_gpst_Interface.win.StreamReinitAndPlay = pcSND_StreamReinitAndPlay;
-    SND_gpst_Interface.win.CreateTrack = pcSND_CreateTrackSB;
-    SND_gpst_Interface.win.ReleaseTrack = pcSND_ReleaseTrackSB;
-    SND_gpst_Interface.win.StreamGetMonoToStereo = pcSND_StreamGetMonoToStereo;
+    SND_gpst_Interface.win.StreamReinitAndPlay = pcSND_ref_StreamReinitAndPlay;
+    SND_gpst_Interface.win.CreateTrack = pcSND_ref_CreateTrackSB;
+    SND_gpst_Interface.win.ReleaseTrack = pcSND_ref_ReleaseTrackSB;
+    SND_gpst_Interface.win.StreamGetMonoToStereo = pcSND_ref_StreamGetMonoToStereo;
     SND_gpst_Interface.win.StreamGetStereoToMono = pcSND_StreamGetStereoToMono;
     SND_gpst_Interface.win.ShutdownStreams = pcSND_ShutDownStreams;
     SND_gpst_Interface.win.nullptr1 = NULL;

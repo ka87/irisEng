@@ -118,6 +118,15 @@ static void theCursor(void)
     tSplVoice* v;
     int chunk;
 
+    /* The device is stopped across all of this, and it is the third
+       real-time assertion in this file to need it: the group is about
+       the feeder's own bookkeeping -- how far it has queued -- and a
+       running device consumes what it queued in its own time, so
+       "nothing has been heard yet" is a race against the audio thread.
+       It passed on its own and failed inside the suite, once in five
+       runs. Stopped, what was queued stays queued. */
+    SDL_PauseAudioDevice(spl_device);
+
     printf("-- the cursor over the buffer\n");
     /* Big enough that one chunk does not reach the end. */
     v = SPL_p_VoiceCreate(1, SPL_RATE, SPL_CHUNK_FRAMES * 2 * 8);

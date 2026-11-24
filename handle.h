@@ -111,6 +111,14 @@ void HDL_CloseModule(void);
 #define HDL_TAG_MASK           ((1u << HDL_TAG_BITS) - 1u)
 #define HDL_TAG_RESOLVED       0u
 #define HDL_TAG_UNRESOLVED_KEY 1u
+/* A slot that does not hold a reference at all: a small index into an
+   array somewhere, which is already narrow enough and wants no handle.
+   It is tagged rather than left bare so that a slot holding one can be
+   told apart from a slot holding a reference, by whoever reads it
+   without knowing which it was given. */
+#define HDL_TAG_INDEX          2u
+_Static_assert(HDL_TAG_INDEX <= HDL_TAG_MASK,
+               "every tag has to fit in the tag bits");
 
 /* The top bit, which has to stay clear because the key/value search
    compares keys as signed integers. */

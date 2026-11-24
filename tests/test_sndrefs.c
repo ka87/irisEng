@@ -45,8 +45,16 @@ void pcSND_AddToSNDRaster(struct sSplVoice* buffer, int bytes);
 void pcSND_SNDRasterRelease(struct sSplVoice* buffer);
 int pcSND_i_ChangeRenderMode(int mode);
 void pcSND_SB_Stop(tSndSoundBufferElem* sbe);
+int pcSND_Stream_GetStatus(tSndSoundBufferElem* sndBufferElem, int* status);
+int pcSND_ref_SB_GetStatus(tSndSoundBufferElem* ref, int* status);
+void pcSND_ref_SB_SetVolume(tSndSoundBufferElem* ref, int att);
+void pcSND_ref_SB_SetFrequency(tSndSoundBufferElem* ref, int freq);
+void pcSND_ref_SB_Stop(tSndSoundBufferElem* ref);
+extern int SND_gi_StreamListSize;
 
 extern int SND_gi_RasterCurrentFileId;
+
+#define SENTINEL 0x5EED
 
 static int failures;
 
@@ -324,6 +332,206 @@ static void check_stop_removes_its_own_entry(void)
     }
 }
 
+/* The slot itself: a buffer, an index, and the two not confused.
+ *
+ * A sound's buffer slot holds a buffer on the plain path, a one-based
+ * index on the stream path, whichever of those a track was built from,
+ * and nought or -1 for no sound. It is read back as a 32-bit key, so a
+ * buffer goes in as a handle and an index goes in tagged.
+ *
+ * The tag is the part worth checking. Without it the obvious design is
+ * to put everything through the handle layer, which works -- the same
+ * input gives the same key -- while handing out handles for small
+ * integers as though they were addresses. The checks below are what
+ * tell the two designs apart: an index must not resolve to a buffer and
+ * a buffer must not read as an index, and no amount of consistency
+ * gives you that.
+ */
+static void check_slot_encoding(void)
+{
+    int i;
+
+    /* A buffer goes in and comes back. */
+    for (i = 0; i < REFS; i++)
+    {
+        tSndRef ref = SND_ref_FromBuffer(&buffers[i]);
+
+        if (SND_ul_RefBits(ref) == (uint32_t)(uintptr_t)&buffers[i])
+        {
+            fail("a slot holds the buffer's own address, so nothing here "
+                 "proves anything");
+            return;
+        }
+        if (SND_p_BufferFromRef(ref) != &buffers[i])
+            fail("a buffer did not come back out of its slot");
+        if (SND_b_RefIsIndex(ref))
+            fail("a slot holding a buffer reads as an index");
+    }
+
+    /* An index goes in and comes back, and is not a buffer. */
+    for (i = 1; i <= 64; i++)
+    {
+        tSndRef ref = SND_ref_FromIndex(i);
+
+        if (SND_i_IndexFromRef(ref) != i)
+            fail("an index did not come back out of its slot");
+        if (!SND_b_RefIsIndex(ref))
+            fail("a slot holding an index does not read as one");
+        /* The resolver hands back what it did not issue, so an index
+           slot resolves to its own bits and never to a live buffer. */
+        if (SND_p_BufferFromRef(ref) != (void*)(uintptr_t)SND_ul_RefBits(ref))
+            fail("a slot holding an index resolved to something");
+    }
+
+    /* And the two encodings do not collide: no buffer's slot is any
+       index's slot, which is the property the tag is for. */
+    for (i = 0; i < REFS; i++)
+    {
+        uint32_t bits = SND_ul_RefBits(SND_ref_FromBuffer(&buffers[i]));
+        int k;
+
+        for (k = 1; k <= 64; k++)
+            if (bits == SND_ul_RefBits(SND_ref_FromIndex(k)))
+            {
+                fail("a buffer's slot is also an index's slot");
+                return;
+            }
+        /* A buffer's slot read as an index is out of any list's range,
+           so the stream family rejects it rather than acting on it. */
+        if (SND_i_IndexFromRef(SND_ref_FromBuffer(&buffers[i])) <= 64)
+            fail("a buffer's slot reads as a small index");
+    }
+
+    /* No sound at all, both spellings, unchanged either way. */
+    if (SND_ul_RefBits(SND_ref_FromIndex(0)) != 0)
+        fail("no sound became something");
+    if (SND_p_BufferFromRef((tSndRef)0) != NULL)
+        fail("an empty slot resolved to something");
+    if (SND_i_IndexFromRef((tSndRef)(uintptr_t)HDL_NOT_FOUND) != -1)
+        fail("the not-found value stopped being itself");
+}
+
+/* The stream family, which reads the slot as an index into its list.
+ *
+ * Its entries answer 0 for an index inside the list and -1 for anything
+ * else, so a slot built from a buffer has to be refused -- the one
+ * thing a design without the tag cannot promise. */
+static void check_stream_family_reads_an_index(void)
+{
+    int status;
+    int i;
+
+    SND_gi_StreamListSize = 8;
+
+    for (i = 1; i <= 8; i++)
+        if (pcSND_Stream_GetStatus(SND_ref_FromIndex(i), &status) != 0)
+        {
+            printf("  FAIL the stream family refused index %d, which is "
+                   "inside its list\n", i);
+            ++failures;
+        }
+    if (pcSND_Stream_GetStatus(SND_ref_FromIndex(9), &status) != -1)
+        fail("the stream family accepted an index past the end of its list");
+    if (pcSND_Stream_GetStatus((tSndRef)0, &status) != -1)
+        fail("the stream family accepted an empty slot");
+
+    for (i = 0; i < REFS; i++)
+        if (pcSND_Stream_GetStatus(SND_ref_FromBuffer(&buffers[i]),
+                                   &status) != -1)
+        {
+            fail("the stream family took a slot holding a buffer for one "
+                 "of its own indices");
+            break;
+        }
+}
+
+/* The plain family, which reads the slot as a buffer.
+ *
+ * These are the entries the interface table points at, and each one
+ * resolves the slot before handing it to the function that does the
+ * work. An entry that stopped resolving would look identical to every
+ * caller that hands it a raw address, so what is driven here is a slot
+ * built the way the engine builds one -- a handle, which is nothing
+ * like the buffer it stands for. */
+static void check_plain_family_reads_a_buffer(void)
+{
+    int status;
+    int i;
+
+    forget_lists();
+    SND_gst_Params.soundEnabled = 1;
+
+    SND_gst_Params.soundRenderMode = 2;
+    for (i = 0; i < REFS; i++)
+    {
+        memset(&buffers[i], 0, sizeof(buffers[i]));
+        buffers[i].voice = voice_at(i);
+        /* A different balance each, so the volume each one works out
+           is its own and a write to the wrong buffer shows. */
+        buffers[i].unk2SetTo64InCreate = 4 + 10 * i;
+        buffers[i].unknownFiledinsub49db40ToSetVolume = SENTINEL;
+    }
+
+    /* Setting the volume works a value out from the buffer's own
+       balance and writes it on the buffer. Nothing else can reach that
+       field, so finding it changed is the slot having been resolved. */
+    for (i = 0; i < REFS; i++)
+        pcSND_ref_SB_SetVolume(SND_ref_FromBuffer(&buffers[i]), -1000);
+
+    for (i = 0; i < REFS; i++)
+        if (buffers[i].unknownFiledinsub49db40ToSetVolume == SENTINEL)
+        {
+            printf("  FAIL the plain family left buffer %d untouched, so "
+                   "its slot was not resolved\n", i);
+            ++failures;
+        }
+
+    /* And each got its own value rather than one buffer getting every
+       call, which is what a slot resolving to the wrong thing looks
+       like. */
+    {
+        int distinct = 0;
+        int k;
+        for (i = 0; i < REFS; i++)
+        {
+            for (k = 0; k < i; k++)
+                if (buffers[k].unknownFiledinsub49db40ToSetVolume
+                        == buffers[i].unknownFiledinsub49db40ToSetVolume)
+                    break;
+            if (k == i)
+                ++distinct;
+        }
+        /* Not all twelve: the volume is clamped at both ends, so some
+           balances work out to the same value. Several distinct ones is
+           enough to say the calls did not all land on one buffer. */
+        if (distinct < 4)
+        {
+            printf("  FAIL only %d of %d buffers got a volume of their "
+                   "own, so the calls are landing on the same one\n",
+                   distinct, REFS);
+            ++failures;
+        }
+    }
+
+    /* Reading the status reads through the slot as well, and the mock
+       answers from the voice it finds there. */
+    for (i = 0; i < REFS; i++)
+    {
+        status = -1;
+        pcSND_ref_SB_GetStatus(SND_ref_FromBuffer(&buffers[i]), &status);
+        if (status == -1)
+        {
+            fail("the plain family read no status through a slot");
+            break;
+        }
+    }
+
+    /* An empty slot is no buffer, and has to be let alone rather than
+       followed. */
+    pcSND_ref_SB_Stop((tSndRef)0);
+    pcSND_ref_SB_SetVolume((tSndRef)0, -500);
+}
+
 int main(void)
 {
     int order;
@@ -334,6 +542,11 @@ int main(void)
     make_voices();
 
     check_a_handle_is_not_an_address();
+    check_slot_encoding();
+    check_stream_family_reads_an_index();
+    wsnd_mock_reset();
+    make_voices();
+    check_plain_family_reads_a_buffer();
     for (order = 0; order < 3; order++)
     {
         wsnd_mock_reset();
