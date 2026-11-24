@@ -157,7 +157,8 @@ void MAT_AllocMultiMaterial(tGEOMAT* mat, int num)
     count = (num > 255) ? 0 : num;
     mat->multiMaterialNumIfType4ThenAmbiantColor = count;
     if (count)
-        mat->multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)MEM_p_Alloc(4 * count);
+        mat->multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)MEM_p_Alloc(
+            sizeof(*mat->multiMaterialPtrIfType4ThenDiffuseColor) * count);
     else
         mat->multiMaterialPtrIfType4ThenDiffuseColor = NULL;
 }

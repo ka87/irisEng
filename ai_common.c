@@ -1521,7 +1521,8 @@ tAIModel* AI_ul_CallbackLoadModel(uint32_t offset)
     
     if (funcNum)
     {
-        aiModel->funcs = (tAIFunction**)MEM_p_Alloc(4 * funcNum);
+        aiModel->funcs = (tAIFunction**)MEM_p_Alloc(
+                    sizeof(*aiModel->funcs) * funcNum);
         LOA_ul_FileTypeSize_36 += 4 * funcNum;
     }
     

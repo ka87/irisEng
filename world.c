@@ -1253,7 +1253,9 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
             {
                 oldNetworkNum = target->wayPtr->networkNum;
                 target->wayPtr->networkNum = oldNetworkNum + loaded->wayPtr->networkNum;
-                target->wayPtr->networks = (tWayNetwork**)MEM_p_Realloc(target->wayPtr->networks, 4 * target->wayPtr->networkNum);
+                target->wayPtr->networks = (tWayNetwork**)MEM_p_Realloc(
+            target->wayPtr->networks,
+            sizeof(*target->wayPtr->networks) * target->wayPtr->networkNum);
                 dst = oldNetworkNum;
                 for (src = 0; src < loaded->wayPtr->networkNum; ++src, ++dst)
                     target->wayPtr->networks[dst] = loaded->wayPtr->networks[src];
