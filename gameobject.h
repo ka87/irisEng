@@ -266,6 +266,12 @@ struct sGameObjectMain* MSG_gpo_Owner;
 struct sGameObjectMain* AI_MainActorArr[2];
 extern struct sGameObjectMain** AI_MainActor;
 
+/* The two values an object slot may hold that name one of these
+   rather than referring to an object. They are why the stand-in for
+   an address can never be 1 or 2. */
+#define AI_MAIN_ACTOR_FIRST  1u
+#define AI_MAIN_ACTOR_SECOND 2u
+
 float OBJ_gf_EYEFOLLOW_HeadZMax;
 float OBJ_gf_EYEFOLLOW_HeadZMin;
 float OBJ_gf_EYEFOLLOW_HeadXMax;

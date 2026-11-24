@@ -294,7 +294,7 @@ tAINode* AI_EvalFunc_ANICanalGaoGet(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     aiCanal = AI_GetIntFromStack();
     bone = AI_EvalFunc_ANICanalGaoGet_C(gaoUltra, aiCanal);
-    AI_PutObjectToStack(&bone, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(bone, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -477,7 +477,7 @@ tAINode* AI_EvalFunc_ANIShapeObjectGet(tAINode* node)
     shapeIdx = AI_GetIntFromStack();
     aiCanal = AI_GetIntFromStack();
     shape = AI_EvalFunc_ANIShapeObjectGet_C(gaoUltra, aiCanal, shapeIdx);
-    AI_PutObjectToStack(&shape, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(shape, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 

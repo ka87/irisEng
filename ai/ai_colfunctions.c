@@ -188,7 +188,7 @@ tAINode* AI_EvalFunc_COLBVGetFirstOverlap(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     overlap = AI_EvalFunc_COLBVGetFirstOverlap_C(gaoUltra, flagMustHave, flagMustNothave, whatToTest);
-    AI_PutObjectToStack(&overlap, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(overlap, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -285,7 +285,7 @@ tAINode* AI_EvalFunc_COLRayBVDist(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     hit = AI_EvalFunc_COLRayBVDist_C(gaoUltra, &rayV1, &rayV2, rayF1,
                                      flagMustHave, flagMustNothave, whatToTest);
-    AI_PutObjectToStack(&hit, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(hit, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -321,7 +321,7 @@ tAINode* AI_EvalFunc_COLRayBVVector(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     hit = AI_EvalFunc_COLRayBVVector_C(gaoUltra, &rayV1, &ray,
                                        flagMustHave, flagMustNothave, whatToTest);
-    AI_PutObjectToStack(&hit, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(hit, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -401,7 +401,7 @@ tAINode* AI_EvalFunc_COLRayObjectDist(tAINode* node)
     AI_l_RayProfilerEnter(&PRO_RayObjectDist, &i_RasterRayObjectDist, "Ray Object Dist");
     hit = AI_EvalFunc_COLRayObjectDist_C(gaoUltra, &rayV1, &rayV2, rayF1,
                                          flagMustHave, flagMustNothave, whatToTest, castKind);
-    AI_PutObjectToStack(&hit, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(hit, AI_gaw_EnumLink[40]);
     PRO_RecordTimeDecRef(&PRO_RayObjectDist);
     return node + 1;
 }
@@ -442,7 +442,7 @@ tAINode* AI_EvalFunc_COLRayObjectVector(tAINode* node)
     AI_l_RayProfilerEnter(&PRO_RayObjectVector, &i_RasterRayObjectVector, "Ray Object Vector");
     hit = AI_EvalFunc_COLRayObjectVector_C(gaoUltra, &rayV1, &ray,
                                            flagMustHave, flagMustNothave, whatToTest, castKind);
-    AI_PutObjectToStack(&hit, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(hit, AI_gaw_EnumLink[40]);
     PRO_RecordTimeDecRef(&PRO_RayObjectVector);
     return node + 1;
 }
@@ -501,7 +501,7 @@ tAINode* AI_EvalFunc_COLGaoGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     collided = AI_EvalFunc_COLGaoGet_C(gaoUltra, reportFilter);
-    AI_PutObjectToStack(&collided, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(collided, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -719,7 +719,7 @@ tAINode* AI_EvalFunc_COLBestWallGaoGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     wall = AI_EvalFunc_COLBestWallGaoGet_C(gaoUltra, &direction, (int*)var.ptr);
-    AI_PutObjectToStack(&wall, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(wall, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -782,7 +782,7 @@ tAINode* AI_EvalFunc_COLCrossObjectGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     crossed = AI_EvalFunc_COLCrossObjectGet_C(gaoUltra, index);
-    AI_PutObjectToStack(&crossed, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(crossed, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -924,7 +924,7 @@ tAINode* AI_EvalFunc_COLBestWallAngleGaoGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     wall = AI_EvalFunc_COLBestWallAngleGaoGet_C(gaoUltra, &direction, cosAngle, (int*)var.ptr);
-    AI_PutObjectToStack(&wall, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(wall, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -996,7 +996,7 @@ tAINode* AI_EvalFunc_COLSpecialBestWallGaoGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     wall = AI_EvalFunc_COLSpecialBestWallGaoGet_C(gaoUltra, &direction, (int*)var.ptr);
-    AI_PutObjectToStack(&wall, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(wall, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -1125,7 +1125,7 @@ tAINode* AI_EvalFunc_COLRaySingleObjectDist(tAINode* node)
     AI_l_RayProfilerEnter(&PRO_RayObjectDist, &i_RasterRaySingleObjectDist, "Ray Object Dist");
     hit = AI_EvalFunc_COLRaySingleObjectDist_C(target, &rayV1, &rayV2, rayF1,
                                                flagMustHave, flagMustNothave, whatToTest, castKind);
-    AI_PutObjectToStack(&hit, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(hit, AI_gaw_EnumLink[40]);
     PRO_RecordTimeDecRef(&PRO_RayObjectDist);
     return node + 1;
 }
@@ -1680,7 +1680,7 @@ tAINode* AI_EvalFunc_COLFirstObjectInRangeGet(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     found = AI_EvalFunc_COLFirstObjectInRangeGet_C(gaoUltra, &pos, range,
                                                    flagMustHave, flagMustNothave, whatToTest);
-    AI_PutObjectToStack(&found, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(found, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 

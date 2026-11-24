@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "handle.h"
 #include "bigfiles.h"
 #include "loading.h"
 #include "time.h"
@@ -97,10 +98,18 @@ char* AI_PopStackSlot(void)
     return &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
 }
 
-// the object counterpart of AI_PutObjectToStack
+/* The object counterpart of AI_PutObjectToStack, and the one place a
+   slot's four bytes become an address.
+ *
+ * Everything the value passed through on the way here -- the variable
+ * block it was loaded into, the scratch a keyword copied it to, the
+ * stack slot it was pushed onto -- is four bytes wide and fixed that
+ * way by the file formats, so all of them hold a handle. A C variable
+ * is the first thing wide enough to hold the address itself, and this
+ * is where one is handed to it. */
 void* AI_GetObjectFromStack(void)
 {
-    return *(void**)AI_PopStackSlot();
+    return HDL_p_Pointer(*(uint32_t*)AI_PopStackSlot());
 }
 
 void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
@@ -111,6 +120,15 @@ void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
     AI_gul_SizeGlobalStack -= 32;
 }
 
+/* A value of this type onto the stack, from wherever it already is in
+   the form a slot holds it: another slot, a scratch buffer, a node's
+   own operand. A reference in any of those is a handle, so nothing is
+   converted here.
+
+   AI_PutRefToStack below is the entry point for the other case, where
+   what the caller has is a C variable holding the object's address.
+   The two cannot be one function: both arrive as a void*, and which
+   one it is cannot be told from the pointer. */
 void AI_PutObjectToStack(void* obj, int16_t type)
 {
     tVarStackElem* elem;
@@ -123,6 +141,37 @@ void AI_PutObjectToStack(void* obj, int16_t type)
     elem->type = type;
     elem->ptr = slot;
     ++AI_gul_SizeGlobalVarStack;
+}
+
+/* An object onto the stack from a C variable holding its address: the
+   counterpart of AI_GetObjectFromStack, and the one place an address
+   becomes the four bytes a slot holds.
+
+   Only for the reference types, which is every caller it has -- a
+   vector or a message is already in a slot's form wherever it sits,
+   and goes through AI_PutObjectToStack. */
+void AI_PutRefToStack(void* object, int16_t type)
+{
+    uint32_t handle = HDL_ul_Handle(object);
+
+    AI_PutObjectToStack(&handle, type);
+}
+
+/* The two values that name a main actor rather than referring to an
+   object, once what holds them is a C variable.
+
+   An object reference is normalised where it is read out of a slot, so
+   by the time one reaches a C variable it should already be the actor
+   it named. This is the belt to that braces: it costs two comparisons
+   and it does not rest on an argument about which paths a value can
+   have taken to get here. */
+void* AI_p_ActorOrObject(void* object)
+{
+    if (object == (void*)(uintptr_t)AI_MAIN_ACTOR_FIRST)
+        return AI_MainActor[0];
+    if (object == (void*)(uintptr_t)AI_MAIN_ACTOR_SECOND)
+        return AI_MainActor[1];
+    return object;
 }
 
 void AI_PopUserStack(void* dest, tVarStackElem* elemOut)
@@ -1710,13 +1759,10 @@ void* AI2C_VarArrayC3GetFromAI(struct sAI* aiPtr, char* name, int idx) {
     return NULL;
 }
 
-struct sGameObjectMain* AI2C_CheckActorGao(struct sGameObjectMain* gao) { // TODO:FIXME UA mint AI_EvalType_GetGAO
-    if (gao)
-    {
-        if ((unsigned int)gao <= 2)
-            return AI_MainActor[(uint32_t)gao - 1];
-    }
-    return gao;
+/* The compiled-script path's spelling of the same rule, kept so that
+   there is one copy of it rather than two. */
+struct sGameObjectMain* AI2C_CheckActorGao(struct sGameObjectMain* gao) {
+    return (struct sGameObjectMain*)AI_p_ActorOrObject(gao);
 }
 
 struct sGameObjectMain* AI2C_GaoGetFromAI(struct sAI* aiPtr, char* name) {

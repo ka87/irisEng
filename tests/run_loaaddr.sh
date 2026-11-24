@@ -1,6 +1,7 @@
 #!/bin/sh
-# The address store in loading.c, and the reference resolver that reads
-# it in ai_common.c.
+# The address store in loading.c, the reference resolver that reads it
+# in ai_common.c, and the two places where an object's four bytes and
+# its address meet on the evaluator's stack.
 #
 #   ./tests/run_loaaddr.sh
 #
@@ -34,9 +35,17 @@ $CC $CFLAGS -c basic_array.c            -o "$OUT/loaaddr.bas.o"
 $CC $CFLAGS -c ai_common.c              -o "$OUT/loaaddr.aicommon.o"
 $CC $CFLAGS -c handle.c                 -o "$OUT/loaaddr.handle.o"
 $CC $CFLAGS -c tests/loaaddr_mocks.c    -o "$OUT/loaaddr.mocks.o"
+$CC $CFLAGS -c ai/ai_types.c            -o "$OUT/loaaddr.aitypes.o"
 $CC $CFLAGS -c tests/test_loaaddr.c     -o "$OUT/loaaddr.drv.o"
+$CC $CFLAGS -c tests/test_aistack.c     -o "$OUT/aistack.drv.o"
 
-$CC "$OUT/loaaddr.loading.o" "$OUT/loaaddr.bas.o" "$OUT/loaaddr.aicommon.o" \
-    "$OUT/loaaddr.handle.o" "$OUT/loaaddr.mocks.o" "$OUT/loaaddr.drv.o" \
-    -o "$OUT/loaaddr" -lm
+common="$OUT/loaaddr.loading.o $OUT/loaaddr.bas.o $OUT/loaaddr.aicommon.o \
+$OUT/loaaddr.aitypes.o $OUT/loaaddr.handle.o $OUT/loaaddr.mocks.o"
+
+# shellcheck disable=SC2086
+$CC $common "$OUT/loaaddr.drv.o" -o "$OUT/loaaddr" -lm
 "$OUT/loaaddr"
+
+# shellcheck disable=SC2086
+$CC $common "$OUT/aistack.drv.o" -o "$OUT/aistack" -lm
+"$OUT/aistack"

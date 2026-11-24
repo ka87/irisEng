@@ -350,7 +350,7 @@ tAINode* AI_EvalFunc_LightGetFog(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     fog = AI_EvalFunc_LightGetFog_C();
-    AI_PutObjectToStack(&fog, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(fog, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 

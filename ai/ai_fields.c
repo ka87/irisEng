@@ -1,4 +1,5 @@
 #include "../ai.h"
+#include "../handle.h"
 
 // A field reads a part of the value already on top of the stack: the
 // descriptor there is re-pointed at the field's offset, retyped, and
@@ -145,11 +146,14 @@ tAINode* AI_EvalField_MsgFloat2(tAINode* node)
 static tGameObjectMain* AI_l_PopFieldObject(tVarStackElem* var)
 {
     char converted[52];
-    tGameObjectMain* gao;
+    uint32_t stored;
 
     AI_GetVarFromStack(converted, var);
-    AI_EvalType_GetGAO((tGameObjectMain**)var->ptr, &gao);
-    return gao;
+    /* The field's own slot, read the way a slot is read: four bytes,
+       with the two values that name a main actor turned into that
+       actor's reference. Then the address it stands for. */
+    AI_EvalType_GetGAO((uint32_t*)var->ptr, &stored);
+    return (tGameObjectMain*)HDL_p_Pointer(stored);
 }
 
 tAINode* AI_EvalField_DesignFlags(tAINode* node)

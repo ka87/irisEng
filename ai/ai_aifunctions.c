@@ -268,7 +268,7 @@ tAINode* AI_EvalFunc_AITrackGet(tAINode* node)
 
     track = AI_GetIntFromStack();
     func = AI_EvalFunc_AITrackGet_C(track);
-    AI_PutObjectToStack(&func, AI_gaw_EnumLink[39]);
+    AI_PutRefToStack(func, AI_gaw_EnumLink[39]);
     return node + 1;
 }
 
@@ -282,7 +282,7 @@ tAINode* AI_EvalFunc_AITrackCurGet(tAINode* node)
     tAIFunction* func;
 
     func = AI_EvalFunc_AITrackCurGet_C();
-    AI_PutObjectToStack(&func, AI_gaw_EnumLink[39]);
+    AI_PutRefToStack(func, AI_gaw_EnumLink[39]);
     return node + 1;
 }
 
@@ -370,7 +370,7 @@ tAINode* AI_EvalFunc_AIMainActorGet(tAINode* node)
 
     actorIdx = AI_GetIntFromStack();
     actor = AI_EvalFunc_AIMainActorGet_C(actorIdx);
-    AI_PutObjectToStack(&actor, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(actor, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 

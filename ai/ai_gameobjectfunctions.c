@@ -163,7 +163,7 @@ tAINode* AI_EvalFunc_OBJMe(tAINode* node)
     tGameObjectMain* me;
 
     me = AI_gpst_CurrentGameObject;
-    AI_PutObjectToStack(&me, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(me, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -192,7 +192,7 @@ tAINode* AI_EvalFunc_OBJDuplicate(tAINode* node)
 
     // the position is read where the stack holds it rather than copied out
     copy = AI_EvalFunc_OBJDuplicate_C(gaoUltra, (Vec3*)AI_PopStackSlot());
-    AI_PutObjectToStack(&copy, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(copy, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -2603,7 +2603,7 @@ tAINode* AI_EvalFunc_OBJ_HierarchyGet(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     father = AI_EvalFunc_OBJ_HierarchyGet_C(gaoUltra);
-    AI_PutObjectToStack(&father, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(father, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -2707,7 +2707,7 @@ tAINode* AI_EvalFunc_OBJ_HierarchySet(tAINode* node)
     father = (tGameObjectMain*)AI_GetObjectFromStack();
     AI_EvalFunc_OBJ_HierarchyReset_C(gaoUltra);
     oldFather = AI_EvalFunc_OBJ_HierarchySet_C(gaoUltra, father);
-    AI_PutObjectToStack(&oldFather, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(oldFather, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -2739,7 +2739,7 @@ tAINode* AI_EvalFunc_OBJ_HierarchySetFather(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     father = (tGameObjectMain*)AI_GetObjectFromStack();
     oldFather = AI_EvalFunc_OBJ_HierarchySetFather_C(gaoUltra, father);
-    AI_PutObjectToStack(&oldFather, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(oldFather, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
