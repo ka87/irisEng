@@ -1,4 +1,5 @@
 #include "../ai.h"
+#include "../handle.h"
 #include "../math.h"
 #include "../gameobject.h"
 #include "../textget.h"
@@ -8,17 +9,25 @@ void AI_EvalType_GetInt(int32_t* src, int32_t* dest)
     *dest = *src;
 }
 
-void AI_EvalType_GetGAO(struct sGameObjectMain **src, struct sGameObjectMain **dest)
+/* An object reference, between two of the four-byte slots the file
+   formats fix. What is in such a slot is a handle for the object, or
+   one of the values that is not a handle at all -- nought for no
+   object, and one and two for the two main actors, which a script
+   names rather than refers to.
+ *
+ * Those two are turned into the handles of the actors they name, and
+ * not into the actors' addresses: everything downstream of here is
+ * another four-byte slot, and a slot holding an address for two values
+ * and a handle for the rest would be two representations at once. The
+ * one place a handle becomes an address is where a value leaves the
+ * stack for a C variable, in AI_GetObjectFromStack. */
+void AI_EvalType_GetGAO(uint32_t* src, uint32_t* dest)
 {
     *dest = *src;
-    if (*dest == (struct sGameObjectMain*)1)
-    {
-        *dest = AI_MainActor[0];
-    }
-    else if (*dest == (struct sGameObjectMain*)2)
-    {
-        *dest = AI_MainActor[1];
-    }
+    if (*dest == AI_MAIN_ACTOR_FIRST)
+        *dest = HDL_ul_Handle(AI_MainActor[0]);
+    else if (*dest == AI_MAIN_ACTOR_SECOND)
+        *dest = HDL_ul_Handle(AI_MainActor[1]);
 }
 
 void AI_EvalType_GetVector(Vec3* src, Vec3* dest)

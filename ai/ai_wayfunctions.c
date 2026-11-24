@@ -336,7 +336,7 @@ tAINode* AI_EvalFunc_WAYNetNextWP(tAINode* node)
     wp = (tGameObjectMain*)AI_GetObjectFromStack();
     network = (tWayNetwork*)AI_GetObjectFromStack();
     next = AI_EvalFunc_WAYNetNextWP_C(gaoUltra, network, wp, type, elemID);
-    AI_PutObjectToStack(&next, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(next, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -352,7 +352,7 @@ tAINode* AI_EvalFunc_WAYRootGet(tAINode* node)
 
     network = (tWayNetwork*)AI_GetObjectFromStack();
     root = AI_EvalFunc_WAYRootGet_C(network);
-    AI_PutObjectToStack(&root, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(root, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -532,7 +532,7 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObj(tAINode* node)
     flagMustHave = AI_GetIntFromStack();
     network = (tWayNetwork*)AI_GetObjectFromStack();
     nearest = AI_EvalFunc_WAYNearestWPOfObj_C(gaoUltra, network, flagMustHave, flagMustNothave, whatToTest);
-    AI_PutObjectToStack(&nearest, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(nearest, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -569,7 +569,7 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObjExcl(tAINode* node)
     nearest = AI_EvalFunc_WAYNearestWPOfObjExcl_C(gaoUltra, network, flagMustHave, flagMustNothave,
                                                   whatToTest, (tGameObjectMain**)var.ptr,
                                                   excludeGaoListNum);
-    AI_PutObjectToStack(&nearest, AI_gaw_EnumLink[40]);
+    AI_PutRefToStack(nearest, AI_gaw_EnumLink[40]);
     return node + 1;
 }
 
@@ -589,7 +589,7 @@ tAINode* AI_EvalFunc_WAYNetOfObj(tAINode* node)
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     network = AI_EvalFunc_WAYNetOfObj_C(gaoUltra);
-    AI_PutObjectToStack(&network, AI_gaw_EnumLink[43]);
+    AI_PutRefToStack(network, AI_gaw_EnumLink[43]);
     return node + 1;
 }
 

@@ -109,10 +109,9 @@ int ENG_PlatformID;
 #include "../gameobject.h"
 #include "../profiler.h"
 
-/* The dispatch tables. Zeroed is right: nothing here runs a node, and
-   a table that was wrong in some interesting way would be a different
-   test's business. */
-tOfc_scriptengine_functions_types AI_gast_Types[23];
+/* The dispatch tables, except the type table: that one is the real
+   ai/ai_types.c, because the stack driver copies values through its
+   accessors. Zeroed is right for the rest -- nothing here runs a node. */
 tOfc_scriptengine_functions AI_gast_Categs[16];
 tOfc_scriptengine_functions AI_gast_Keywords[74];
 tOfc_scriptengine_functions AI_gast_Functions[857];

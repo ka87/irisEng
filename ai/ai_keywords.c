@@ -114,8 +114,8 @@ tAINode* AI_EvalKeyword_ObjEqual(tAINode* node)
     gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
     gao1 = (tGameObjectMain*)AI_GetObjectFromStack();
 
-    AI_EvalType_GetGAO(&gao2, &gao2);
-    AI_EvalType_GetGAO(&gao1, &gao1);
+    gao2 = (tGameObjectMain*)AI_p_ActorOrObject(gao2);
+    gao1 = (tGameObjectMain*)AI_p_ActorOrObject(gao1);
 
     AI_PutIntToStack(gao2 == gao1);
     return node + 1;
@@ -129,8 +129,8 @@ tAINode* AI_EvalKeyword_ObjDifferent(tAINode* node)
     gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
     gao1 = (tGameObjectMain*)AI_GetObjectFromStack();
 
-    AI_EvalType_GetGAO(&gao2, &gao2);
-    AI_EvalType_GetGAO(&gao1, &gao1);
+    gao2 = (tGameObjectMain*)AI_p_ActorOrObject(gao2);
+    gao1 = (tGameObjectMain*)AI_p_ActorOrObject(gao1);
 
     AI_PutIntToStack(gao2 != gao1);
     return node + 1;
@@ -141,7 +141,7 @@ tAINode* AI_EvalKeyword_ObjNot(tAINode* node)
     tGameObjectMain* gao;
 
     gao = (tGameObjectMain*)AI_GetObjectFromStack();
-    AI_EvalType_GetGAO(&gao, &gao);
+    gao = (tGameObjectMain*)AI_p_ActorOrObject(gao);
     AI_PutIntToStack(gao == NULL);
     return node + 1;
 }

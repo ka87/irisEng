@@ -191,6 +191,12 @@ void AI_PopUserStack(void* dest, tVarStackElem* elemOut);
 void AI_PutObjectToStack(void* obj, int16_t type);
 char* AI_PopStackSlot(void);
 void* AI_GetObjectFromStack(void);
+/* An object onto the stack from a C variable holding its address, for
+   the reference types. AI_PutObjectToStack is for a value already in
+   the form a four-byte slot holds it. */
+void AI_PutRefToStack(void* object, int16_t type);
+/* The two values that name a main actor, turned into the actor. */
+void* AI_p_ActorOrObject(void* object);
 void AI_EvalVar(tVarStackElem* vse);
 void AI_EvalVarArray(tAINode* aiNode, char* data);
 void AI_EvalVarArray2(tAINode* aiNode, char* data);
@@ -266,7 +272,10 @@ tAINode* AI_dum(tAINode* aiNode);
 char* AI_GetStringFromStack();
 
 // FIXME, TODO: TEMP, should me moved to somewhere else
-void AI_EvalType_GetGAO(struct sGameObjectMain** src, struct sGameObjectMain** dest);
+/* An object reference, between two four-byte slots: what is in one is
+   a handle for the object, or nought, or one of the two values that
+   name a main actor. */
+void AI_EvalType_GetGAO(uint32_t* src, uint32_t* dest);
 
 #define GAOKEY2AI(key) AI2C_GetAIModelFromGao((void*)AI_ul_RealResolveOneRefObject(key))
 #define GAORESOLVE(key) (struct sGameObjectMain*)AI_ul_RealResolveOneRefObject(key)
