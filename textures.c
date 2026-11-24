@@ -936,6 +936,12 @@ int TEX_l_File_LoadTga(char* data, tEngTexIntermediateStruct* tex)
         LOA_ReadCharArray(&data, 0, mapLength * (tex->tgaUnk1b >> 3), 2);
         imgData = (char*)MEM_p_AllocTmp(pixels * (tex->colorDepth2 >> 3));
         tex->imgDataPtr = imgData;
+        /* The temporary buffer's own size header, read without the
+           check on which allocator served the request -- so when the
+           buffer could not serve it, what reaches the statistic is
+           part of the block's address instead of its size. That is
+           intentional here and at the palette below: changing it
+           changes this counter and nothing else. */
         MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetTmpAddressSpace(imgData);
         bytes = pixels * (tex->colorDepth1 >> 3);
         if (imageType >= 9u)
@@ -2519,7 +2525,10 @@ void TEX_File_LoadPalette(tEngPaletteElem* pal, int swapRB)
         return;
     }
     pal->paletteData = (uint8_t*)MEM_p_AllocTmp(allocSize);
-    MEM_gst_MemoryInfo.usedMemoryByTextures += *((uint32_t*)pal->paletteData - 1); // TODO FIXME
+    /* The same unchecked read as the image data above, through the
+       function that names it rather than the word in front spelled out
+       here -- the header's width belongs in one place. */
+    MEM_gst_MemoryInfo.usedMemoryByTextures += MEM_MemBlockSizeGetTmpAddressSpace(pal->paletteData);
     LOA_ReadCharArray(&data, (char*)pal->paletteData, size, 1);
     left = size;
     if ((pal->flags & 2) != 0)

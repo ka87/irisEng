@@ -434,6 +434,215 @@ static void check_too_big(void)
     check_all_live("after a request larger than the arena");
 }
 
+/* ------------------------------------------------------------------ */
+/* The temporary allocator, which had no coverage of any kind.
+ *
+ * It is a bump pointer over a buffer somebody else carves out, and it
+ * has two exits. When the buffer is there, enabled and large enough, a
+ * request is served from it and the word in front of the payload holds
+ * the rounded size. When any of those three fails, the request goes to
+ * the aligned allocator instead -- and that one leaves the real
+ * block's address in the word in front of the payload, not a size.
+ *
+ * So the word in front of a temporary allocation is a size or an
+ * address depending on which exit served it, and which of the two
+ * readers is right depends on the same thing. That is the whole point
+ * of this check: the port rested for a while on the belief that this
+ * header holds a size and never an address, and half the time it does
+ * not.
+ */
+
+/* The buffer the engine carves this out of is a large one on the
+   stack, far from here. A static one does the same job. */
+static unsigned char tmp_arena[64 * 1024];
+
+/* The renderer's depth list, counted in the mocks. */
+extern int MOCK_ZListInits;
+extern int MOCK_ZListClears;
+
+static void tmp_open(void)
+{
+    MEM_gp_AllocTmpFirst = tmp_arena;
+    MEM_gp_AllocTmpLast = tmp_arena + sizeof(tmp_arena);
+    MEM_gp_AllocTmpNext = (char*)tmp_arena;
+    MEM_gi_AllocTmpNb = 0;
+    MEM_gb_EnableTmp = 1;
+}
+
+static void tmp_close(void)
+{
+    MEM_gb_EnableTmp = 0;
+    MEM_gp_AllocTmpFirst = NULL;
+    MEM_gp_AllocTmpLast = NULL;
+    MEM_gp_AllocTmpNext = NULL;
+}
+
+static int tmp_in_arena(const void* p)
+{
+    return p >= (void*)tmp_arena && p < (void*)(tmp_arena + sizeof(tmp_arena));
+}
+
+/* What the bump pointer rounds a request up to: two alignments more,
+   truncated to one. The alignment is memory.c's own, so this is one of
+   the checks that pins this allocator's arrangements rather than what
+   any allocator owes its caller. */
+static unsigned int tmp_rounded(unsigned int size)
+{
+    return (size + 2u * 64u) & ~(64u - 1u);
+}
+
+static void check_tmp_from_arena(void)
+{
+    unsigned char* p;
+    int stored;
+
+    tmp_open();
+    p = (unsigned char*)MEM_p_AllocTmp(200);
+    if (!p)
+    {
+        fail("a temporary request failed with the buffer empty");
+        tmp_close();
+        return;
+    }
+    if (!tmp_in_arena(p))
+        fail("a temporary request was not served from the buffer");
+
+    memset(p, 0x5A, 200);
+
+    /* Served from the buffer, so the word in front is the rounded
+       size and the plain reader is the right one for it. */
+    stored = MEM_MemBlockSizeGetTmpAddressSpace(p);
+    if ((unsigned int)stored != tmp_rounded(200))
+        failn("the size stored in front of a buffer-served block",
+              stored, tmp_rounded(200));
+
+    /* And the reader that tells the two exits apart agrees, because
+       this one came from the buffer. */
+    if (MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(p) != stored)
+        fail("the checking reader disagrees about a buffer-served block");
+
+    /* A second request comes after the first, not over it. */
+    {
+        unsigned char* q = (unsigned char*)MEM_p_AllocTmp(200);
+        if (!q)
+            fail("a second temporary request failed with the buffer nearly empty");
+        else if (q < p + 200)
+            fail("a second temporary block overlaps the first");
+        if (((unsigned char*)p)[199] != 0x5A)
+            fail("a buffer-served block lost what was written to it");
+    }
+
+    /* The reset puts the bump pointer back, so the buffer is reusable
+       across loads rather than filling once -- and it tells the
+       renderer, whose depth list lives in what is about to be handed
+       out again. */
+    MOCK_ZListInits = 0;
+    MOCK_ZListClears = 0;
+    MEM_ResetTmpMemory();
+    if (MEM_gp_AllocTmpNext != (char*)tmp_arena)
+        fail("the reset did not put the bump pointer back to the start");
+    if (MOCK_ZListInits != 1 || MOCK_ZListClears != 1)
+        failn("the reset started the renderer's depth list again",
+              MOCK_ZListInits, 1);
+
+    tmp_close();
+}
+
+/* The other exit, reached three ways: no buffer, a buffer that is
+   switched off, and a request the buffer cannot fit. All three have to
+   answer, and all three leave an address in front of the payload where
+   the first exit leaves a size. */
+static void check_tmp_fallback(const char* how)
+{
+    unsigned char* p;
+    MEM_Word front;
+    int checked;
+    int bare;
+
+    p = (unsigned char*)MEM_p_AllocTmp(200);
+    if (!p)
+    {
+        printf("  FAIL a temporary request failed with %s\n", how);
+        ++failures;
+        return;
+    }
+    if (tmp_in_arena(p))
+    {
+        printf("  FAIL a temporary request was served from the buffer "
+               "with %s\n", how);
+        ++failures;
+        return;
+    }
+
+    memset(p, 0x3C, 200);
+
+    /* The word in front is the real block's address: inside the main
+       arena, and below the payload it points at. */
+    front = *((MEM_Word*)p - 1);
+    if (front < MEM_gst_MemoryInfo.memoryStartPointer
+        || front >= MEM_gst_MemoryInfo.memoryStartPointer
+                        + (MEM_Word)(unsigned int)MEM_gst_MemoryInfo.memorySize
+        || front >= (MEM_Word)(uintptr_t)p)
+    {
+        printf("  FAIL the word in front of a block served with %s is "
+               "not the real block's address\n", how);
+        ++failures;
+    }
+
+    /* So the reader that checks which exit served it gives a size, and
+       the one that assumes the buffer gives the address instead. Both
+       of those are asserted, because the engine has two sites that use
+       the second one on a pointer from either exit and the number they
+       add to a statistic is this one. */
+    checked = MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(p);
+    if (checked < 200)
+    {
+        printf("  FAIL the checking reader gave %d for a 200-byte block "
+               "served with %s\n", checked, how);
+        ++failures;
+    }
+    bare = MEM_MemBlockSizeGetTmpAddressSpace(p);
+    if (bare == checked)
+    {
+        printf("  FAIL the plain reader gave a size for a block served "
+               "with %s, so this no longer shows the difference between "
+               "the two exits\n", how);
+        ++failures;
+    }
+
+    if (p[199] != 0x3C)
+    {
+        printf("  FAIL a block served with %s lost what was written to "
+               "it\n", how);
+        ++failures;
+    }
+
+    MEM_FreeAlign(p);
+}
+
+static void check_tmp(void)
+{
+    check_tmp_from_arena();
+
+    /* No buffer at all, which is how the engine starts and stays until
+       a world is loaded. */
+    tmp_close();
+    check_tmp_fallback("no buffer");
+
+    /* A buffer that is there and switched off. */
+    tmp_open();
+    MEM_gb_EnableTmp = 0;
+    check_tmp_fallback("the buffer switched off");
+
+    /* A buffer that cannot fit the request. */
+    tmp_open();
+    MEM_gp_AllocTmpNext = (char*)tmp_arena + sizeof(tmp_arena) - 64;
+    check_tmp_fallback("a request the buffer cannot fit");
+
+    tmp_close();
+    check_all_live("after the temporary allocator");
+}
+
 int main(void)
 {
     unsigned long long base;
@@ -451,6 +660,7 @@ int main(void)
     check_hole_chain();
     check_realloc();
     check_aligned();
+    check_tmp();
     check_too_big();
 
     if (failures)
