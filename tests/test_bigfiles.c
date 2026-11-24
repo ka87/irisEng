@@ -495,10 +495,20 @@ static void ScenPassthrough(const tApi* a)
 }
 
 /* The preloaded-bin arm of the first-call path.  MEM_gp_MaxBlock
-   decides which arm is taken through a comparison on an address
-   truncated to 32 bits, which differs between the two sides' arenas;
-   it is pinned to one extreme or the other so that the arm is chosen
-   by the fixture and not by where the allocator happened to land. */
+   decides which arm is taken through a comparison against an address,
+   which differs between the two sides' arenas; it is pinned to one
+   extreme or the other so that the arm is chosen by the fixture and
+   not by where the allocator happened to land.
+
+   The extremes have to be extremes of the comparison that is actually
+   done, and that is the thing to watch here. They used to be
+   0x7FFFFFFF and 0x80000000, which bounded a *signed* comparison on an
+   address truncated to 32 bits. The comparison is on a whole address
+   now, so those two are both simply below any real one and force the
+   same arm as each other -- which left half of this fixture asserting
+   nothing while the two sides still agreed, so no differential could
+   see it. 0 and the largest address there is are extremes of either
+   comparison. */
 static void ScenPreload(const tApi* a)
 {
     static const int sizes[3] = { 4096, 4096, 4096 };
@@ -512,7 +522,7 @@ static void ScenPreload(const tApi* a)
         NewCase();
         BuildBin(0, sizes, 3, (unsigned int)(ci * 13 + bi));
         ResetSide(a, 2, 262144, 0, 32768);
-        MEM_gp_MaxBlock = 0x80000000;            /* the preloaded arm */
+        MEM_gp_MaxBlock = 0;                 /* below every address */
 
         pre = (unsigned char*)BFM_PreloadArena(side, 262144);
         for (i = 0; i < 262144; ++i)
@@ -541,7 +551,7 @@ static void ScenPreload(const tApi* a)
         Rec(a->Fread((char*)dst, 3000, (FILE*)BFM_FilePtr(side)));
         RecDst(2048);
         RecGlobals(a);
-        MEM_gp_MaxBlock = 0x7FFFFFFF;
+        MEM_gp_MaxBlock = (MEM_Word)-1;   /* above every address */
     }
 }
 
@@ -759,7 +769,7 @@ static void RunAll(const tApi* a)
 {
     LOA_gb_CompressBin = 1;
     LOA_gb_SpeedMode = 0;
-    MEM_gp_MaxBlock = 0x7FFFFFFF;
+    MEM_gp_MaxBlock = (MEM_Word)-1;   /* above every address */
     MEM_gp_AllocTmpFirst = NULL;
     ScenHelpers(a);
     ScenFseek(a);

@@ -634,7 +634,7 @@ void ENG_GetStatsText(char* Buffer)
         "Engine %u ko -- Textures %u ko -- WH %u ko -- Gran %u ko -- Holes % u -- Size Holes %u ko",
         MEM_gst_MemoryInfo.usedMemoryByEngine >> 10,
         MEM_gst_MemoryInfo.usedMemoryByTextures >> 10,
-        (MEM_gst_MemoryInfo.nextFreeMemoryPointer - MEM_gst_MemoryInfo.memoryStartPointer) / 1024,
+        (unsigned int)((MEM_gst_MemoryInfo.nextFreeMemoryPointer - MEM_gst_MemoryInfo.memoryStartPointer) / 1024),
         MEM_gst_MemoryInfo.totalUsedMemory >> 10,
         holesNum, sizeOfHoles >> 10);
 }

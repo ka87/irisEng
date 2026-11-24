@@ -161,11 +161,18 @@ static void check_basics(void)
         fail("a 100-byte request failed on an empty arena");
         return;
     }
-    /* This allocator keeps the requested size in the word before the
-       block; that is its own arrangement rather than a general one. */
-    if (MEM_MemBlockSizeGetTmpAddressSpace(p) != 100)
-        failn("the size stored with a block",
-              MEM_MemBlockSizeGetTmpAddressSpace(p), 100);
+    /* A block is at least as big as it was asked to be. The exact
+       figure is this allocator's own: requests are rounded up to a
+       size class, and a class is rounded up again to a whole number of
+       the words the allocator keeps its bookkeeping in -- which is
+       what lets a freed block put a footer at a word offset from its
+       chain link. Both are checked, and neither pins a width. */
+    if (MEM_GetBlockSizeBySize(p) < 100)
+        failn("the block handed out for a 100-byte request",
+              MEM_GetBlockSizeBySize(p), 100);
+    if ((unsigned int)MEM_GetBlockSizeBySize(p) % MEM_WORD_BYTES != 0)
+        failn("a block's size is not a whole number of words",
+              (unsigned int)MEM_GetBlockSizeBySize(p) % MEM_WORD_BYTES, 0);
 
     q = (unsigned char*)p;
     memset(q, 0x5A, 100);
