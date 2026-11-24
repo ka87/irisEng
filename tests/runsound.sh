@@ -89,7 +89,11 @@ defs() {
 # shellcheck disable=SC2086
 new_defs="$(defs NEW_ $sound_syms) -DSIDE_RUN=NEW_snd_side_run -DSIDE_CASES=NEW_snd_side_cases"
 # shellcheck disable=SC2086
-base_defs="$(defs BASE_ $sound_syms) -DSIDE_RUN=BASE_snd_side_run -DSIDE_CASES=BASE_snd_side_cases"
+# SND_WAVEINFO_FROZEN: the rewrite takes a pointer-wide position for a
+# header already in memory, where the frozen copy still holds that
+# address in an int. The two signatures differ, so sound.h gives the
+# frozen copy its own.
+base_defs="$(defs BASE_ $sound_syms) -DSIDE_RUN=BASE_snd_side_run -DSIDE_CASES=BASE_snd_side_cases -DSND_WAVEINFO_FROZEN"
 
 # shellcheck disable=SC2086
 $CC $CFLAGS -c sound.c              -o "$OUT/snd.new.o"       $new_defs

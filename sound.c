@@ -10,6 +10,7 @@
 #include "strings.h"  
 #include "time.h"
 #include "sound.h"
+#include "handle.h"
 #include "platform/sndbackend.h"
 #include "platform/syscompat.h"
 
@@ -1381,7 +1382,11 @@ void SND_FreeHeaderArray(BASStruct* array)
     for (i = 0; i < array->actElemNum; ++i)
     {
         if (array->keyValPtr[i].val != -1)
-            MEM_Free((void*)array->keyValPtr[i].val);
+        {
+            void* header = HDL_p_Pointer((uint32_t)array->keyValPtr[i].val);
+            HDL_Release(header);
+            MEM_Free(header);
+        }
     }
     BAS_bfree(array);
     array->keyValPtr = 0;
@@ -1452,10 +1457,10 @@ int SND_ReadSNDHeaderElem(char** cursor, tSoundHeaderGeneric* header)
     return result;
 }
 
-int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMode)
+int SND_i_GetWaveInfo(intptr_t Offset, tSndWavHdrStruct* wavHdrStructDest, int readMode)
 {
     int fileStartOffset;
-    int wawHdrRaw;
+    char* wawHdrRaw;
     int result;
     int headerLen;
     char* fetched;
@@ -1467,8 +1472,8 @@ int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMo
     {
     case 1:
     case 5:
-        fileStartOffset = Offset;
-        wawHdrRaw = (int)DstBuf;
+        fileStartOffset = (int)Offset;
+        wawHdrRaw = DstBuf;
         if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
             BIG_ReadNoSeek(Offset, DstBuf, 46u);
         if (LOA_gb_SpeedMode && BIG_gi_ReadMode == 2)
@@ -1478,8 +1483,8 @@ int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMo
         }
         break;
     case 4:
-        wawHdrRaw = Offset + 4;
-        fileStartOffset = BIG_ul_SearchKeyToPos(*(int32_t*)(Offset + 50)) + 4;
+        wawHdrRaw = (char*)Offset + 4;
+        fileStartOffset = BIG_ul_SearchKeyToPos(*(int32_t*)((char*)Offset + 50)) + 4;
         break;
     default:
         return -1;
@@ -1488,6 +1493,9 @@ int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMo
     tSoundHeaderDataCase0* thdrDest = (tSoundHeaderDataCase0*)wawHdrRaw;
     tSoundHeaderDataCase1* thdrDest1 = (tSoundHeaderDataCase1*)wawHdrRaw;
     tSoundHeaderDataCase2* thdrDest2 = (tSoundHeaderDataCase2*)wawHdrRaw;
+    /* wawHdrRaw is the local buffer for a file read and the caller's
+       header for a memory read, which is why it is a pointer and not
+       a position. */
 
     if (memcmp(&(thdrDest->riffId), "RIFF", 4)
         || memcmp(&(thdrDest->fmtId), "fmt ", 4)
@@ -1545,7 +1553,8 @@ int SND_i_LoadStreamedFile(unsigned int soundKey, tSndWavHdrStruct* wavHdrStruct
         return -1;
     headerPos = BAS_bsearch(soundKey, &SND_gst_HeaderArray);
     if (headerPos != -1)
-        return SND_i_GetWaveInfo(headerPos, wavHdrStructDest, 4);
+        return SND_i_GetWaveInfo((intptr_t)HDL_p_Pointer((uint32_t)headerPos),
+                                 wavHdrStructDest, 4);
     binPos = BIG_ul_SearchKeyToPos(soundKey);
     if (binPos == -1 || binPos == soundKey)
         return -1;
@@ -1663,7 +1672,9 @@ void SND_HeaderMakeArray(BASStruct* array)
                     header->soundKey = sound->soundKey;
                     header->soundKey1 = sound->soundKey;
                 }
-                BAS_binsert(sound->soundKey, (int)header, array);
+                /* The value beside a key is four bytes, so it is a handle for
+           the header block and not its address. */
+        BAS_binsert(sound->soundKey, (int)HDL_ul_Handle(header), array);
                 sounds = SND_gst_Params.allocatedSounds;
             }
             ++sound;
@@ -1697,7 +1708,7 @@ void SND_HeaderLoadArray(BASStruct* array, int binKey)
         header = (tSoundHeaderGeneric*)MEM_p_Alloc(54u);
         cursor = data;
         SND_ReadSNDHeaderElem(&cursor, header);
-        BAS_binsert(header->soundKey, (int)header, array);
+        BAS_binsert(header->soundKey, (int)HDL_ul_Handle(header), array);
         data += sizeof(tSoundHeaderGeneric);
     }
     BAS_bsortmode = 1;
