@@ -327,9 +327,12 @@ void LOA_ReadUltraCompressedQuaternion(char** offset, UltraCompressedQuat* retVa
 
 void LOA_ReadAINode(char** offset, tAINode* retVal, int readMode)
 {
+    /* Both of these are the file's node size, not the struct's: the
+       bytes come out of a loaded buffer. They agree today, and ai.h
+       asserts that they do. */
     if (retVal)
-        memcpy(retVal, *offset, sizeof(tAINode));
-    *offset += sizeof(tAINode);
+        memcpy(retVal, *offset, AI_NODE_FILE_BYTES);
+    *offset += AI_NODE_FILE_BYTES;
     MOCK_Logf("LOA_ReadAINode(mode %d)", readMode);
 }
 

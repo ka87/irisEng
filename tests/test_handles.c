@@ -59,12 +59,26 @@ int main(void)
 {
     printf("=== 32-bit stand-ins for addresses ===\n");
 
+    /* The two widths the layer is not free to choose, checked against
+       the literals the rest of the engine uses rather than against the
+       layer's own names. */
+    if (HDL_TAG_MASK != 3u)
+        failn("the tag is not the two bits the slot tests mask",
+              HDL_TAG_MASK, 3u);
+    if (HDL_SIGN_MASK != 0x80000000u)
+        failn("the reserved sign bit is not the top one",
+              HDL_SIGN_MASK, 0x80000000u);
+
 #if !HDL_TRANSLATES
     printf("  SKIP: pointers already fit in 32 bits on this build\n");
     return 0;
 #else
     {
-        enum { N = 4096 };
+        /* Enough to force both tables to grow several times. The
+           pairwise check samples rather than walking N^2 pairs, with a
+           stride that shares no factor with N so that it does not keep
+           comparing the same residues. */
+        enum { N = 4096, SAMPLE_STRIDE = 997 };
         uint32_t h[N];
         int i, j;
 
@@ -76,7 +90,7 @@ int main(void)
             void* p = fake((unsigned long long)i * 3u + 1u);
             h[i] = HDL_ul_Handle(p);
 
-            if (h[i] == 0)
+            if (h[i] == HDL_NO_OBJECT)
             {
                 fail("a handle was refused with the table nearly empty");
                 break;
@@ -86,19 +100,29 @@ int main(void)
             if (HDL_ul_Handle(p) != h[i])
                 fail("the same address gave two different handles");
 
-            if ((h[i] & 3u) != 0u)
-                failn("handle is not a multiple of four", h[i], 0);
-            if (h[i] & 0x80000000u)
-                failn("handle has the top bit set", h[i], 0);
-            if (h[i] <= 2u)
-                failn("handle collides with a reserved value", h[i], 3);
-            /* The tag test the world and collision code writes. */
-            if (((unsigned char)h[i] & 3u) == 1u)
+            /* Deliberately not written with HDL_TAG_MASK or
+               HDL_SIGN_MASK. Both requirements come from code outside
+               this layer -- the slot tests in world.c and collision.c
+               mask with 3, and the key/value search compares keys as a
+               signed int -- so a check phrased in the layer's own
+               constants would move with them and assert nothing. These
+               two literals are the external contract, and a mutation
+               sweep is what found that out. */
+            if (h[i] % 4u != 0u)
+                failn("handle is not a multiple of four", h[i] % 4u, 0);
+            if ((int32_t)h[i] <= 0)
+                failn("handle is not a positive signed int", h[i], 0);
+            if (h[i] <= HDL_MAIN_ACTOR_LAST)
+                failn("handle collides with a reserved value", h[i],
+                      HDL_MAIN_ACTOR_LAST + 1u);
+            /* The tag test the world and collision code writes, which
+               truncates before it masks. */
+            if (((unsigned char)h[i] & HDL_TAG_MASK) == HDL_TAG_UNRESOLVED_KEY)
                 fail("a handle reads as an unresolved key to the tag test");
         }
 
         for (i = 0; i < N; ++i)
-            for (j = i + 1; j < N; j += 997)   /* a sample, not N^2 */
+            for (j = i + 1; j < N; j += SAMPLE_STRIDE)
                 if (h[i] == h[j])
                     fail("two addresses share a handle");
 
@@ -106,29 +130,34 @@ int main(void)
             failn("live count after taking N handles", (unsigned)HDL_i_LiveCount(), N);
 
         /* --- the reserved values pass straight through ------------ */
-        if (HDL_ul_Handle(NULL) != 0u)
+        if (HDL_ul_Handle(NULL) != HDL_NO_OBJECT)
             fail("NULL did not give handle 0");
-        if (HDL_p_Pointer(0u) != NULL)
+        if (HDL_p_Pointer(HDL_NO_OBJECT) != NULL)
             fail("handle 0 did not resolve to NULL");
-        if (HDL_ul_Handle((void*)(uintptr_t)1u) != 1u)
+        if (HDL_ul_Handle((void*)(uintptr_t)HDL_MAIN_ACTOR_FIRST)
+                != HDL_MAIN_ACTOR_FIRST)
             fail("the first main actor's stand-in was not passed through");
-        if (HDL_ul_Handle((void*)(uintptr_t)2u) != 2u)
+        if (HDL_ul_Handle((void*)(uintptr_t)HDL_MAIN_ACTOR_LAST)
+                != HDL_MAIN_ACTOR_LAST)
             fail("the second main actor's stand-in was not passed through");
-        if (HDL_p_Pointer(1u) != (void*)(uintptr_t)1u)
-            fail("1 did not resolve back to 1");
-        if (HDL_p_Pointer(2u) != (void*)(uintptr_t)2u)
-            fail("2 did not resolve back to 2");
-        if (HDL_p_Pointer(0xFFFFFFFFu) != (void*)(uintptr_t)0xFFFFFFFFu)
+        if (HDL_p_Pointer(HDL_MAIN_ACTOR_FIRST)
+                != (void*)(uintptr_t)HDL_MAIN_ACTOR_FIRST)
+            fail("the first main actor did not resolve back to itself");
+        if (HDL_p_Pointer(HDL_MAIN_ACTOR_LAST)
+                != (void*)(uintptr_t)HDL_MAIN_ACTOR_LAST)
+            fail("the second main actor did not resolve back to itself");
+        if (HDL_p_Pointer(HDL_NOT_FOUND) != (void*)(uintptr_t)HDL_NOT_FOUND)
             fail("the not-found value was not passed through");
 
         /* --- a tagged slot keeps its bits ------------------------- */
         {
             uint32_t tagged = 0x12345u;        /* low bits 01 */
-            if ((tagged & 3u) != 1u)
+            if ((tagged & HDL_TAG_MASK) != HDL_TAG_UNRESOLVED_KEY)
                 fail("the test's own tagged value is not tagged");
             if (HDL_p_Pointer(tagged) != (void*)(uintptr_t)tagged)
                 fail("a tagged slot did not keep its bits");
-            if (((unsigned char)(uintptr_t)HDL_p_Pointer(tagged) & 3u) != 1u)
+            if (((unsigned char)(uintptr_t)HDL_p_Pointer(tagged) & HDL_TAG_MASK)
+                    != HDL_TAG_UNRESOLVED_KEY)
                 fail("a tagged slot stopped reading as an unresolved key");
         }
 
@@ -154,7 +183,7 @@ int main(void)
                new address. */
             b = fake(0xBEEFu);
             hb = HDL_ul_Handle(b);
-            if (hb == 0)
+            if (hb == HDL_NO_OBJECT)
                 fail("no handle after a release");
             if ((hb >> HDL_IDX_SHIFT) != (ha >> HDL_IDX_SHIFT))
                 fail("the released slot was not reused");
@@ -171,7 +200,7 @@ int main(void)
                reserved values, must all be harmless. */
             HDL_Release(fake(0xABCDEFu));
             HDL_Release(NULL);
-            HDL_Release((void*)(uintptr_t)1u);
+            HDL_Release((void*)(uintptr_t)HDL_MAIN_ACTOR_FIRST);
             if (HDL_p_Pointer(hb) != b)
                 fail("a stray release disturbed a live handle");
         }
@@ -184,13 +213,13 @@ int main(void)
     /* --- the table's own limit, reached for real ------------------ */
     {
         unsigned long long i;
-        uint32_t last = 1;
+        uint32_t last = HDL_NO_OBJECT + 1u;
         unsigned long long issued = 0;
 
         for (i = 0; i < HDL_MAX_SLOTS + 16ull; ++i)
         {
             last = HDL_ul_Handle(fake(0x1000000ull + i));
-            if (last == 0)
+            if (last == HDL_NO_OBJECT)
                 break;
             ++issued;
         }
@@ -201,7 +230,7 @@ int main(void)
            handle that collides with a live one. */
         if (issued != HDL_MAX_SLOTS - 1ull)
             failn("handles issued before the table filled", issued, HDL_MAX_SLOTS - 1ull);
-        if (last != 0)
+        if (last != HDL_NO_OBJECT)
             fail("the table never reported itself full");
 
         HDL_CloseModule();

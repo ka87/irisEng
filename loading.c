@@ -238,7 +238,7 @@ void LOA_ReadAINode(char** offset, tAINode* retVal, int readMode)
     }
     else if ((readMode & 2) == 0 || !LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
     {
-        *offset += sizeof(tAINode);
+        *offset += AI_NODE_FILE_BYTES;
     }
 }
 

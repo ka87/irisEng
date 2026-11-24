@@ -53,7 +53,7 @@
    against; forcing it to 1 on a 32-bit build would not work and is
    not meant to. */
 #ifndef HDL_TRANSLATES
-#if UINTPTR_MAX > 0xFFFFFFFFu
+#if UINTPTR_MAX > UINT32_MAX
 #define HDL_TRANSLATES 1
 #else
 #define HDL_TRANSLATES 0
@@ -91,12 +91,62 @@ void HDL_CloseModule(void);
 
 #endif
 
-/* The layout, exposed so that a test can take a handle apart. */
-#define HDL_GEN_SHIFT 2
+/* The values a 32-bit slot may hold that are not addresses. Each one
+   is read somewhere as itself, so each one has to come back out of
+   this layer unchanged. */
+#define HDL_NO_OBJECT         0u
+#define HDL_MAIN_ACTOR_FIRST  1u
+#define HDL_MAIN_ACTOR_LAST   2u
+#define HDL_NOT_FOUND         UINT32_MAX
+
+/* How wide the slot is. Not the build's word size -- the slot is
+   32 bits whatever the build, which is the whole reason this file
+   exists. */
+#define HDL_WORD_BITS 32
+
+/* The low bits of a slot say whether what is in it has been resolved
+   to an address yet. A handle has to read as resolved, which is why it
+   is a multiple of four. */
+#define HDL_TAG_BITS           2
+#define HDL_TAG_MASK           ((1u << HDL_TAG_BITS) - 1u)
+#define HDL_TAG_RESOLVED       0u
+#define HDL_TAG_UNRESOLVED_KEY 1u
+
+/* The top bit, which has to stay clear because the key/value search
+   compares keys as signed integers. */
+#define HDL_SIGN_BITS 1
+#define HDL_SIGN_MASK (1u << (HDL_WORD_BITS - HDL_SIGN_BITS))
+
+/* So the rest of the word is a generation and a slot index, and only
+   the generation's width is a free choice: eight bits means a slot has
+   to be reused 256 times before a handle issued for one of its earlier
+   occupants can match again.
+
+   Everything else below follows, and is written as a derivation rather
+   than a number so that changing one of the three widths above cannot
+   leave a shift behind. The layout is exposed because the tests take a
+   handle apart. */
 #define HDL_GEN_BITS  8
-#define HDL_IDX_SHIFT 10
-#define HDL_IDX_BITS  21
+#define HDL_GEN_SHIFT HDL_TAG_BITS
+#define HDL_IDX_SHIFT (HDL_GEN_SHIFT + HDL_GEN_BITS)
+#define HDL_IDX_BITS  (HDL_WORD_BITS - HDL_SIGN_BITS - HDL_IDX_SHIFT)
 
 #define HDL_GEN_MASK  ((1u << HDL_GEN_BITS) - 1u)
 #define HDL_IDX_MASK  ((1u << HDL_IDX_BITS) - 1u)
 #define HDL_MAX_SLOTS (1u << HDL_IDX_BITS)
+
+/* Index 0 is never handed out, so that no handle can be
+   HDL_NO_OBJECT. */
+#define HDL_FIRST_INDEX 1u
+
+/* The three widths have to tile the word exactly, and the smallest
+   handle there is -- the first index with generation zero -- has to
+   clear the reserved values. Neither holds for every choice of widths,
+   so both are asserted rather than reasoned about again later. */
+_Static_assert(HDL_TAG_BITS + HDL_GEN_BITS + HDL_IDX_BITS + HDL_SIGN_BITS
+                   == HDL_WORD_BITS,
+               "a handle's tag, generation, index and sign bit must fill "
+               "the word exactly, with nothing spare and nothing overlapping");
+_Static_assert((HDL_FIRST_INDEX << HDL_IDX_SHIFT) > HDL_MAIN_ACTOR_LAST,
+               "the smallest handle must be larger than every value a slot "
+               "may hold that is not an address");

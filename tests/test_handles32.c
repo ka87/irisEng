@@ -42,11 +42,14 @@ static void* withSideEffect(void* p)
 
 int main(void)
 {
-    /* 0 and 1 and 2 and the not-found value, a tagged slot, and a few
-       ordinary ones. */
     static const uint32_t values[] = {
-        0u, 1u, 2u, 3u, 4u, 0x12345u, 0x1000u, 0x7FFFFFFCu,
-        0x80000000u, 0xDEADBEEFu, 0xFFFFFFFFu
+        /* the values a slot may hold that are not addresses */
+        HDL_NO_OBJECT, HDL_MAIN_ACTOR_FIRST, HDL_MAIN_ACTOR_LAST, HDL_NOT_FOUND,
+        /* a tagged slot, and one just inside the signed range */
+        0x12345u, HDL_SIGN_MASK - HDL_TAG_MASK - 1u,
+        /* and some ordinary bit patterns, including past the sign bit,
+           which this path has no opinion about */
+        3u, 4u, 0x1000u, HDL_SIGN_MASK, 0xDEADBEEFu
     };
     unsigned i;
 

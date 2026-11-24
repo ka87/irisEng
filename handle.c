@@ -13,19 +13,32 @@ typedef struct HDL_Slot
     uint32_t nextFree;
 } HDL_Slot;
 
-/* Index 0 is never issued, so that no handle is 0. */
+/* The free list's end marker. Index 0 is never a real slot, so it can
+   stand for "no next". */
 #define HDL_FREE_END 0u
+
+/* How big the two tables start, and by how much they grow. */
+#define HDL_SLOTS_INITIAL   256u
+#define HDL_BUCKETS_INITIAL 256u
+#define HDL_GROW_FACTOR     2u
+
+/* The bucket array is grown before it is ever more than this full, so
+   that a probe never has to walk a crowded table: one half. */
+#define HDL_BUCKET_LOAD_NUM 1u
+#define HDL_BUCKET_LOAD_DEN 2u
 
 static HDL_Slot* hdl_slots;
 static uint32_t hdl_slotNum;          /* allocated, including index 0 */
-static uint32_t hdl_slotUsed = 1;     /* next never-used index */
+static uint32_t hdl_slotUsed = HDL_FIRST_INDEX;  /* next never-used */
 static uint32_t hdl_freeHead = HDL_FREE_END;
 static int hdl_live;
 
 /* Address to slot index, so that one address always gets one handle.
-   Open addressing: an empty bucket is 0 and a released one is the
-   tombstone, which keeps probe chains intact. */
-#define HDL_TOMBSTONE ((void*)(uintptr_t)1)
+   Open addressing: an empty bucket is NULL and a released one holds
+   the tombstone, which keeps probe chains intact. The tombstone only
+   has to be a value no real address can take, which is what makes one
+   of the reserved values the obvious choice. */
+#define HDL_TOMBSTONE ((void*)(uintptr_t)HDL_MAIN_ACTOR_FIRST)
 
 typedef struct HDL_Bucket
 {
@@ -40,16 +53,23 @@ static uint32_t hdl_bucketFill;       /* live plus tombstones */
 /* Allocated with the C library rather than the engine's own allocator,
    so that the allocator is free to use handles itself. */
 
+/* A standard 64-bit avalanche step: two odd multipliers with a shift
+   and an exclusive-or around each. The numbers are the published ones
+   and are not a tuning choice -- what they are for is spreading the
+   high bits of an address down into the low ones, because the low bits
+   of an allocation carry almost nothing and are what picks a bucket. */
+#define HDL_MIX_SHIFT 33
+#define HDL_MIX_ODD_A 0xff51afd7ed558ccdULL
+#define HDL_MIX_ODD_B 0xc4ceb9fe1a85ec53ULL
+
 static uint32_t hdl_hash(void* addr)
 {
-    /* The low bits of an address carry little, so they are mixed up
-       before the bucket is chosen. */
     uint64_t v = (uint64_t)(uintptr_t)addr;
-    v ^= v >> 33;
-    v *= 0xff51afd7ed558ccdULL;
-    v ^= v >> 33;
-    v *= 0xc4ceb9fe1a85ec53ULL;
-    v ^= v >> 33;
+    v ^= v >> HDL_MIX_SHIFT;
+    v *= HDL_MIX_ODD_A;
+    v ^= v >> HDL_MIX_SHIFT;
+    v *= HDL_MIX_ODD_B;
+    v ^= v >> HDL_MIX_SHIFT;
     return (uint32_t)v;
 }
 
@@ -92,11 +112,11 @@ static int hdl_bucketsGrow(uint32_t want)
 {
     HDL_Bucket* old = hdl_buckets;
     uint32_t oldNum = hdl_bucketNum;
-    uint32_t newNum = hdl_bucketNum ? hdl_bucketNum : 256u;
+    uint32_t newNum = hdl_bucketNum ? hdl_bucketNum : HDL_BUCKETS_INITIAL;
     uint32_t i;
 
-    while (newNum < want * 2u)
-        newNum *= 2u;
+    while (newNum * HDL_BUCKET_LOAD_NUM < want * HDL_BUCKET_LOAD_DEN)
+        newNum *= HDL_GROW_FACTOR;
 
     hdl_buckets = (HDL_Bucket*)calloc(newNum, sizeof(HDL_Bucket));
     if (!hdl_buckets)
@@ -125,7 +145,8 @@ static int hdl_bucketsGrow(uint32_t want)
 
 static int hdl_slotsGrow(void)
 {
-    uint32_t newNum = hdl_slotNum ? hdl_slotNum * 2u : 256u;
+    uint32_t newNum = hdl_slotNum ? hdl_slotNum * HDL_GROW_FACTOR
+                                  : HDL_SLOTS_INITIAL;
     HDL_Slot* grown;
 
     if (newNum > HDL_MAX_SLOTS)
@@ -146,7 +167,8 @@ static int hdl_slotsGrow(void)
    reserved ones, and anything carrying the unresolved-key tag. */
 static int hdl_isReserved(uint32_t v)
 {
-    return v <= 2u || (v & 3u) != 0u;
+    return v <= HDL_MAIN_ACTOR_LAST
+        || (v & HDL_TAG_MASK) != HDL_TAG_RESOLVED;
 }
 
 uint32_t HDL_ul_Handle(void* ptr)
@@ -156,13 +178,13 @@ uint32_t HDL_ul_Handle(void* ptr)
     HDL_Slot* slot;
 
     if (!ptr)
-        return 0;
+        return HDL_NO_OBJECT;
     /* The main-actor stand-ins arrive here looking like addresses. */
-    if ((uintptr_t)ptr <= 2u)
+    if ((uintptr_t)ptr <= HDL_MAIN_ACTOR_LAST)
         return (uint32_t)(uintptr_t)ptr;
 
-    if (!hdl_bucketNum && !hdl_bucketsGrow(1))
-        return 0;
+    if (!hdl_bucketNum && !hdl_bucketsGrow(1u))
+        return HDL_NO_OBJECT;
 
     b = hdl_find(ptr);
     if (b && b->addr == ptr)
@@ -171,14 +193,15 @@ uint32_t HDL_ul_Handle(void* ptr)
 
     /* Grow before inserting, at half full, so that a probe never has
        to walk a nearly full table. */
-    if ((hdl_bucketFill + 1u) * 2u > hdl_bucketNum)
+    if ((hdl_bucketFill + 1u) * HDL_BUCKET_LOAD_DEN
+            > hdl_bucketNum * HDL_BUCKET_LOAD_NUM)
     {
         if (!hdl_bucketsGrow(hdl_bucketFill + 1u))
-            return 0;
+            return HDL_NO_OBJECT;
         b = hdl_find(ptr);
     }
     if (!b)
-        return 0;
+        return HDL_NO_OBJECT;
 
     if (hdl_freeHead != HDL_FREE_END)
     {
@@ -188,9 +211,9 @@ uint32_t HDL_ul_Handle(void* ptr)
     else
     {
         if (hdl_slotUsed >= hdl_slotNum && !hdl_slotsGrow())
-            return 0;
+            return HDL_NO_OBJECT;
         if (hdl_slotUsed >= HDL_MAX_SLOTS)
-            return 0;
+            return HDL_NO_OBJECT;
         idx = hdl_slotUsed++;
     }
 
@@ -225,7 +248,7 @@ void* HDL_p_Pointer(uint32_t handle)
     gen = (handle >> HDL_GEN_SHIFT) & HDL_GEN_MASK;
 
     /* Not a handle this table ever issued. */
-    if (idx == 0u || idx >= hdl_slotUsed)
+    if (idx < HDL_FIRST_INDEX || idx >= hdl_slotUsed)
         return (void*)(uintptr_t)handle;
 
     slot = &hdl_slots[idx];
@@ -242,7 +265,7 @@ void HDL_Release(void* ptr)
     HDL_Slot* slot;
     uint32_t idx;
 
-    if (!ptr || (uintptr_t)ptr <= 2u)
+    if (!ptr || (uintptr_t)ptr <= HDL_MAIN_ACTOR_LAST)
         return;
 
     b = hdl_find(ptr);
@@ -275,7 +298,7 @@ void HDL_CloseModule(void)
     hdl_slots = NULL;
     hdl_buckets = NULL;
     hdl_slotNum = 0;
-    hdl_slotUsed = 1;
+    hdl_slotUsed = HDL_FIRST_INDEX;
     hdl_freeHead = HDL_FREE_END;
     hdl_bucketNum = 0;
     hdl_bucketFill = 0;
