@@ -1,4 +1,5 @@
 #include "ai_messagefunctions.h"
+#include "../handle.h"
 
 // A game object holds at most five pending messages. Every sender in
 // this file ends the same way, so the queue push is one function.
@@ -41,7 +42,9 @@ static void MSG_l_PopCommonFields(tMessage* msg)
     msg->f2 = AI_GetFloatFromStack();
     msg->v2 = *(Vec3*)AI_PopStackSlot();
     msg->v1 = *(Vec3*)AI_PopStackSlot();
-    msg->gao2 = (tGameObjectMain*)AI_GetObjectFromStack();
+    /* A message's object fields are four-byte reference slots, so what
+       goes in one is the handle and not the address. */
+    msg->gao2 = HDL_ul_Handle(AI_GetObjectFromStack());
 }
 
 void AI_EvalFunc_MSGSend_C(struct sGameObjectMain* gao, struct sMessage* msg)
@@ -149,7 +152,7 @@ tAINode* AI_EvalFunc_MSGSendEx(tAINode* node)
     msgID = AI_GetIntFromStack();
 
     memset(&msg, 0, sizeof(msg));
-    msg.gao = AI_gpst_CurrentGameObject;
+    msg.gao = HDL_ul_Handle(AI_gpst_CurrentGameObject);
     msg.msgID = msgID;
     msg.f2 = (float)value;
     MSG_l_Push(gaoUltra->extended->messages, &msg);
@@ -209,7 +212,7 @@ tAINode* AI_EvalFunc_MSGSendAll(tAINode* node)
         return node + 1;
 
     MSG_l_PopCommonFields(&msg);
-    msg.gao = (tGameObjectMain*)AI_GetObjectFromStack();
+    msg.gao = HDL_ul_Handle(AI_GetObjectFromStack());
     msg.msgID = AI_GetIntFromStack();
     MSG_l_Push(gaoUltra->extended->messages, &msg);
     return node + 1;
@@ -333,7 +336,7 @@ tAINode* AI_EvalFunc_MSGSendAllOwner(tAINode* node)
         return node + 1;
 
     MSG_l_PopCommonFields(&msg);
-    msg.gao = AI_gpst_CurrentGameObject;
+    msg.gao = HDL_ul_Handle(AI_gpst_CurrentGameObject);
     msg.msgID = AI_GetIntFromStack();
     MSG_l_Push(MSG_gpo_Owner->extended->messages, &msg);
     return node + 1;

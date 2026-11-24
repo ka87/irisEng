@@ -1416,8 +1416,8 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
                     for (j = 0; j < arrayElemNum; j++)
                     {
                         msg = (tMessage*)currVarDataPtr;
-                        msg->gao = (tGameObjectMain*)LOA_ReadLong(&currReadPtr, 0, 1);
-                        msg->gao2 = (tGameObjectMain*)LOA_ReadLong(&currReadPtr, 0, 1);
+                        LOA_ReadLong(&currReadPtr, &msg->gao, 1);
+                        LOA_ReadLong(&currReadPtr, &msg->gao2, 1);
                         LOA_ReadVector(&currReadPtr, &msg->v1, 1);
                         LOA_ReadVector(&currReadPtr, &msg->v2, 1);
                         msg->f2 = LOA_ReadFloat(&currReadPtr, 0, 1);
@@ -1425,7 +1425,7 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
                         msg->Int1 = LOA_ReadLong(&currReadPtr, 0, 1);
                         msg->Int2 = LOA_ReadLong(&currReadPtr, 0, 1);
                         msg->msgID = LOA_ReadLong(&currReadPtr, 0, 1);
-                        currVarDataPtr += sizeof(tMessage);
+                        currVarDataPtr += MSG_FILE_BYTES;
                     }
                     break;
                 case 44:

@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "../ai.h"
 #include "../gameobject.h"
@@ -185,6 +186,66 @@ static void check_actor_or_object(void)
         fail("no object was not left as no object");
 }
 
+/* A message is the same rule applied to a struct.
+ *
+ * Its two object fields are four-byte reference slots: the loader reads
+ * each as a long, and the file gives nothing wider. Three things rest
+ * on that and all three break together if a field grows -- the offsets
+ * the loader reads at, the fifty-two byte scratch buffers the keywords
+ * copy a message into, and the stride the loader advances the
+ * destination by while consuming fifty-two bytes of file.
+ *
+ * So what is checked is the size and the offsets, against the file's
+ * own figures rather than against sizeof. */
+static void check_message_layout(void)
+{
+    const size_t wantOffsets[9] = { 0, 4, 8, 20, 32, 36, 40, 44, 48 };
+    const size_t gotOffsets[9] = {
+        offsetof(tMessage, gao),  offsetof(tMessage, gao2),
+        offsetof(tMessage, v1),   offsetof(tMessage, v2),
+        offsetof(tMessage, f2),   offsetof(tMessage, f1),
+        offsetof(tMessage, Int1), offsetof(tMessage, Int2),
+        offsetof(tMessage, msgID)
+    };
+    static const char* names[9] = {
+        "gao", "gao2", "v1", "v2", "f2", "f1", "Int1", "Int2", "msgID"
+    };
+    unsigned i;
+
+    if (sizeof(tMessage) != MSG_FILE_BYTES)
+        printf("  FAIL a message is %zu bytes, and a file says %d\n",
+               sizeof(tMessage), (int)MSG_FILE_BYTES);
+    if (sizeof(tMessage) != MSG_FILE_BYTES)
+        ++failures;
+
+    for (i = 0; i < 9; ++i)
+        if (gotOffsets[i] != wantOffsets[i])
+        {
+            printf("  FAIL a message's %s sits at %zu, and a file puts "
+                   "it at %zu\n", names[i], gotOffsets[i], wantOffsets[i]);
+            ++failures;
+        }
+
+    /* The scratch a keyword copies a whole message into. If a message
+       outgrew it the copy would run off the end of the caller's frame,
+       which is the worst of the three failures and the quietest. */
+    if (sizeof(tMessage) > 52u)
+        fail("a message no longer fits the scratch the keywords give it");
+
+    /* And an object field holds what a slot holds, so it round trips
+       through the layer like any other reference. */
+    {
+        tMessage msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.gao = HDL_ul_Handle(&thing1);
+        msg.gao2 = HDL_ul_Handle(&thing2);
+        if (HDL_p_Pointer(msg.gao) != &thing1)
+            fail("a message's first object field did not name its object");
+        if (HDL_p_Pointer(msg.gao2) != &thing2)
+            fail("a message's second object field did not name its object");
+    }
+}
+
 /* A type that is not a reference must be untouched by any of this. */
 static void check_vector_untouched(void)
 {
@@ -225,6 +286,7 @@ int main(void)
     check_main_actors(gaoType);
     check_actor_or_object();
     check_vector_untouched();
+    check_message_layout();
 
     if (failures)
     {

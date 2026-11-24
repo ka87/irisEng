@@ -90,10 +90,15 @@ typedef struct sGameObjectDesignFields
     int designInt3;
 } tGameObjectDesignFields;
 
+/* A message, as a world file has it and as a message variable holds
+   it. The two object fields are four-byte reference slots like any
+   other -- the loader reads each as a long and the file gives nothing
+   wider -- so they hold what such a slot holds and not an address.
+   That is also what keeps this struct the size the file says. */
 typedef struct sMessage
 {
-    struct sGameObjectMain* gao;
-    struct sGameObjectMain* gao2;
+    uint32_t gao;
+    uint32_t gao2;
     Vec3 v1;
     Vec3 v2;
     float f2;
@@ -102,6 +107,20 @@ typedef struct sMessage
     int Int2;
     int msgID;
 } tMessage;
+
+/* What one occupies in a world file, and in a message variable, which
+   is the same thing. The assertion is the tripwire: a member that grew
+   would otherwise be read at the wrong offset, copied into the
+   fifty-two byte scratch buffers the keywords use, and strided over by
+   the wrong amount while the file was consumed by the right one --
+   three separate wrongs with nothing to announce them. */
+#define MSG_FILE_BYTES 52
+
+_Static_assert(sizeof(tMessage) == MSG_FILE_BYTES,
+               "a message in memory is no longer the size it is in a world "
+               "file; the variable block's layout, the scratch buffers the "
+               "keywords copy one into, and the loader's stride all assume "
+               "they are the same");
 
 typedef struct sGameObjectMessages
 {
