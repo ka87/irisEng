@@ -501,6 +501,7 @@ for one in tests/run_sdl3.sh \
            tests/run_handles.sh \
            tests/run_memory.sh \
            tests/run_loaaddr.sh \
+           tests/run_ptrcast.sh \
            tests/run_gridheight.sh \
            tests/run_d3dtex.sh \
            tests/run_depthblur.sh \
