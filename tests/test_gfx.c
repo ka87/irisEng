@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../memory.h"
 #include "gfxcore_mocks.h"
 
 /* ---- the two sides ---- */

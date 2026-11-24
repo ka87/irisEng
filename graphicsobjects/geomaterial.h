@@ -24,9 +24,17 @@ typedef struct sGEOMAT
     float unkFloat1;
     float unkFloat2;
     int negativeZeroOrOneUnknown;
-    int idxOrPtr; // type 5-nél tMultiTextureElemStruct
+    // a texture index for a single material, and for a type 5 the head
+    // of its tMultiTextureElemStruct chain, so the slot holds an
+    // address as well as a number
+    intptr_t idxOrPtr;
     int validityFlag;
 } tGEOMAT;
+
+// A type 4 material is the first five fields and nothing else: that is
+// what its two allocators write and all that anything reads of one, so
+// it is allocated to here rather than to the whole of tGEOMAT.
+#define MAT_MULTI_BYTES (offsetof(tGEOMAT, solidVertexColor) + sizeof(int))
 
 extern tGEOMAT MAT_gst_DefaultSingleMaterial;
 

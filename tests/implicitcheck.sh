@@ -16,6 +16,24 @@
 # not been shown. The check fails on any file that appears, which is
 # now any file at all.
 #
+# It sweeps the test drivers and mocks as well, which it did not until
+# a driver for graphicsobjects/geomaterial.c called four loaders that
+# no header declares. An implicit declaration returns int, so each of
+# those materials came back truncated and the driver crashed on the
+# first one -- which is exactly the fault that driver was written to
+# catch, arriving through the driver instead of through the engine. The
+# runners cannot see it: thirteen of them pass
+# -Werror=implicit-function-declaration and all thirteen also pass -w.
+#
+# Fifteen were sitting in nine drivers when the sweep first reached
+# here. Fourteen returned int or void and were harmless; the fifteenth
+# was MEM_p_Alloc in tests/test_gfx.c, a truncated pointer that only
+# that runner's -no-pie kept lossless.
+#
+# tests/baseline_*.c are frozen copies and not swept: they are not
+# ours to change, and each is compiled only inside the runner that
+# renames its symbols.
+#
 # strings.c was the last entry, 1 for isdigit. It asks for <ctype.h>
 # itself now rather than waiting for windows.h to bring it.
 #
@@ -64,6 +82,8 @@ CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # font.c needs these to parse at all, and a file that does not parse
 # reports no implicit declarations -- see UNSWEEPABLE below
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
+# the drivers and mocks reach their own headers and the engine's
+CFLAGS="$CFLAGS -Itests"
 
 BASELINE=""
 
@@ -89,7 +109,13 @@ BASELINE=""
 # change: its two implicit declarations were _access and _chmod, the
 # CRT's own names for asking after a file's permissions, and those are
 # a question of the engine's now too.
-UNSWEEPABLE=""
+# tests/sndbackend_side.c is one side of a differential and is compiled
+# twice, with every sndbackend.c symbol and every tentative global
+# renamed by -D and one of the two sound gates forced. Standalone it
+# does not know which side it is, so it does not parse: the field it
+# reads off a buffer element and the globals it touches are both the
+# per-side names. It is the only file here in that shape.
+UNSWEEPABLE="tests/sndbackend_side.c"
 
 files=$(python3 - <<'EOF'
 import re
@@ -102,6 +128,11 @@ for m in re.finditer(r'ClCompile Include="([^"]+\.c)"', s):
                    # pass, so it was failing for other reasons and
                    # counting zero
     print(p)
+
+import glob
+for p in sorted(glob.glob('tests/*.c')):
+    if not p.startswith('tests/baseline_'):
+        print(p)
 EOF
 )
 

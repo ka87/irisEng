@@ -128,6 +128,9 @@ void DBG_OutputDebugString(char* format, ...)
 
 #include "winstubs.h"
 
+/* Called above where platform/glrender.c is included. */
+void GL_RebuildDepthBlurRamp(void);
+
 /* The engine's globals the renderer reads. Values as gdi.c has them;
    gdi.c itself would bring the whole engine. */
 int   GDI_gi_Widescreen = 1;

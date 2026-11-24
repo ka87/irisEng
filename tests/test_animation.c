@@ -23,6 +23,10 @@
 #include "../graphicsobjects/gro_common.h"
 #include "animation_mocks.h"
 
+/* The two copies under test, which no header names. */
+void BASE_ANI_DestroyShape(tShape** shape);
+void NEW_ANI_DestroyShape(tShape** shape);
+
 // What the stand-ins hand back.
 char* ANIT_fileData;
 int ANIT_fileSize;

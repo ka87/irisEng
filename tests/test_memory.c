@@ -30,6 +30,9 @@
 #include <stdint.h>
 #include "../memory.h"
 
+/* memory.h does not declare it. */
+int MEM_GetBlockSizeBySize(void* ptr);
+
 static int failures;
 
 static void fail(const char* what)

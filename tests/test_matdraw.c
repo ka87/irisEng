@@ -217,13 +217,13 @@ static void BuildWorld(unsigned int seed)
     W.nullMaskMat.intf = &W.intf4null;
     W.nullMaskMat.multiMaterialNumIfType4ThenAmbiantColor = 2;
     W.nullMaskMat.multiMaterialPtrIfType4ThenDiffuseColor = W.matPtrs;
-    W.nullMaskMat.idxOrPtr = (int)(intptr_t)&W.tex[0];
+    W.nullMaskMat.idxOrPtr = (intptr_t)&W.tex[0];
 
     /* materials: 0 is the multi-material head, 1..4 its children */
     W.mats[0].intf = &W.intf4;
     W.mats[0].multiMaterialNumIfType4ThenAmbiantColor = (seed & 3) + 1;
     W.mats[0].multiMaterialPtrIfType4ThenDiffuseColor = W.matPtrs;
-    W.mats[0].idxOrPtr = (int)(intptr_t)&W.tex[0];
+    W.mats[0].idxOrPtr = (intptr_t)&W.tex[0];
     for (i = 0; i < MAXMAT; i++)
         W.matPtrs[i] = &W.mats[i];
     if (seed & 0x20000)
@@ -233,9 +233,9 @@ static void BuildWorld(unsigned int seed)
         W.mats[i].intf = (i & 1) ? &W.intf5 : &W.intf3;
         W.mats[i].solidVertexColor = 0x11223344 + i;
         W.mats[i].unkFloat2 = (i & 2) ? 0.5f : 0.995f;
-        W.mats[i].idxOrPtr = (int)(intptr_t)&W.tex[i % MAXTEX];
+        W.mats[i].idxOrPtr = (intptr_t)&W.tex[i % MAXTEX];
     }
-    W.mats[1].idxOrPtr = (int)(intptr_t)&W.tex[0];
+    W.mats[1].idxOrPtr = (intptr_t)&W.tex[0];
     MAT_gst_DefaultSingleMaterial.intf = &W.intf3;
     MAT_gst_DefaultSingleMaterial.unkFloat2 = 0.1f;
     MAT_gst_DefaultSingleMaterial.idxOrPtr = 3;

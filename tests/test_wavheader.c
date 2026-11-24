@@ -26,6 +26,11 @@
 #include "../basic_array.h"
 #include "../memory.h"
 #include "../handle.h"
+#include "sound_mocks.h"
+
+/* sound.c has no header for this one. */
+int SND_i_LoadStreamedFile(unsigned int soundKey,
+                           tSndWavHdrStruct* wavHdrStructDest);
 
 static int failures;
 

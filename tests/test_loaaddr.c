@@ -34,6 +34,9 @@
 void LOAMOCK_SetKeyPos(uint32_t key, int pos);
 void LOAMOCK_ForgetKeys(void);
 
+/* loading.h does not declare it. */
+void LOA_BeforeLoading(void);
+
 static int failures;
 
 static void fail(const char* what)

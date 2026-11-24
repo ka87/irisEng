@@ -54,6 +54,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Neither of these is in a header: one is the copy under test and
+   the other lives in tests/d3drender_mocks.c. */
+void NEW_D3D_SaveScreenshot(void);
+void WGM_SetMatFunc(int idx);
+
 /* ---------- the two sides ---------- */
 
 /* The flat layer's box.

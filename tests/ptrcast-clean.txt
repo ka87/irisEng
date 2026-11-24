@@ -75,6 +75,7 @@ gfx/gfxsun.c
 gfx/gfxtable.c
 gfx/gfxwater2.c
 graphicsobjects/camera.c
+graphicsobjects/geomaterial.c
 graphicsobjects/geostr.c
 graphicsobjects/gro_common.c
 graphicsobjects/light.c
@@ -89,6 +90,7 @@ inputoutput.c
 lights.c
 loading.c
 main.c
+materialanddraw.c
 materialuv.c
 math.c
 matrixmath.c
@@ -103,6 +105,7 @@ modifiers/morphmodifier.c
 modifiers/otcmodifier.c
 modifiers/particlemodifier.c
 modifiers/photomodifier.c
+modifiers/protexmodifier.c
 modifiers/rlicartemodifier.c
 modifiers/rotrmodifier.c
 modifiers/semilookatmodifier.c
@@ -147,6 +150,7 @@ snp.c
 soft.c
 soundmodifier.c
 sprites.c
+strings.c
 tables.c
 textget.c
 time.c
