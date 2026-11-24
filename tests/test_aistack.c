@@ -270,6 +270,69 @@ static void check_vector_untouched(void)
         ++failures;
 }
 
+/* The compiled-script path's own spelling of the same rule.
+ *
+ * AI2C_GetMainActor takes what a variable slot holds and gives back an
+ * object: nought is no object, one and two name the two main actors,
+ * and anything else is already the object. It had no coverage of any
+ * kind -- dropping its zero guard, moving its range to one, and making
+ * its index zero-based all passed the suite.
+ *
+ * The two spellings have to agree, because they are the same rule in
+ * two places, and the check below says so rather than trusting it. */
+struct sGameObjectMain* AI2C_GetMainActor(void* actorIDOrGao);
+
+static void check_compiled_script_spelling(void)
+{
+    /* The actor table with a slot of the driver's own in front of it,
+       so that the element before the first actor is something this
+       check can recognise. Without that, dropping the zero guard reads
+       AI_MainActor[-1] and whatever happens to be there -- which was
+       nought, so the check passed on luck and a mutation that removed
+       the guard survived. */
+    static struct sGameObjectMain* table[3];
+    struct sGameObjectMain** saved = AI_MainActor;
+    void* probes[4];
+    unsigned i;
+
+    table[0] = &thing1;            /* what AI_MainActor[-1] would give */
+    table[1] = &actor1;
+    table[2] = &actor2;
+    AI_MainActor = &table[1];
+
+    if (AI2C_GetMainActor(NULL) != NULL)
+        fail("no object did not stay no object");
+    if (AI2C_GetMainActor((void*)(uintptr_t)AI_MAIN_ACTOR_FIRST) != &actor1)
+        fail("the value one did not name the first main actor");
+    if (AI2C_GetMainActor((void*)(uintptr_t)AI_MAIN_ACTOR_SECOND) != &actor2)
+        fail("the value two did not name the second main actor");
+
+    /* Three is not an actor id, so it is whatever it is -- which is
+       what the range being exactly one and two means. */
+    if (AI2C_GetMainActor((void*)(uintptr_t)3) != (void*)(uintptr_t)3)
+        fail("a value past the two actor ids was not left alone");
+
+    if (AI2C_GetMainActor(&thing1) != &thing1)
+        fail("an ordinary object was not left alone");
+
+    /* And the same rule, read through the other spelling, gives the
+       same answers for every one of them. */
+    probes[0] = NULL;
+    probes[1] = (void*)(uintptr_t)AI_MAIN_ACTOR_FIRST;
+    probes[2] = (void*)(uintptr_t)AI_MAIN_ACTOR_SECOND;
+    probes[3] = &thing2;
+    for (i = 0; i < 4; ++i)
+        if ((void*)AI2C_GetMainActor(probes[i])
+                != AI_p_ActorOrObject(probes[i]))
+        {
+            printf("  FAIL the two spellings of the actor rule disagree "
+                   "about probe %u\n", i);
+            ++failures;
+        }
+
+    AI_MainActor = saved;
+}
+
 int main(void)
 {
     int16_t gaoType;
@@ -285,6 +348,7 @@ int main(void)
     check_no_object(gaoType);
     check_main_actors(gaoType);
     check_actor_or_object();
+    check_compiled_script_spelling();
     check_vector_untouched();
     check_message_layout();
 
