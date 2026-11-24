@@ -1213,6 +1213,7 @@ tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
     unsigned int size;
     int tiles;
     int capasSize;
+    unsigned int ptrBytes;
     char* src;
     int fileSize;
     int i;
@@ -1256,9 +1257,13 @@ tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
     size = 4 * tiles;
     grid->ptrInts = (int*)MEM_p_Alloc(size);
     LOA_ul_FileTypeSize_39 += size;
-    grid->ptr = (char**)MEM_p_Alloc(size);
+    /* An array of pointers, so it is sized by the element rather than
+       by the four bytes a tile takes in the file. The counter keeps the
+       file's figure, which is what it is counting. */
+    ptrBytes = sizeof(*grid->ptr) * tiles;
+    grid->ptr = (char**)MEM_p_Alloc(ptrBytes);
     LOA_ul_FileTypeSize_39 += size;
-    memset(grid->ptr, 0, size);
+    memset(grid->ptr, 0, ptrBytes);
 
     stored = grid->ptrInts;
     for (i = 0; i < grid->gridCountY * grid->gridCountX; ++i)

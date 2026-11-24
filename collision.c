@@ -1371,7 +1371,8 @@ void COL_DuplicateInstance(struct sGameObjectMain* dest, struct sGameObjectMain*
     destInstance->minLod = srcInstance->minLod;
     destInstance->maxLod = srcInstance->maxLod;
 
-    destInstance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(4 * colSet->instElemNum);
+    destInstance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(
+        sizeof(*destInstance->selectedInstElemPtrs) * colSet->instElemNum);
     LOA_ul_FileTypeSize_38 += 4 * colSet->instElemNum;
 
     if (srcInstance->instElemNum)
@@ -1468,7 +1469,8 @@ void COL_DuplicateColMap(struct sGameObjectMain* dest, struct sGameObjectMain* s
     destColMap->b3 = srcColMap->b3;
     destColMap->b4 = srcColMap->b4;
     destColMap->colObjectID = srcColMap->colObjectID;
-    destColMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4 * srcColMap->colObjectID);
+    destColMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(
+        sizeof(*destColMap->collisionObjectPtr) * srcColMap->colObjectID);
     LOA_ul_FileTypeSize_38 += 4 * srcColMap->colObjectID;
 
     cob = srcColMap->collisionObjectPtr;
@@ -1641,13 +1643,16 @@ void COL_ColMap_AddCob(tGameObjectMain* gao, uint8_t type, void* src, Vec3* cent
 
     if (count)
     {
-        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Realloc(colMap->collisionObjectPtr, 4 * count + 4);
+        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Realloc(
+            colMap->collisionObjectPtr,
+            sizeof(*colMap->collisionObjectPtr) * (count + 1));
         colMap->collisionObjectPtr[colMap->colObjectID] = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
         cob = colMap->collisionObjectPtr[colMap->colObjectID];
     }
     else
     {
-        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(4u);
+        colMap->collisionObjectPtr = (tColCollisionObject**)MEM_p_Alloc(
+            sizeof(*colMap->collisionObjectPtr));
         *colMap->collisionObjectPtr = (tColCollisionObject*)MEM_p_Alloc(sizeof(tColCollisionObject));
         cob = *colMap->collisionObjectPtr;
     }
@@ -1752,8 +1757,10 @@ void COL_ResolveRefs(struct sGameObjectMain* gao)
         instance->instElemNum = 0;
         if (slots)
             MEM_Free(slots);
-        instance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(4 * instance->zoneNum);
-        memset(instance->selectedInstElemPtrs, 0, 4 * instance->zoneNum);
+        instance->selectedInstElemPtrs = (tColInstanceElem**)MEM_p_Alloc(
+            sizeof(*instance->selectedInstElemPtrs) * instance->zoneNum);
+        memset(instance->selectedInstElemPtrs, 0,
+               sizeof(*instance->selectedInstElemPtrs) * instance->zoneNum);
         for (i = 0; i < instance->zoneNum; ++i)
             instance->selectedInstElemPtrs[i] = (tColInstanceElem*)i;
         instance->instElemBitmask = 0;
@@ -8116,8 +8123,8 @@ struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset)
         zoneNum = instance->zoneNum;
         if (zoneNum)
         {
-            zoneSlots = (tColInstanceElem**)MEM_p_Alloc(4 * zoneNum);
-            zoneSlotBytes = 4 * instance->zoneNum;
+            zoneSlots = (tColInstanceElem**)MEM_p_Alloc(sizeof(*zoneSlots) * zoneNum);
+            zoneSlotBytes = sizeof(*zoneSlots) * instance->zoneNum;
             instance->selectedInstElemPtrs = zoneSlots;
             memset(zoneSlots, 0, zoneSlotBytes);
         }
@@ -8446,7 +8453,7 @@ struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
         colMap->activation = -1;
         colMap->b3 = 0;
         colMap->b4 = 0;
-        cobs = (tColCollisionObject**)MEM_p_Alloc(4u);
+        cobs = (tColCollisionObject**)MEM_p_Alloc(sizeof(*cobs));
         colMap->collisionObjectPtr = cobs;
         LOA_MakeFileRef(cobRef, cobs, (void* (*)(uint32_t))COL_ul_CallBackLoadCob, 1);
     }
@@ -8456,8 +8463,9 @@ struct sColMap* COL_ul_CallBackLoadColMap(uint32_t Offset)
         colMap->activation = LOA_ReadChar(&cursor, 0, 1);
         colMap->b3 = LOA_ReadChar(&cursor, 0, 1);
         colMap->b4 = LOA_ReadChar(&cursor, 0, 1);
-        cobs = (tColCollisionObject**)MEM_p_Alloc(4 * colMap->colObjectID);
-        cobBytes = 4 * colMap->colObjectID;
+        cobs = (tColCollisionObject**)MEM_p_Alloc(
+            sizeof(*cobs) * colMap->colObjectID);
+        cobBytes = sizeof(*cobs) * colMap->colObjectID;
         colMap->collisionObjectPtr = cobs;
         memset(cobs, 0, cobBytes);
         cob = colMap->collisionObjectPtr;
