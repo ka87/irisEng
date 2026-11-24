@@ -643,6 +643,23 @@ static void check_tmp(void)
     check_all_live("after the temporary allocator");
 }
 
+/* The element size an array of pointers is allocated with.
+ *
+ * MEM_PTR_BYTES is sizeof(void*) unless a build defines it, and eleven
+ * runners do define it as 4 -- the figure the frozen copies write, so
+ * that the differentials comparing the size the allocator was asked for
+ * still agree. That gate is the one way the real build could quietly go
+ * back to allocating half of what an array needs, so this runner, which
+ * defines nothing, checks that the default is the real width. */
+static void check_pointer_element_size(void)
+{
+    if (MEM_PTR_BYTES != (unsigned int)sizeof(void*))
+        failn("the default element size for an array of pointers",
+              MEM_PTR_BYTES, (long long)sizeof(void*));
+    if (MEM_PTR_BYTES * 4u != (unsigned int)sizeof(void*) * 4u)
+        fail("an array of four pointers is not four elements wide");
+}
+
 int main(void)
 {
     unsigned long long base;
@@ -654,6 +671,7 @@ int main(void)
     printf("  arena base %#llx, %d bytes\n",
            base, MEM_gst_MemoryInfo.memorySize);
 
+    check_pointer_element_size();
     check_basics();
     check_churn();
     check_hole_reuse();

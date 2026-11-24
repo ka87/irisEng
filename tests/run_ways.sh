@@ -14,7 +14,13 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# MEM_PTR_BYTES=4: an array of pointers takes four bytes an element in
+# the 32-bit build the engine ships as, and the frozen copies here
+# write that out. Five of them are compared on the figure the
+# allocator was asked for -- the mock logs it -- so the rewrite has
+# to ask for the same thing, and the mock's own double headroom
+# covers the shortfall. The game build gets the real width.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DMEM_PTR_BYTES=4"
 OUT=tests/build
 mkdir -p "$OUT"
 

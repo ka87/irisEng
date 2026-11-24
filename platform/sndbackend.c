@@ -2133,9 +2133,12 @@ int pcSND_i_FxInit()
 
     SND_gst_FxParam.voiceListCount = 16;
     SND_gst_FxDefaultParam.voiceListCount = 16;
-    SND_gst_FxDefaultParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(64u);
-    SND_gst_FxParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(4 * SND_gst_FxParam.voiceListCount);
-    memset(SND_gst_FxParam.voiceList, 0, 4 * SND_gst_FxParam.voiceListCount);
+    SND_gst_FxDefaultParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(
+        MEM_PTR_BYTES * SND_gst_FxDefaultParam.voiceListCount);
+    SND_gst_FxParam.voiceList = (tSndSoundBufferElem**)MEM_p_Alloc(
+        MEM_PTR_BYTES * SND_gst_FxParam.voiceListCount);
+    memset(SND_gst_FxParam.voiceList, 0,
+           MEM_PTR_BYTES * SND_gst_FxParam.voiceListCount);
     fxWetVol = 0.0;
     memset(&gFXGlobal, 0, sizeof(gFXGlobal));
     /* Whether the effects are on came from a registry value the

@@ -14,6 +14,24 @@
  * and never read or written from disk, so the layout is free to differ
  * between builds. On a 32-bit build every size below comes out exactly
  * as it always did. */
+/* How many bytes an element of an array of pointers takes.
+ *
+ * Forty-odd allocations wrote this out as the literal 4, which is right
+ * in the 32-bit build the engine ships as and half of what it needs
+ * where a pointer is eight bytes: the array then ends before its last
+ * elements do.
+ *
+ * It is a macro and not simply sizeof because the frozen copies in
+ * tests/ still write 4 and cannot be changed, and five of their
+ * differentials compare the figure the allocator was asked for -- the
+ * mock logs it and the driver compares the log. Those builds define it
+ * as 4, which is what those copies use, and the mock's own double
+ * headroom covers the shortfall, which is what that headroom was put
+ * there for. Every other build gets the real width. */
+#ifndef MEM_PTR_BYTES
+#define MEM_PTR_BYTES ((unsigned int)sizeof(void*))
+#endif
+
 typedef uintptr_t MEM_Word;
 
 #define MEM_WORD_BYTES   ((unsigned int)sizeof(MEM_Word))

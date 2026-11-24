@@ -127,9 +127,11 @@ void BAS_binsert(unsigned int key, int val, BASStruct* bas)
             }
             else
             {
-                /* How many elements from the one after sgpst_Prev to the last
-                   one in use: a distance between two elements of the same
-                   array, which the pointers themselves give. */
+                /* How many elements from the one after sgpst_Prev to
+                   the last one in use. This one makes room and so
+                   writes one element further up than it reads, which
+                   is why its count is one more than the delete's
+                   below. */
                 memmove(&sgpst_Prev[2], &sgpst_Prev[1],
                         sizeof(BASKeyValStruct)
                             * (size_t)(&currKeyValPtr[originalActElemNum - 1]
@@ -167,9 +169,13 @@ void BAS_bdelete(int key, BASStruct* bas)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
+                    /* The elements above the one being deleted, which
+                       is one fewer than the distance to the last
+                       element: the last element moves down into the
+                       slot before it and nothing is read past it. */
                     memmove(&sgpst_Prev[1], &sgpst_Prev[2],
                             sizeof(BASKeyValStruct)
-                                * (size_t)(&keyValPtr[actElemNum - 1]
+                                * (size_t)(&keyValPtr[actElemNum - 2]
                                            - sgpst_Prev));
                     --bas->actElemNum;
                     return;
@@ -203,9 +209,13 @@ void BAS_bdeletegetval(int key, BASStruct* bas, int* val)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
+                    /* The elements above the one being deleted, which
+                       is one fewer than the distance to the last
+                       element: the last element moves down into the
+                       slot before it and nothing is read past it. */
                     memmove(&sgpst_Prev[1], &sgpst_Prev[2],
                             sizeof(BASKeyValStruct)
-                                * (size_t)(&keyValPtr[actElemNum - 1]
+                                * (size_t)(&keyValPtr[actElemNum - 2]
                                            - sgpst_Prev));
                     --bas->actElemNum;
                     return;

@@ -49,7 +49,13 @@ CC=${CC:-gcc}
 # pointers the game build gets. Every translation unit here needs it,
 # or the two would disagree about the layout of a struct they hand to
 # each other.
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN -DHDL_TRANSLATES=0"
+# MEM_PTR_BYTES=4: an array of pointers takes four bytes an element in
+# the 32-bit build the engine ships as, and the frozen copies here
+# write that out. Five of them are compared on the figure the
+# allocator was asked for -- the mock logs it -- so the rewrite has
+# to ask for the same thing, and the mock's own double headroom
+# covers the shortfall. The game build gets the real width.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN -DHDL_TRANSLATES=0 -DMEM_PTR_BYTES=4"
 # The translating build: nothing forced, so the layer is whatever this
 # host's pointer width asks for.
 CFLAGS_T="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DWINSOUND_FROZEN"

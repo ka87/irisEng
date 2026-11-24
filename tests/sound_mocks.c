@@ -57,11 +57,21 @@ const unsigned char* snd_heap_base(void) { return heap; }
 int snd_heap_used(void) { return heap_used; }
 
 /* Blocks get twice the room they ask for plus a slack of GUARD bytes.
-   Several of the engine's arrays are pointer arrays sized at four bytes a
-   pointer, which is right in its own 32-bit build and half of what this
-   harness needs; the headroom makes those writes land inside the block
-   instead of over the next one, and the realloc below carries the whole
-   of it across so a regrown pointer array is not truncated. */
+
+   Several of the engine's arrays are pointer arrays, and this runner
+   builds with MEM_PTR_BYTES=4 so that the rewrite asks for the same
+   size the frozen copy does and the two can still be compared on it.
+   Four bytes an element is half of what a pointer needs here, so the
+   headroom is what makes those writes land inside the block instead of
+   over the next one, and the realloc below carries the whole of it
+   across so a regrown pointer array is not truncated.
+
+   The engine itself no longer does this: it asks for sizeof(void*) an
+   element now, and the figure is forced back to four here and nowhere
+   else. This headroom used to be the only thing standing between those
+   arrays and the next block, which is a workaround filed in the wrong
+   place -- it kept the differentials from crashing on a defect instead
+   of the defect being reported. */
 static unsigned int room_for(unsigned int size)
 {
     return ((2u * size + GUARD) + 15u) & ~15u;

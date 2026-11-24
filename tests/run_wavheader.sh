@@ -14,7 +14,13 @@ CC=${CC:-gcc}
 # -Werror=implicit-function-declaration earns its place here: with -w
 # and no declaration in sight, a call to the allocator returned an int
 # and the driver memset a truncated pointer.
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Werror=implicit-function-declaration -Itests/stub -Itests"
+# MEM_PTR_BYTES=4: an array of pointers takes four bytes an element in
+# the 32-bit build the engine ships as, and the frozen copies here
+# write that out. Five of them are compared on the figure the
+# allocator was asked for -- the mock logs it -- so the rewrite has
+# to ask for the same thing, and the mock's own double headroom
+# covers the shortfall. The game build gets the real width.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Werror=implicit-function-declaration -Itests/stub -Itests -DMEM_PTR_BYTES=4"
 OUT=tests/build
 mkdir -p "$OUT"
 
