@@ -2241,7 +2241,7 @@ void D3D_CreateAndCopySourceTexturesToThem()
     IDirect3DTexture9* copy;
     D3DSURFACE_DESC desc;
 
-    bytes = 4 * D3DRenderParams.d3dTextureNum + 4;
+    bytes = MEM_PTR_BYTES * (D3DRenderParams.d3dTextureNum + 1);
     D3DRenderParams.d3dTextures = (IDirect3DTexture9**)MEM_p_Alloc(bytes);
     memset(D3DRenderParams.d3dTextures, 0, bytes);
     for (i = 0; i < D3DRenderParams.d3dTextureNum; i++)
@@ -2336,7 +2336,7 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
         if (!geogro->uvBuffers && geogro->uvNum)
         {
             geogro->uvBufferNum = 1;
-            geogro->uvBuffers = (void**)MEM_p_Alloc(4u);
+            geogro->uvBuffers = (void**)MEM_p_Alloc(MEM_PTR_BYTES);
             stride = D3D_CalculateStride(D3DFVF_TEX1);
             result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                 D3DRenderParams.d3dDev,
@@ -2412,7 +2412,8 @@ void D3D_CreateIndexAndVertexBuffForElemsIfSuitable(tGameObjectMain* gao, tGEOGR
                     }
                     newBuf = geogro->uvBufferNum;
                     geogro->uvBufferNum = newBuf + 1;
-                    geogro->uvBuffers = (void**)MEM_p_Realloc(geogro->uvBuffers, 4 * (newBuf + 1));
+                    geogro->uvBuffers = (void**)MEM_p_Realloc(
+        geogro->uvBuffers, MEM_PTR_BYTES * (newBuf + 1));
                     stride = D3D_CalculateStride(D3DFVF_TEX1);
                     result = D3DRenderParams.d3dDev->lpVtbl->CreateVertexBuffer(
                         D3DRenderParams.d3dDev,
@@ -3439,7 +3440,7 @@ int D3D_l_Texture_Store(struct sGdi_DisplayData* dd, int textureNum)
     count = textureNum;
     if (!textureNum)
         count = 1;
-    bytes = 4 * (count + 1);
+    bytes = MEM_PTR_BYTES * (count + 1);
     D3DRenderParams.d3dTextureNum = count;
     D3DRenderParams.d3dTextures = (IDirect3DTexture9 **)MEM_p_Alloc(bytes);
     memset(D3DRenderParams.d3dTextures, 0, bytes);

@@ -112,7 +112,7 @@ tWayAllNetworks* WAY_ul_AllNetWorksCallback(uint32_t offset)
     allNetworks->networkNum = num;
     if (num)
     {
-        allNetworks->networks = (tWayNetwork**)MEM_p_Alloc(4 * num);
+        allNetworks->networks = (tWayNetwork**)MEM_p_Alloc(MEM_PTR_BYTES * num);
         for (i = 0; i < allNetworks->networkNum; ++i)
         {
             networkKey = LOA_ReadLong(&data, 0, 1);

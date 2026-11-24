@@ -23,7 +23,13 @@ CC=${CC:-gcc}
 # the entry points it uses are defined by the mocks
 # (tests/sdlpath.h), so a case can point the install anywhere.
 SDL3_INC="$PWD/thirdparty/SDL3/include"
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -I"$SDL3_INC" -Itests/stub -Itests"
+# MEM_PTR_BYTES=4: an array of pointers takes four bytes an element in
+# the 32-bit build the engine ships as, and the frozen copies here
+# write that out. Five of them are compared on the figure the
+# allocator was asked for -- the mock logs it -- so the rewrite has
+# to ask for the same thing, and the mock's own double headroom
+# covers the shortfall. The game build gets the real width.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -DMEM_PTR_BYTES=4 -I"$SDL3_INC" -Itests/stub -Itests"
 # both sides see the real SDK's window-message numbers: the stub's are
 # sequential, which inverts their order and makes most of the two
 # message handlers unreachable.  See tests/d3drender_msg_sdk.h.

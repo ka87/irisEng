@@ -1173,8 +1173,9 @@ int SND_InitMdFModule()
     if (SND_gst_Params.soundEnabled)
     {
         SND_gst_BankMdFUserList = 16;
-        sndMdfBankUser = (tSoundMdfStruct**)MEM_p_Alloc(16 * 4);
-        memset(sndMdfBankUser, 0, 4 * SND_gst_BankMdFUserList);
+        sndMdfBankUser = (tSoundMdfStruct**)MEM_p_Alloc(
+            MEM_PTR_BYTES * SND_gst_BankMdFUserList);
+        memset(sndMdfBankUser, 0, MEM_PTR_BYTES * SND_gst_BankMdFUserList);
     }
     return 0;
 }

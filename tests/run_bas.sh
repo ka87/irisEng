@@ -31,16 +31,15 @@ $CC "$OUT/bas.sut.o" "$OUT/bas.mocks.o" "$OUT/bas.drv.o" -o "$OUT/bas" -lm
 "$OUT/bas"
 
 # ./tests/run_bas.sh --asan builds the same driver under
-# AddressSanitizer, which is the only thing that can see the over-read
-# this file has in the middle-shift branch of its two deletes: the
-# element it reads past the end is written to a slot that --actElemNum
-# drops on the next line, so no behavioural check can see it, and it is
-# out of bounds only when the array is exactly full.
+# AddressSanitizer. Both deletes used to shift the tail with a count
+# one element too many, so the memmove read one element past the last
+# live one -- past the allocation itself when the array was exactly
+# full. The element landed in a slot that --actElemNum dropped on the
+# next line, so no behavioural check could see it and only this mode
+# could.
 #
-# It is not part of the ordinary run because the defect is older than
-# this work and what to do about it has not been decided; the mode is
-# here so that the demonstration is one command rather than a
-# reconstruction.
+# It is fixed, and the mode is kept because it is the only thing that
+# would see it come back: the model check below passes either way.
 if [ "$1" = "--asan" ]; then
     echo "--- the same driver under AddressSanitizer ---"
     for f in basic_array.c tests/bas_mocks.c tests/test_bas.c; do

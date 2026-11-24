@@ -11,15 +11,13 @@
  * voice, a pathfinding visited-set, a sound header -- and the keys it
  * compares are the handles that work put there.
  *
- * One thing it deliberately does not fail on. Both deletes shift the
- * tail with a count that is one element too many, so the memmove reads
- * one element past the last live one -- past the allocation itself when
- * the array is exactly full. The element lands in a slot that
- * --actElemNum drops on the next line, so no behavioural check can see
- * it; `./tests/run_bas.sh --asan` demonstrates it. The defect is older
- * than the 64-bit work (the same overflow, at the same place, with the
- * arithmetic written the old way) and what to do about it has not been
- * decided, so it is reproducible here rather than asserted.
+ * One thing this check cannot see at all, and it is worth knowing
+ * which. Both deletes used to shift the tail with a count one element
+ * too many, reading one element past the last live one -- past the
+ * allocation when the array was exactly full. The element landed in the
+ * slot --actElemNum dropped on the next line, so every assertion below
+ * passed with the fault present and still passes with it gone.
+ * `./tests/run_bas.sh --asan` is what sees it, and is kept for that.
  *
  * So this is a model check rather than a list of cases. The driver
  * keeps its own sorted array of what should be in there, applies the

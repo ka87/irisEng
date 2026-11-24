@@ -3746,11 +3746,14 @@ void SND_AddMdFBankUser(struct sSoundMdfStruct* sndMdf)
             }
         }
         if (sndMdfBankUser)
-            grown = (tSoundMdfStruct**)MEM_p_Realloc(sndMdfBankUser, 4 * SND_gst_BankMdFUserList + 16 * 4);
+            grown = (tSoundMdfStruct**)MEM_p_Realloc(
+                sndMdfBankUser,
+                MEM_PTR_BYTES * (SND_gst_BankMdFUserList + 16));
         else
-            grown = (tSoundMdfStruct**)MEM_p_Alloc(4 * SND_gst_BankMdFUserList + 16 * 4);
+            grown = (tSoundMdfStruct**)MEM_p_Alloc(
+                MEM_PTR_BYTES * (SND_gst_BankMdFUserList + 16));
         sndMdfBankUser = grown;
-        memset(&grown[SND_gst_BankMdFUserList], 0, 16 * 4);
+        memset(&grown[SND_gst_BankMdFUserList], 0, MEM_PTR_BYTES * 16);
         idx = SND_gst_BankMdFUserList;
         SND_gst_BankMdFUserList += 16;
         sndMdfBankUser[idx] = sndMdf;
@@ -5527,14 +5530,20 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     {
         newInner = SND_pst_FamillyInnerNew();
         oldInnerNum = familly->innerNum;
-        innerSize = 4 * oldInnerNum + 4;
+        innerSize = MEM_PTR_BYTES * (oldInnerNum + 1);
         if (oldInnerNum)
             grownInners = (tSoundFamilyInnerStruct**)MEM_p_Realloc(familly->unkIntArrPtr, innerSize);
         else
             grownInners = (tSoundFamilyInnerStruct**)MEM_p_Alloc(innerSize);
         innerNumBefore = familly->innerNum;
         familly->unkIntArrPtr = grownInners;
-        memset(&familly->unkIntArrPtr[innerNumBefore], 0, innerSize);
+        /* The one element the array just grew by, and not the whole
+           array's length from that element on: the array holds
+           oldInnerNum + 1 of them and this starts at oldInnerNum, so
+           clearing innerSize bytes here ran off the end by every
+           element the array already had. */
+        memset(&familly->unkIntArrPtr[innerNumBefore], 0,
+               MEM_PTR_BYTES);
         familly->unkIntArrPtr[familly->innerNum] = newInner;
         linked = familly->unkIntArrPtr[familly->innerNum];
         ++linked->refCount;
@@ -5607,7 +5616,9 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     }
     if (!shared)
         shared = SND_pst_FamillyInnerNew();
-    familly->unkIntArrPtr = (tSoundFamilyInnerStruct**)MEM_p_Realloc(familly->unkIntArrPtr, 4 * familly->innerNum + 4);
+    familly->unkIntArrPtr = (tSoundFamilyInnerStruct**)MEM_p_Realloc(
+            familly->unkIntArrPtr,
+            MEM_PTR_BYTES * (familly->innerNum + 1));
     familly->anyMask[familly->innerNum] = remaining;
     inners = familly->unkIntArrPtr;
     newInnerNum = familly->innerNum + 1;
