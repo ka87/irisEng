@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "handle.h"
 #include "loading.h"
 #include "bigfiles.h"
 #include "ways.h"
@@ -186,10 +187,10 @@ void WAY_ComputePoundNetworksRec(tWayNetwork* network, tGameObjectMain* gao, tGa
     double dz;
     int i;
 
-    if (BAS_bsearch((unsigned int)gao, &WAY_gst_Seen) != -1)
+    if (BAS_bsearch((int)HDL_ul_Handle(gao), &WAY_gst_Seen) != -1)
         return;
 
-    BAS_binsert((unsigned int)gao, (int)gao, &WAY_gst_Seen);
+    BAS_binsert(HDL_ul_Handle(gao), (int)HDL_ul_Handle(gao), &WAY_gst_Seen);
 
     if (!gao || !gao->extended || !gao->extended->way)
         return;

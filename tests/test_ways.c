@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "../handle.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -98,6 +99,40 @@ static void sceneReset(void)
     s_sceneUsed = 0;
 }
 
+/* Which object an entry in the seen-set stands for.
+ *
+ * The frozen copy puts the object's address there, truncated to the
+ * store's four-byte slot; this one puts the handle that stands for it.
+ * Both name the same object, and the objects are this file's own, so
+ * both are reduced to the object's offset in the buffer they came out
+ * of -- which is the only thing a comparison between the two sides can
+ * mean.
+ *
+ * The low 32 bits are enough for either: a truncated address differs
+ * from the real one only above the 32nd bit, and the buffers are far
+ * smaller than that, so the subtraction recovers the offset whichever
+ * was stored.
+ *
+ * An entry in neither buffer -- there should be none -- comes through
+ * as itself, so a stray value stays visible rather than being folded
+ * away into a plausible offset. */
+static long ways_seen_as_offset(int stored)
+{
+    const void* resolved = HDL_p_Pointer((uint32_t)stored);
+    uint32_t low = (uint32_t)(uintptr_t)resolved;
+    uint32_t off;
+
+    off = low - (uint32_t)(uintptr_t)s_scene;
+    if (off < SCENE_SIZE)
+        return (long)off;
+
+    off = low - (uint32_t)(uintptr_t)WMOCK_arena;
+    if (off < WMOCK_ARENA_SIZE)
+        return (long)(WMOCK_ARENA_SIZE + off);
+
+    return (long)stored;
+}
+
 static void capture(tCapture* c, long ret, int side)
 {
     BASStruct* bas = side ? &NEW_WAY_gst_Seen : &BASE_WAY_gst_Seen;
@@ -112,9 +147,16 @@ static void capture(tCapture* c, long ret, int side)
     c->seenMax = bas->maxElemNum;
     for (i = 0; i < bas->actElemNum && i < 2048; ++i)
     {
-        c->seenKeys[i] = bas->keyValPtr[i].key;
-        c->seenVals[i] = bas->keyValPtr[i].val;
+        c->seenKeys[i] = ways_seen_as_offset(bas->keyValPtr[i].key);
+        c->seenVals[i] = ways_seen_as_offset(bas->keyValPtr[i].val);
     }
+    /* Not sorted, deliberately. The two sides could in principle keep
+       the set in different orders -- one keys on an address and the
+       other on a handle, and the store keeps its keys sorted -- but no
+       case here reaches two entries, so sorting would be code that
+       never runs. If one ever does, the comparison below says so out
+       loud, which is the right way round: a sort that is absent fails
+       visibly, and a sort that is wrong hides a real difference. */
     c->currentWorld = side ? (long)(intptr_t)NEW_gpst_CurrentWorld
                            : (long)(intptr_t)BASE_gpst_CurrentWorld;
     c->sceneLen = (int)s_sceneUsed;
@@ -184,7 +226,10 @@ static void compare(const char* what, int k)
         {
             if (s_base.seenKeys[i] != s_new.seenKeys[i] || s_base.seenVals[i] != s_new.seenVals[i])
             {
-                printf("  %s[%d]: seen entry %d differs\n", what, k, i);
+                printf("  %s[%d]: seen entry %d differs: key %ld vs %ld, "
+                       "val %ld vs %ld\n", what, k, i,
+                       s_base.seenKeys[i], s_new.seenKeys[i],
+                       s_base.seenVals[i], s_new.seenVals[i]);
                 bad = 1;
                 break;
             }

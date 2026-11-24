@@ -1,4 +1,5 @@
 #include "../math.h"
+#include "../handle.h"
 #include "../memory.h"
 #include "../gameobject.h"
 #include "../ways.h"
@@ -367,10 +368,10 @@ tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, t
     if (!gaoList)
         return NULL;
 
-    if (BAS_bsearch((unsigned int)gao, &WAY_gst_Seen) != -1)
+    if (BAS_bsearch((int)HDL_ul_Handle(gao), &WAY_gst_Seen) != -1)
         return gaoList;
 
-    BAS_binsert((unsigned int)gao, (int)gao, &WAY_gst_Seen);
+    BAS_binsert(HDL_ul_Handle(gao), (int)HDL_ul_Handle(gao), &WAY_gst_Seen);
 
     if (OBJ_b_test_flag(gao, flagMustHave, flagMustNotHave, whatToTest))
     {
@@ -463,9 +464,9 @@ void AI_WAYNearestOfPosRec(tWayNetwork* network, tGameObjectMain* gao, Vec3* pos
     Vec3 posDiff;
     float distance;
 
-    if (BAS_bsearch((unsigned int)gao, &WAY_gst_Seen) == -1)
+    if (BAS_bsearch((int)HDL_ul_Handle(gao), &WAY_gst_Seen) == -1)
     {
-        BAS_binsert((unsigned int)gao, (int)gao, &WAY_gst_Seen);
+        BAS_binsert(HDL_ul_Handle(gao), (int)HDL_ul_Handle(gao), &WAY_gst_Seen);
         
         for (i = 0; i < excludeGaoListNum && excludeGaoList[i] != gao; i++);
 
