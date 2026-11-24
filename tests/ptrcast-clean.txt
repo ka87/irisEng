@@ -31,6 +31,7 @@ ai/ai_sectorfunctions.c
 ai/ai_soundfunctions.c
 ai/ai_timefunctions.c
 ai/ai_types.c
+ai/ai_viewfunctions.c
 ai/ai_wayfunctions.c
 animation.c
 basic_array.c
