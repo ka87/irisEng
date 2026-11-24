@@ -454,7 +454,7 @@ void GEO_Free(struct sGroGeneric* geo)
     if (geo && geo->intf->id == 1 && geo->usageCount <= 0)
     {
         GEO_FreeContent((tGEOGRO*)geo);
-        LOA_DeleteAddress((int)geo);
+        LOA_DeleteAddress(HDL_ul_Handle(geo));
         MEM_FreeAlign(geo);
     }
 }

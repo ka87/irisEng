@@ -109,7 +109,7 @@ void COL_FreeColSet(tColInstSet* instSet)
 
     if (!instSet) return;
 
-    LOA_DeleteAddress((int)instSet);
+    LOA_DeleteAddress(HDL_ul_Handle(instSet));
     if (instSet->instElemNum)
     {
         for (i = 0; i < instSet->instElemNum; i++) {
@@ -133,7 +133,7 @@ void COL_FreeInstance(struct sGameObjectCollMain* coll)
         if (!--coll->colInstance->colSet->instanceNum)
             COL_FreeColSet(coll->colInstance->colSet);
     }
-    LOA_DeleteAddress((int)coll->colInstance);
+    LOA_DeleteAddress(HDL_ul_Handle(coll->colInstance));
     MATH_Matrix_Free(coll->colInstance->mtx);
 
     if (coll->colInstance->instElemNum)
@@ -160,7 +160,7 @@ void COL_FreeGameMaterial(tColCollisionObject* cob)
         MEM_Free(cob->gameMaterial->ptrInts);
         MEM_Free(cob->gameMaterial->elems);
         MEM_Free(cob->gameMaterial);
-        LOA_DeleteAddress((int)cob->gameMaterial);
+        LOA_DeleteAddress(HDL_ul_Handle(cob->gameMaterial));
         cob->gameMaterial = NULL;
         cob->flags |= 0xfe;
     }
@@ -224,7 +224,7 @@ void COL_FreeColMap(struct sGameObjectCollMain* coll)
     colMap = coll->colMap;
     if (!colMap) return;
 
-    LOA_DeleteAddress((int)colMap);
+    LOA_DeleteAddress(HDL_ul_Handle(colMap));
     if (colMap->colObjectID)
     {
         cob = colMap->collisionObjectPtr;
@@ -235,7 +235,7 @@ void COL_FreeColMap(struct sGameObjectCollMain* coll)
             if (!--(*cob)->usageCount)
             {
                 COL_FreeGameMaterial(*cob);
-                LOA_DeleteAddress((int)*cob);
+                LOA_DeleteAddress(HDL_ul_Handle(*cob));
                 if (isMesh)
                     COL_FreeTrianglesIndexedCob(*cob);
                 else
@@ -1703,7 +1703,7 @@ void COL_ResolveRefs(struct sGameObjectMain* gao)
                 {
                     gao->flags &= ~0x100u;
                     MEM_Free(colMap->collisionObjectPtr);
-                    LOA_DeleteAddress((int)colMap);
+                    LOA_DeleteAddress(HDL_ul_Handle(colMap));
                     MEM_Free(colMap);
                     gao->extended->coll->colMap = 0;
                     break;

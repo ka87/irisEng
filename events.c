@@ -599,7 +599,7 @@ void EVE_DeleteListTracks(tGameObjectEventsList* list)
                 EVE_FreeTrack(&list->listElems[i]);
             if (list->listElems)
                 MEM_Free(list->listElems);
-            LOA_DeleteAddress((int)list);
+            LOA_DeleteAddress(HDL_ul_Handle(list));
             MEM_Free(list);
         }
     }

@@ -65,7 +65,7 @@ void MAT_DestroyMaterial(struct sGroGeneric* gro)
 
     MAT_FreeMultiMaterial((tGEOMAT*)gro);
     MAT_FreeMultiTexture((tGEOMAT*)gro);
-    LOA_DeleteAddress((int)gro);
+    LOA_DeleteAddress(HDL_ul_Handle(gro));
     MEM_Free(gro);
 }
 

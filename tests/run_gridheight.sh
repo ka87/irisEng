@@ -24,8 +24,13 @@ CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/gridheight.handle.o"
+
 echo "=== grid heights ==="
 $CC $CFLAGS -fsanitize=address -c grid.c -o "$OUT/ghe.grid.o"
 $CC $CFLAGS -fsanitize=address -c tests/test_gridheight.c -o "$OUT/ghe.drv.o"
-$CC -fsanitize=address "$OUT/ghe.grid.o" "$OUT/ghe.drv.o" -o "$OUT/ghe" -lm
+$CC -fsanitize=address "$OUT/ghe.grid.o" "$OUT/ghe.drv.o" -o "$OUT/ghe" "$OUT/gridheight.handle.o" -lm
 "$OUT/ghe"

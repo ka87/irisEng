@@ -18,6 +18,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/ways.handle.o"
+
 syms="WAY_FreeStruct WAY_ReinitLinks WAY_RemoveAllNetworks WAY_ul_NetWorkCallback \
 WAY_ul_AllNetWorksCallback WAY_InitModule WAY_CloseModule WAY_pst_SearchLinkList \
 WAY_pst_SearchOneLinkInList WAY_ComputePoundNetworksRec WAY_ComputePoundOneNetworkForObj \
@@ -37,5 +42,5 @@ $CC $CFLAGS -c basic_array.c -o "$OUT/ways.bas.o"
 $CC $CFLAGS -c tests/ways_mocks.c -o "$OUT/ways.mocks.o"
 $CC $CFLAGS -c tests/test_ways.c -o "$OUT/ways.drv.o"
 $CC "$OUT/ways.new.o" "$OUT/ways.base.o" "$OUT/ways.bas.o" \
-    "$OUT/ways.mocks.o" "$OUT/ways.drv.o" -o "$OUT/ways" -lm
+    "$OUT/ways.mocks.o" "$OUT/ways.drv.o" -o "$OUT/ways" "$OUT/ways.handle.o" -lm
 "$OUT/ways"

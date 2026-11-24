@@ -23,7 +23,7 @@ void WAY_FreeStruct(struct sWay* way)
         MEM_Free(way->wayElems);
         way->wayElems = 0;
     }
-    LOA_DeleteAddress((int)way);
+    LOA_DeleteAddress(HDL_ul_Handle(way));
     MEM_Free(way);
 }
 
@@ -60,13 +60,13 @@ void WAY_RemoveAllNetworks(tWayAllNetworks* allNetworks)
         {
             if (allNetworks->networks[i])
             {
-                LOA_DeleteAddress((int)allNetworks->networks[i]);
+                LOA_DeleteAddress(HDL_ul_Handle(allNetworks->networks[i]));
                 MEM_Free(allNetworks->networks[i]);
             }
         }
         if (allNetworks->networks)
             MEM_Free(allNetworks->networks);
-        LOA_DeleteAddress((int)allNetworks);
+        LOA_DeleteAddress(HDL_ul_Handle(allNetworks));
         MEM_Free(allNetworks);
     }
 }

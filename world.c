@@ -326,7 +326,7 @@ int WOR_World_Destroy(tWorld* world)
         WTR_BeginLoadWorldHook();
         if (WOR_World_Close(world))
             return 1;
-        LOA_DeleteAddress((int)world);
+        LOA_DeleteAddress(HDL_ul_Handle(world));
         MEM_Free(world);
         if (MAI_gst_MainHandles.currentWorld == world)
         {
@@ -1155,7 +1155,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
     pos = BIG_ul_SearchKeyToPos(worldKey);
     if (pos != -1)
     {
-        result = (tWorld*)LOA_ul_SearchAddress(pos);
+        result = (tWorld*)LOA_p_FromStored(LOA_ul_SearchAddress(pos));
         if (result != (tWorld*)-1)
             return result;
     }
@@ -1256,7 +1256,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
                 MEM_Free(loaded->wayPtr->networks);
                 loaded->wayPtr->networks = target->wayPtr->networks;
                 loaded->wayPtr->networkNum = target->wayPtr->networkNum;
-                LOA_DeleteAddress((int)target->wayPtr);
+                LOA_DeleteAddress(HDL_ul_Handle(target->wayPtr));
                 MEM_Free(target->wayPtr);
                 target->wayPtr = loaded->wayPtr;
                 loaded->wayPtr = 0;
@@ -1330,7 +1330,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
         strcpy(target->worldName, loaded->worldName);
         TAB_PFtable_Close(&loaded->objectTablePF);
         WOR_World_Destroy(loaded);
-        LOA_DeleteAddress((int)target);
+        LOA_DeleteAddress(HDL_ul_Handle(target));
         pos = BIG_ul_SearchKeyToPos(worldKey);
         LOA_AddPosAddress(pos, (unsigned int)target);
     }

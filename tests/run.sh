@@ -46,6 +46,12 @@ GAO_ModifierXMEN_SMOOTH_BUFFER GAO_ModifierXMEN_DRAW GAO_ModifierXMEN_DRAW_ALL \
 GAO_ModifierXMEN_Unapply XMEN_OnOff XMEN_SetSize \
 bFirst_286 XMEN_STACK_PTR xmenSmoothBuffer_flt_9684BC"
 
+# The 32-bit stand-in for an address. Every differential that builds a
+# file which registers or releases one needs it linked, and it has no
+# engine dependencies of its own, so it is built once here and added to
+# every link below rather than named in a dozen places.
+$CC $CFLAGS -c handle.c -o "$OUT/handle.shared.o"
+
 fails=0
 run_one() {
     name=$1; live=$2; base=$3; incdir=$4; syms=$5
@@ -59,7 +65,7 @@ run_one() {
     $CC $CFLAGS -c tests/engine_mocks.c -o "$OUT/$name.mocks.o"
     $CC $CFLAGS -c "tests/test_$name.c" -o "$OUT/$name.drv.o"
     $CC "$OUT/$name.new.o" "$OUT/$name.base.o" "$OUT/$name.mocks.o" \
-        "$OUT/$name.drv.o" -o "$OUT/$name" -lm
+        "$OUT/$name.drv.o" "$OUT/handle.shared.o" -o "$OUT/$name" -lm
     "$OUT/$name" || fails=$((fails + 1))
     echo
 }
@@ -92,7 +98,7 @@ run_group() {
     $CC $CFLAGS -c "tests/test_$name.c" -o "$OUT/$name.drv.o"
     # shellcheck disable=SC2086
     $CC $objs "$OUT/$name.math.o" "$OUT/$name.mocks.o" "$OUT/$name.drv.o" \
-        -o "$OUT/$name" -lm
+        "$OUT/handle.shared.o" -o "$OUT/$name" -lm
     "$OUT/$name" || fails=$((fails + 1))
     echo
 }
@@ -241,7 +247,7 @@ run_math() {
     $CC $CFLAGS -c tests/math_mocks.c -o "$OUT/math.mocks.o"
     $CC $CFLAGS -c tests/test_math.c -o "$OUT/math.drv.o"
     $CC "$OUT/math.new.o" "$OUT/math.base.o" "$OUT/math.mocks.o" \
-        "$OUT/math.drv.o" -o "$OUT/math" -lm
+        "$OUT/math.drv.o" "$OUT/handle.shared.o" -o "$OUT/math" -lm
     "$OUT/math" || fails=$((fails + 1))
     echo
 }
@@ -259,7 +265,7 @@ run_textures() {
     $CC $CFLAGS -c tests/textures_mocks.c -o "$OUT/textures.mocks.o"
     $CC $CFLAGS -c tests/test_textures.c -o "$OUT/textures.drv.o"
     $CC "$OUT/textures.new.o" "$OUT/textures.base.o" "$OUT/textures.mocks.o" \
-        "$OUT/textures.drv.o" -o "$OUT/textures" -lm
+        "$OUT/textures.drv.o" "$OUT/handle.shared.o" -o "$OUT/textures" -lm
     "$OUT/textures" || fails=$((fails + 1))
     echo
 }
@@ -278,7 +284,7 @@ run_events() {
     $CC $CFLAGS -c tests/events_mocks.c -o "$OUT/events.mocks.o"
     $CC $CFLAGS -c tests/test_events.c -o "$OUT/events.drv.o"
     $CC "$OUT/events.new.o" "$OUT/events.base.o" "$OUT/events.math.o" \
-        "$OUT/events.mocks.o" "$OUT/events.drv.o" -o "$OUT/events" -lm
+        "$OUT/events.mocks.o" "$OUT/events.drv.o" "$OUT/handle.shared.o" -o "$OUT/events" -lm
     "$OUT/events" || fails=$((fails + 1))
     echo
 }
@@ -332,7 +338,7 @@ run_reveal() {
     $CC $CFLAGS -c tests/test_streveal.c -o "$OUT/streveal.drv.o"
     $CC $CFLAGS -c tests/streveal_mocks.c -o "$OUT/streveal.mocks.o"
     $CC "$OUT/streveal.base.o" "$OUT/streveal.new.o" "$OUT/streveal.drv.o" \
-        "$OUT/streveal.mocks.o" -o "$OUT/streveal" -lm
+        "$OUT/streveal.mocks.o" "$OUT/handle.shared.o" -o "$OUT/streveal" -lm
     "$OUT/streveal" || fails=$((fails + 1))
     echo
 }
@@ -371,7 +377,7 @@ run_animation() {
     $CC $CFLAGS -c tests/animation_mocks.c -o "$OUT/animation.mocks.o"
     $CC $CFLAGS -c tests/test_animation.c -o "$OUT/animation.drv.o"
     $CC "$OUT/animation.new.o" "$OUT/animation.base.o" "$OUT/animation.math.o" \
-        "$OUT/animation.mocks.o" "$OUT/animation.drv.o" -o "$OUT/animation" -lm
+        "$OUT/animation.mocks.o" "$OUT/animation.drv.o" "$OUT/handle.shared.o" -o "$OUT/animation" -lm
     "$OUT/animation" || fails=$((fails + 1))
     echo
 }
@@ -429,7 +435,7 @@ run_strings() {
     $CC $CFLAGS -c tests/test_strings.c -o "$OUT/strings.drv.o"
     $CC "$OUT/strings.new.o" "$OUT/strings.base.o" "$OUT/strings.mocks.o" \
         "$OUT/strings.rb.o" "$OUT/strings.rn.o" "$OUT/strings.drv.o" \
-        -o "$OUT/strings" -lm
+        "$OUT/handle.shared.o" -o "$OUT/strings" -lm
     "$OUT/strings" || fails=$((fails + 1))
     echo
 }
@@ -494,6 +500,7 @@ for one in tests/run_sdl3.sh \
            tests/run_degenvec.sh \
            tests/run_handles.sh \
            tests/run_memory.sh \
+           tests/run_loaaddr.sh \
            tests/run_gridheight.sh \
            tests/run_d3dtex.sh \
            tests/run_depthblur.sh \

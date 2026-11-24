@@ -30,6 +30,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/gameobject.handle.o"
+
 gameobject_syms="$(grep -oP '^[A-Za-z_][\w \*]*?\s\*?\K[A-Za-z_]\w*(?=\s*\()' gameobject.c | sort -u) AI_MainActor"
 
 defs() {
@@ -46,6 +51,6 @@ $CC $CFLAGS -c math.c -o "$OUT/gameobject.math.o"
 $CC $CFLAGS -c tests/gameobject_mocks.c -o "$OUT/gameobject.mocks.o"
 $CC $CFLAGS -c tests/test_gameobject.c -o "$OUT/gameobject.drv.o"
 $CC "$OUT/gameobject.new.o" "$OUT/gameobject.base.o" "$OUT/gameobject.math.o" \
-    "$OUT/gameobject.mocks.o" "$OUT/gameobject.drv.o" -o "$OUT/gameobject" -lm
+    "$OUT/gameobject.mocks.o" "$OUT/gameobject.drv.o" -o "$OUT/gameobject" "$OUT/gameobject.handle.o" -lm
 
 "$OUT/gameobject"

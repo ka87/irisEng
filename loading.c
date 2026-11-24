@@ -291,6 +291,15 @@ int LOA_ul_SearchAddress(int pos)
     return BAS_bsearch(pos, &LOA_gst_Array[hash]);
 }
 
+/* The parameter is what the store holds against the thing, which is a
+   handle on a build with wide pointers and the address itself where
+   they already fit -- so what a caller passes is HDL_ul_Handle of the
+   thing, not the thing. The name says position and never meant one:
+   the lookup below is the by-value array.
+
+   The handle goes with the entry. A caller asking for an address the
+   store never had made one by asking for its handle, so giving it up
+   here is what keeps that from accumulating. */
 void LOA_DeleteAddress(int pos)
 {
     uint8_t hash;
@@ -302,6 +311,7 @@ void LOA_DeleteAddress(int pos)
         hash = LOA_HashPos(val);
         BAS_bdeletegetval(val, &LOA_gst_Array[hash], &val);
     }
+    HDL_Release(HDL_p_Pointer((uint32_t)pos));
 }
 
 void LOA_AddPosAddress(unsigned int pos, unsigned int address)
@@ -340,6 +350,7 @@ void LOA_Resolve()
 {
     loaStackElem* currElem;
     int position;
+    int stored;
     void* addr;
     void** retValPtr;
     char tmpStr[100];
@@ -360,22 +371,24 @@ void LOA_Resolve()
         }
         else
         {
-            addr = (void*)LOA_ul_SearchAddress(position);
-            if (addr == (void*)-1)
+            stored = LOA_ul_SearchAddress(position);
+            if (stored == LOA_ADDRESS_NOT_FOUND)
             {
                 addr = (void*)(currElem->funcPtr)(position);
                 if ((currElem->flags & 4) == 0)
                 {
                     if (position)
-                        LOA_AddPosAddress(position, (unsigned int)addr);
+                        LOA_AddPosAddress(position, HDL_ul_Handle(addr));
                 }
             }
-            else if ((currElem->flags & 8) != 0)
+            else
             {
+                addr = LOA_p_FromStored(stored);
                 /* Flag 8: the callback counts its own references, so it
                    is called for a file that is already loaded too. It
                    finds the address itself and reads nothing. */
-                addr = (void*)(currElem->funcPtr)(position);
+                if ((currElem->flags & 8) != 0)
+                    addr = (void*)(currElem->funcPtr)(position);
             }
             retValPtr = currElem->retValPtr;
             if (retValPtr)

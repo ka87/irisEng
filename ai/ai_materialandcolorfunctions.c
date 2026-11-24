@@ -18,7 +18,7 @@ tGEOMAT* MAT_ValidateSUBMAT_C(tGameObjectMain* gao, unsigned int subMatID)
         if (pos == -1)
             return NULL;
 
-        material = (tGEOMAT*)LOA_ul_SearchAddress(pos);
+        material = (tGEOMAT*)LOA_p_FromStored(LOA_ul_SearchAddress(pos));
         if (material == (tGEOMAT*)-1)
             return NULL;
         return material;

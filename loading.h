@@ -4,6 +4,27 @@
 #include "modifiers/spritegenmodifier.h"
 #include "ai.h"
 #include "basic_array.h"
+#include "handle.h"
+
+/* What the address store answers for a position it has nothing
+   against. It is also what several callers compare the resolved
+   pointer against, so it has to sign-extend the way it always did. */
+#define LOA_ADDRESS_NOT_FOUND (-1)
+
+/* What the store holds, as a pointer. The store's slots are four bytes
+   wide, so on a build with wider pointers they hold a handle and this
+   is what turns one back into an address; where pointers already fit
+   it is the cast the engine always wrote.
+
+   Not-found is passed through as it is, because the callers test the
+   result against (T*)-1 rather than asking the store first. */
+static __inline void* LOA_p_FromStored(int stored)
+{
+    if (stored == LOA_ADDRESS_NOT_FOUND)
+        return (void*)(intptr_t)stored;
+    return HDL_p_Pointer((uint32_t)stored);
+}
+
 
 typedef struct loaStackElem
 {

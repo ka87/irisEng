@@ -17,6 +17,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/collision_a.handle.o"
+
 # Every function collision.c defines, renamed so the two copies can
 # live in one binary. The two the pass named carry their old spelling
 # on the baseline side, so both ends up as BASE_<new name>.
@@ -89,5 +94,5 @@ $CC $CFLAGS -c math.c -o "$OUT/colA.math.o"
 $CC $CFLAGS -c tests/collision_a_mocks.c -o "$OUT/colA.mocks.o"
 $CC $CFLAGS -c tests/test_collision_a.c -o "$OUT/colA.drv.o"
 $CC "$OUT/colA.new.o" "$OUT/colA.base.o" "$OUT/colA.math.o" \
-    "$OUT/colA.mocks.o" "$OUT/colA.drv.o" -o "$OUT/collision_a" -lm
+    "$OUT/colA.mocks.o" "$OUT/colA.drv.o" -o "$OUT/collision_a" "$OUT/collision_a.handle.o" -lm
 "$OUT/collision_a"

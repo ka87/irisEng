@@ -52,7 +52,7 @@ void GEO_StaticLOD_Free(struct sGroGeneric* lod)
     if (lod && lod->intf->id == 8 && lod->usageCount <= 0)
     {
         GEO_StaticLOD_FreeContent((tGEOSTATICLOD*)lod);
-        LOA_DeleteAddress((int)lod);
+        LOA_DeleteAddress(HDL_ul_Handle(lod));
         MEM_Free(lod);
     }
 }

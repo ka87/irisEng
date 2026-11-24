@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "../handle.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -85,9 +86,22 @@ void MEM_Free(void* p)
     WMOCK_Log("MEM_Free", WMOCK_Offset(p), 0, 0);
 }
 
+/* Which object was given up, in both of the ways it can be said.
+ *
+ * The argument is whatever the address store holds against the object:
+ * the frozen copy passes its address truncated to the store's
+ * four-byte slot, and the live one passes the handle that stands for
+ * it. Normalising the argument as a pointer only worked while both
+ * said it the same way, so both are reduced here to the object's
+ * offset in the arena, which is what the comparison was ever about.
+ *
+ * The low 32 bits are enough for the subtraction: the arena is far
+ * smaller than that, so an offset taken modulo 2^32 is the offset. */
 void LOA_DeleteAddress(int pos)
 {
-    WMOCK_Log("LOA_DeleteAddress", WMOCK_Offset((const void*)(intptr_t)pos), 0, 0);
+    const void* p = HDL_p_Pointer((uint32_t)pos);
+    uint32_t off = (uint32_t)(uintptr_t)p - (uint32_t)(uintptr_t)s_arena;
+    WMOCK_Log("LOA_DeleteAddress", (long)off, 0, 0);
 }
 
 /* The real one resolves the key later; here it logs which callback was

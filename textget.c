@@ -18,15 +18,15 @@ void TEXT_Free(tTextGroupStruct* txg)
         if (txg->ids)
         {
             MEM_Free(txg->ids);
-            LOA_DeleteAddress((int)txg->ids);
+            LOA_DeleteAddress(HDL_ul_Handle(txg->ids));
         }
         if (txg->texts)
         {
             MEM_Free(txg->texts);
-            LOA_DeleteAddress((int)txg->texts);
+            LOA_DeleteAddress(HDL_ul_Handle(txg->texts));
         }
         MEM_Free(txg);
-        LOA_DeleteAddress((int)txg);
+        LOA_DeleteAddress(HDL_ul_Handle(txg));
     }
 }
 
@@ -43,7 +43,7 @@ void TEXT_FreeAll()
                 TEXT_Free(TEXT_gst_Global.worldTexts2[i].ptr);
             }
         }
-        LOA_DeleteAddress((int)TEXT_gst_Global.worldTexts2);
+        LOA_DeleteAddress(HDL_ul_Handle(TEXT_gst_Global.worldTexts2));
         MEM_Free(TEXT_gst_Global.worldTexts2);
     }
 
@@ -56,7 +56,7 @@ void TEXT_FreeAll()
                 TEXT_Free(TEXT_gst_Global.worldTexts1[i].ptr);
             }
         }
-        LOA_DeleteAddress((int)TEXT_gst_Global.worldTexts1);
+        LOA_DeleteAddress(HDL_ul_Handle(TEXT_gst_Global.worldTexts1));
         MEM_Free(TEXT_gst_Global.worldTexts1);
     }
     TEXT_gst_Global.num2 = 0;

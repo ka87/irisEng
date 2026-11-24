@@ -28,6 +28,11 @@ CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -no-pie -fno-pie -Itests/s
 OUT=tests/build
 mkdir -p "$OUT"
 
+# The 32-bit stand-in for an address: the engine files below
+# register and release through it, and it has no engine
+# dependencies of its own.
+$CC $CFLAGS -c handle.c -o "$OUT/actions.handle.o"
+
 act_syms="ACT_FreeAction ACT_ActionRestoreInit ACT_FreeActionKit \
 ACT_pst_FindTransition ACT_SetAction ACT_SetUsageCounts ACT_ul_ActionCallback \
 ACT_ul_ActionKitCallback ACT_UseAction ACT_ActionSaveInit ACTKitMerge \
@@ -50,6 +55,6 @@ $CC $CFLAGS -c tests/actions_mocks.c -o "$OUT/actions.mocks.o"
 $CC $CFLAGS -c tests/test_actions.c -o "$OUT/actions.drv.o"
 $CC -no-pie "$OUT/actions.new.o" "$OUT/actions.base.o" "$OUT/actions.math.o" \
     "$OUT/actions.bas.o" "$OUT/actions.mocks.o" "$OUT/actions.drv.o" \
-    -o "$OUT/actions" -lm
+    -o "$OUT/actions" "$OUT/actions.handle.o" -lm
 
 "$OUT/actions"
