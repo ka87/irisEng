@@ -204,7 +204,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
         if (gi_TestBin == -1                         // a testbin 0 ha pályát töltünk be
             || gi_TestBin > gi_CurBin
             || (cachedSize = gai_CurSize[gi_TestBin]) == 0
-            || (preloaded = gap_FirstPointer[gi_TestBin], (int)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO FIXME
+            || (preloaded = gap_FirstPointer[gi_TestBin], (MEM_Word)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO FIXME
         {
             BIG_fseek(fp, BIG_gul_ReadPos, 0);
             fread(BIG_gp_ReadBuffer, 1, 2048, fp);
@@ -421,7 +421,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
         if (gi_TestBin == -1
             || gi_TestBin > gi_CurBin
             || (cachedSize = gai_CurSize[gi_TestBin]) == 0
-            || (preloaded = gap_FirstPointer[gi_TestBin], (int)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO
+            || (preloaded = gap_FirstPointer[gi_TestBin], (MEM_Word)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO
         {
             BIG_fseek(fp, BIG_gul_ReadPos, 0);
             fread(BIG_gp_ReadBuffer, 1, 2048, fp);
@@ -856,7 +856,7 @@ void PreLoadMoveBlocks(int worldKey)
             gap_FirstPointer[i] += 0xFFD83000;
         }
 
-        if (MEM_gst_MemoryInfo.nextFreeMemoryPointer <= (unsigned int)dstPtr)
+        if (MEM_gst_MemoryInfo.nextFreeMemoryPointer <= (MEM_Word)dstPtr)
             memmove(dstPtr, srcPtr, size);
         else
             gi_CurBin = -1;
