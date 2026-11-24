@@ -283,6 +283,7 @@
     <ClCompile Include="graphicsobjects\way.c" />
     <ClCompile Include="grid.c" />
     <ClCompile Include="groups.c" />
+    <ClCompile Include="handle.c" />
     <ClCompile Include="renderers.c" />
     <ClCompile Include="settings.c" />
     <ClCompile Include="inputoutput.c" />
@@ -671,6 +672,7 @@
     <ClInclude Include="graphicsobjects\way.h" />
     <ClInclude Include="grid.h" />
     <ClInclude Include="groups.h" />
+    <ClInclude Include="handle.h" />
     <ClInclude Include="renderers.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="font.h" />

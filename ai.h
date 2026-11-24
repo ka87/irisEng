@@ -14,6 +14,27 @@ typedef struct sAINode
     char category;
 } tAINode;
 
+/* What one node occupies in a world file. It is a property of the
+   format and not of the struct above, and the two are only the same
+   size by coincidence -- so every place that steps through loaded node
+   data, or works out how many nodes a block holds, uses this and not
+   `sizeof(tAINode)`.
+   
+   The assertion is the tripwire. While the two agree it says nothing;
+   the moment the struct grows -- `val` has to hold an address on a
+   build with wide pointers, which is the reason to expect it -- the
+   build stops here, rather than silently reading every node at the
+   wrong offset and counting half of them. At that point the stride
+   below is still right and what needs looking at is each allocation
+   sized from a byte count. */
+#define AI_NODE_FILE_BYTES 8
+
+_Static_assert(sizeof(tAINode) == AI_NODE_FILE_BYTES,
+               "a node in memory is no longer the size it is in a world "
+               "file; the stride is still AI_NODE_FILE_BYTES, but every "
+               "allocation sized from a node block's byte count has to "
+               "be converted to a node count first");
+
 typedef struct sAILocal
 {
     int offset;

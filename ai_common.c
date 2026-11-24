@@ -1130,7 +1130,7 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                         newAiFunc->nodes = (tAINode*)MEM_p_AllocAligned(nodeSizeSum, 64);
 
                     currNode = newAiFunc->nodes;
-                    for (i = 0; i < (nodeSizeSum / sizeof(tAINode)); i++) // an AINode is 8 bytes long
+                    for (i = 0; i < (nodeSizeSum / AI_NODE_FILE_BYTES); i++)
                     {
                         if (newAiFunc->funcPtr)
                             LOA_ReadAINode(&currOffset, 0, 2); 
@@ -1149,7 +1149,7 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
                        An empty function is what a behaviour with no code is. */
                     if (newAiFunc->nodes)
                     {
-                        unsigned int nodeNum = nodeSizeSum / sizeof(tAINode);
+                        unsigned int nodeNum = nodeSizeSum / AI_NODE_FILE_BYTES;
                         unsigned int n;
 
                         for (n = 0; n < nodeNum; n++)
@@ -1174,7 +1174,7 @@ tAIFunction* AI_ul_CallbackLoadFunction(uint32_t offset)
             extraAiNodeSizeSum = LOA_ReadLong(&currOffset, 0, 2);
             if (extraAiNodeSizeSum)
             {
-                for (i = 0; i < (extraAiNodeSizeSum / sizeof(tAINode)); i++)
+                for (i = 0; i < (extraAiNodeSizeSum / AI_NODE_FILE_BYTES); i++)
                 {
                     LOA_ReadAINode(&currOffset, 0, 2);
                 }
