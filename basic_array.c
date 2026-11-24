@@ -127,7 +127,13 @@ void BAS_binsert(unsigned int key, int val, BASStruct* bas)
             }
             else
             {
-                memmove(&sgpst_Prev[2], &sgpst_Prev[1], sizeof(BASKeyValStruct) * (((int)&currKeyValPtr[-1] + sizeof(BASKeyValStruct) * originalActElemNum - (int)sgpst_Prev) >> 3));
+                /* How many elements from the one after sgpst_Prev to the last
+                   one in use: a distance between two elements of the same
+                   array, which the pointers themselves give. */
+                memmove(&sgpst_Prev[2], &sgpst_Prev[1],
+                        sizeof(BASKeyValStruct)
+                            * (size_t)(&currKeyValPtr[originalActElemNum - 1]
+                                       - sgpst_Prev));
                 currKeyValPtr = sgpst_Prev + 1;
             }
         }
@@ -161,7 +167,10 @@ void BAS_bdelete(int key, BASStruct* bas)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
-                    memmove(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
+                    memmove(&sgpst_Prev[1], &sgpst_Prev[2],
+                            sizeof(BASKeyValStruct)
+                                * (size_t)(&keyValPtr[actElemNum - 1]
+                                           - sgpst_Prev));
                     --bas->actElemNum;
                     return;
                 }
@@ -194,7 +203,10 @@ void BAS_bdeletegetval(int key, BASStruct* bas, int* val)
             {
                 if (sgpst_Prev != &keyValPtr[actElemNum - 2])
                 {
-                    memmove(&sgpst_Prev[1], &sgpst_Prev[2], sizeof(BASKeyValStruct) * (((int)&keyValPtr[-1] + sizeof(BASKeyValStruct) * actElemNum - (int)sgpst_Prev) >> 3));
+                    memmove(&sgpst_Prev[1], &sgpst_Prev[2],
+                            sizeof(BASKeyValStruct)
+                                * (size_t)(&keyValPtr[actElemNum - 1]
+                                           - sgpst_Prev));
                     --bas->actElemNum;
                     return;
                 }

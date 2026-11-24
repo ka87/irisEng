@@ -30,7 +30,7 @@ int GRO_l_Struct_Load(tGroGeneric* gro, char* readptr)
     gro->usageCount = 0;
     additionalLength = LOA_ReadLong(&readptr, 0, 2);
 
-    return (int)readptr - (int)readPtrBak + additionalLength;
+    return (int)(readptr - readPtrBak) + additionalLength;
 }
 
 tGroGeneric* GRO_p_UnknownCreateDefault()

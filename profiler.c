@@ -161,7 +161,8 @@ void ENG_ForceStartRasters()
         raster->insideCounter = 0;
         // preserved: a byte count stepping a typed pointer, so one raster is cleared and the loop ends
         raster += sizeof(profilerRasterStructElem);
-    } while ((int)raster < (int)&PRO_RasterGroup.unkRaster1.insideCounter);
+    } while ((char*)raster
+             < (char*)&PRO_RasterGroup.unkRaster1.insideCounter);
 }
 
 void PRO_RecordTimeDecRef(profilerRasterStructElem* raster)

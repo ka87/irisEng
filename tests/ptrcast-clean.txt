@@ -31,6 +31,7 @@ ai/ai_soundfunctions.c
 ai/ai_timefunctions.c
 ai/ai_types.c
 ai/ai_wayfunctions.c
+basic_array.c
 bigfiles.c
 cameraengine.c
 cinebands.c
@@ -69,6 +70,7 @@ gfx/gfxtable.c
 gfx/gfxwater2.c
 graphicsobjects/camera.c
 graphicsobjects/geostr.c
+graphicsobjects/gro_common.c
 graphicsobjects/light.c
 graphicsobjects/particle.c
 graphicsobjects/shadow.c
@@ -126,6 +128,7 @@ platform/sndvideo.c
 platform/syscompat.c
 pngsave.c
 proceduraltextures.c
+profiler.c
 projection.c
 rasterstate.c
 renderers.c
@@ -134,6 +137,7 @@ settings.c
 sideload.c
 sndplatform.c
 snp.c
+soft.c
 soundmodifier.c
 sprites.c
 textget.c
