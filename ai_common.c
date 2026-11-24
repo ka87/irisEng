@@ -314,8 +314,8 @@ struct sGameObjectMain* AI2C_GetMainActor(void* actorIDOrGao)
 {
     if (!actorIDOrGao)
         return NULL;
-    if ((uint32_t)actorIDOrGao <= 2)
-        actorIDOrGao = AI_MainActor[(uint32_t)actorIDOrGao - 1];
+    if ((uintptr_t)actorIDOrGao <= 2)
+        actorIDOrGao = AI_MainActor[(uintptr_t)actorIDOrGao - 1];
     return actorIDOrGao;
 }
 
@@ -760,7 +760,7 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
     if (AI_CompiledAIEnabled && funcPtr->funcPtr)
         return (tAINode*)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
-    for (i = *jumpNode; (unsigned int)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
+    for (i = *jumpNode; (uintptr_t)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
         AI_gppst_CurrentJumpNode = jumpNode;
     AI_gul_SizeLocalStack -= stackDecrease;
     return i;
@@ -770,7 +770,7 @@ void AI_RunNode(tAINode* aiNode)
 {
     if (!aiNode->val && AI_gast_Categs[aiNode[1].category].funcid == 2 /*AI_EvalCateg_Keyword*/ && AI_gast_Keywords[aiNode[1].val2].funcid == 2054 /*AI_EvalKeyword_Ultra*/)
         aiNode += 2; // skip ultra set
-    while ((unsigned int)aiNode > 7 && aiNode->category != 31)
+    while ((uintptr_t)aiNode > 7 && aiNode->category != 31)
         aiNode = AI_gast_Categs[aiNode->category].funcptr(aiNode);
 }
 
@@ -1675,8 +1675,8 @@ void AI2C_ResolveBuffer(uint32_t* varPtr, void* gaoOrGaoIdxOrAIPtr, int varOffse
         gao = (tGameObjectMain*)gaoOrGaoIdxOrAIPtr;
         if (gaoOrGaoIdxOrAIPtr)
         {
-            if ((unsigned int)gaoOrGaoIdxOrAIPtr <= 2)
-                gao = AI_MainActor[(uint32_t)gaoOrGaoIdxOrAIPtr - 1];
+            if ((uintptr_t)gaoOrGaoIdxOrAIPtr <= 2)
+                gao = AI_MainActor[(uintptr_t)gaoOrGaoIdxOrAIPtr - 1];
         }
         else
         {
@@ -1701,8 +1701,8 @@ void* AI2C_ResolveBufferPtr(void* gaoOrGaoIdxOrAIPtr)
         gao = (tGameObjectMain*)gaoOrGaoIdxOrAIPtr;
         if (gaoOrGaoIdxOrAIPtr)
         {
-            if ((unsigned int)gaoOrGaoIdxOrAIPtr <= 2)
-                gao = AI_MainActor[(uint32_t)gaoOrGaoIdxOrAIPtr - 1];
+            if ((uintptr_t)gaoOrGaoIdxOrAIPtr <= 2)
+                gao = AI_MainActor[(uintptr_t)gaoOrGaoIdxOrAIPtr - 1];
         }
         else
         {
@@ -1770,8 +1770,8 @@ struct sGameObjectMain* AI2C_GaoGetFromAI(struct sAI* aiPtr, char* name) {
 
     if (ret)
     {
-        if ((unsigned int)ret <= 2)
-            return AI_MainActor[(uint32_t)ret - 1];
+        if ((uintptr_t)ret <= 2)
+            return AI_MainActor[(uintptr_t)ret - 1];
     }
     return ret;
 }
@@ -1816,8 +1816,8 @@ struct sAI* AI2C_GetAIModelFromGao(void* gaoOrGaoIdxOrAIPtr) {
         gao = (tGameObjectMain*)gaoOrGaoIdxOrAIPtr;
         if (gaoOrGaoIdxOrAIPtr)
         {
-            if ((unsigned int)gaoOrGaoIdxOrAIPtr <= 2)
-                gao = AI_MainActor[(uint32_t)gaoOrGaoIdxOrAIPtr - 1];
+            if ((uintptr_t)gaoOrGaoIdxOrAIPtr <= 2)
+                gao = AI_MainActor[(uintptr_t)gaoOrGaoIdxOrAIPtr - 1];
         }
         else
         {
@@ -1843,8 +1843,8 @@ void AI2C_ResolveBufferByName(uint32_t* varPtr, void* gaoOrGaoIdxOrAIPtr, char* 
         gao = (tGameObjectMain*)gaoOrGaoIdxOrAIPtr;
         if (gaoOrGaoIdxOrAIPtr)
         {
-            if ((unsigned int)gaoOrGaoIdxOrAIPtr <= 2)
-                gao = AI_MainActor[(uint32_t)gaoOrGaoIdxOrAIPtr - 1];
+            if ((uintptr_t)gaoOrGaoIdxOrAIPtr <= 2)
+                gao = AI_MainActor[(uintptr_t)gaoOrGaoIdxOrAIPtr - 1];
         }
         else
         {
