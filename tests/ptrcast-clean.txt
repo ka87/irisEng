@@ -1,3 +1,4 @@
+actions.c
 aftereffects/aecolor.c
 aftereffects/aefade.c
 aftereffects/aeframe.c
@@ -31,6 +32,7 @@ ai/ai_soundfunctions.c
 ai/ai_timefunctions.c
 ai/ai_types.c
 ai/ai_wayfunctions.c
+animation.c
 basic_array.c
 bigfiles.c
 cameraengine.c
@@ -45,6 +47,7 @@ fileio.c
 flatlayer.c
 fog.c
 font.c
+gameobject.c
 gdi.c
 geosprite.c
 geovertex.c
@@ -76,6 +79,7 @@ graphicsobjects/particle.c
 graphicsobjects/shadow.c
 graphicsobjects/staticlod.c
 graphicsobjects/way.c
+grid.c
 groups.c
 handle.c
 inputoutput.c

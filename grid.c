@@ -1225,7 +1225,8 @@ tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
     src = BIG_pc_ReadFileTmp(Offset, &fileSize);
     LOA_ReadLong(&src, 0, 2);
     LOA_ReadLong(&src, 0, 2);
-    grid->compressedGrid = (char*)LOA_ReadLong(&src, 0, 1);
+    /* A key until the resolve pass fills it in. */
+    grid->compressedGrid = (char*)LOA_ref_FromKey(LOA_ReadLong(&src, 0, 1));
     LOA_ReadLong(&src, 0, 2);
     LOA_ReadLong(&src, 0, 2);
     LOA_ReadLong(&src, 0, 2);
@@ -1263,7 +1264,8 @@ tWorldGridStruct* GRID_ul_CallbackWorldGrid(uint32_t Offset)
     for (i = 0; i < grid->gridCountY * grid->gridCountX; ++i)
         *stored++ = LOA_ReadLong(&src, 0, 1);
 
-    LOA_MakeFileRef((int)grid->compressedGrid, &grid->compressedGrid,
+    LOA_MakeFileRef(LOA_i_KeyFromRef(grid->compressedGrid),
+                    &grid->compressedGrid,
                     (void* (*)(uint32_t))GRID_ul_CallbackCompressedGrid, 1);
 
     capasSize = grid->s3Size7LimitMaxX * grid->gridElemSize;

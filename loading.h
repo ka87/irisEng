@@ -95,6 +95,33 @@ void LOA_DeleteAddress(int pos);
    a T** to a void**, so every caller of this would otherwise be
    passing an incompatible type. */
 void LOA_MakeFileRef(int key, void* retVal, void* (*func)(uint32_t), char flags);
+
+/* A file key parked in a pointer field until the resolve pass fills it
+   in.
+ 
+   Most of the loader reads a key into a local and passes that to
+   LOA_MakeFileRef, so the field only ever holds the resolved pointer.
+   A few places cannot: the key is read in one pass and resolved in
+   another, or in another function, and the field is the only storage
+   that travels with the thing it belongs to. There the field holds a
+   key for a while, and these two say which of the two it is holding
+   rather than leaving it to a cast that also happens to narrow it. */
+static __inline uintptr_t LOA_ref_FromKey(int key)
+{
+    /* Sign extended, which is what the casts that used to do this did
+       and what the frozen copies in tests/ still do. It matters for one
+       value: a key of -1 is "no reference", and several places test the
+       field for it by comparing against a pointer of every bit set.
+       Zero extending would stop those matching on a build with wider
+       pointers while leaving a 32-bit build alone -- and the actions
+       differential says so, 72 of its 864 cases. */
+    return (uintptr_t)(intptr_t)key;
+}
+
+static __inline int LOA_i_KeyFromRef(const void* ref)
+{
+    return (int)(uintptr_t)ref;
+}
 int LOA_ul_SearchAddress(int pos);
 void LOA_ReadAINode(char** offset, tAINode* retVal, int readMode);
 BOOL LOA_IsSpecial(unsigned int key);
