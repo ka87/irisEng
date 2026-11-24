@@ -576,7 +576,7 @@ void ENG_EngineCall()
             do
             {
                 world = (tWorld*)elemSaved->objectPtr;
-                if (elemSaved->objectPtr && ((uint8_t)world & 3) != 1 && (elem2[anyRan].objectFlags & 1) != 0)
+                if (elemSaved->objectPtr && !OBJ_b_SlotIsUnresolved(world) && (elem2[anyRan].objectFlags & 1) != 0)
                 {
                     if (special != 0.0f)
                     {

@@ -2971,7 +2971,7 @@ int SND_i_CheckOrInitGAO(struct sGameObjectMain* gao)
 {
     tSndBank* bank;
 
-    if (!gao || ((uint8_t)gao & 3) != 0 || MEM_b_CheckBlockHasBeenFreed(gao) || (gao->flags & 0x8000000) != 0)
+    if (!gao || !OBJ_b_SlotIsResolved(gao) || MEM_b_CheckBlockHasBeenFreed(gao) || (gao->flags & 0x8000000) != 0)
         return 1;
     OBJ_GameObject_CreateExtendedIfNot(gao);
     bank = (tSndBank*)MEM_p_Alloc(sizeof(tSndBank));

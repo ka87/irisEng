@@ -1092,7 +1092,7 @@ int DYN_MainCall(struct sWorld* world)
     for (dt = TIM_gf_dt; elem <= lastElemBound; ++elem)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
-        if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+        if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
         {
             TIM_gf_dt = dt;
             if (ENG_gb_FirstFrame)

@@ -1,5 +1,27 @@
 #pragma once
 #include "common.h"
+#include "handle.h"
+
+/* A world-table slot holds either an object or a key the resolve pass
+   has not filled in yet, and the low two bits say which: a resolved
+   pointer is aligned and has them clear, an unresolved key carries the
+   same tag the translation layer defines for one.
+
+   Only those two bits are read, so the test is width-safe however wide
+   a pointer is -- but the forty-odd places that do it were written as
+   a cast to a byte, which reads like a mistake and warns on a build
+   where a pointer is wider than that. */
+static __inline BOOL OBJ_b_SlotIsUnresolved(const void* slot)
+{
+    return ((uintptr_t)slot & HDL_TAG_MASK) == HDL_TAG_UNRESOLVED_KEY;
+}
+
+/* The other way round, which one place asks instead: the slot holds a
+   pointer and nothing else. */
+static __inline BOOL OBJ_b_SlotIsResolved(const void* slot)
+{
+    return ((uintptr_t)slot & HDL_TAG_MASK) == HDL_TAG_RESOLVED;
+}
 
 // A különbözõ EOT tábláknál vigyázni, mert ha túlcsordulnak (500 elemre vannak inicializálva), akkor nincs ellenõrzés arra, 
 // hogy megteltek és túlírják a memóriát, ez a gyakorlatban azt jelenti, hogy egy következõ tábla elemeit írják felül 

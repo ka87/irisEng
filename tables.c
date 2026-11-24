@@ -4,7 +4,7 @@
 
 BOOL TAB_TableElemIsInvalid(void* elem)
 {
-    return !elem || ((uint8_t)elem & 3) == 1;
+    return !elem || OBJ_b_SlotIsUnresolved(elem);
 }
 
 void TAB_DLlist_CreateElem(tabDlistElemStruct** elem)

@@ -352,7 +352,7 @@ int IMG_Analyser(tWorld* world, unsigned int mission)
     for (; cursor <= last; cursor++)
     {
         gao = (tGameObjectMain*)cursor->objectPtr;
-        if (!cursor->objectPtr || ((uint8_t)gao & 3) == 1 || (gao->flags2 & 4) != 0)
+        if (!cursor->objectPtr || OBJ_b_SlotIsUnresolved(gao) || (gao->flags2 & 4) != 0)
             continue;
         result = IMG_ObjectAnalyser(gao, world, dd, mission << 24, 1, rawInfo, 0, &code);
         if (code == 2)
@@ -603,7 +603,7 @@ unsigned int IMG_Analyser_Bis(tWorld* world, int mission)
         gao = (tGameObjectMain*)cursor->objectPtr;
         if (!cursor->objectPtr)
             continue;
-        if (((uint8_t)gao & 3) == 1)
+        if (OBJ_b_SlotIsUnresolved(gao))
             continue;
         flags2 = gao->flags2;
         if ((flags2 & 4) != 0 || (flags2 & 2) == 0)
