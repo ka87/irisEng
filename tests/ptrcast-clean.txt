@@ -42,7 +42,9 @@ datapath.c
 dbg.c
 debugkeys.c
 depthblur.c
+dynamics.c
 editorcamera.c
+engine.c
 fileio.c
 flatlayer.c
 fog.c
@@ -144,6 +146,7 @@ snp.c
 soft.c
 soundmodifier.c
 sprites.c
+tables.c
 textget.c
 time.c
 video.c
@@ -153,3 +156,4 @@ watermesh.c
 waterreflect.c
 watersmooth.c
 ways.c
+world.c

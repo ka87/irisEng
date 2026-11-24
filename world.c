@@ -73,7 +73,7 @@ void WOR_World_DetachObject(struct sWorld* world, struct sGameObjectMain* gao)
             currGao = (tGameObjectMain*)currElem->objectPtr;
             if (currElem->objectPtr)
             {
-                if (((uint8_t)currGao & 3) != 1 && (currGao->flags & 0x400000) != 0)
+                if (!OBJ_b_SlotIsUnresolved(currGao) && (currGao->flags & 0x400000) != 0)
                 {
                     if (currGao->basic && currGao->basic->mtx && currGao->basic->mtx->refGao2 == gao)
                     {
@@ -276,7 +276,11 @@ int WOR_World_Close(tWorld* world)
             if (!TAB_TableElemIsInvalid(currGao))
             {
                 AI_EvalFunc_WORPreLoadTex_C();
-                if (((uint8_t)currGao & 1) == 0 && (currGao->flags & 1) == 0) // valid ptr and it doesn't have flag 1
+                /* The low bit alone, which is stricter than the
+                   unresolved-key test the rest of this file uses: it
+                   rejects anything with either low bit set, not just
+                   the tag value. Left as it is, widened. */
+                if (((uintptr_t)currGao & 1) == 0 && (currGao->flags & 1) == 0)
                 {
                     WOR_World_DetachObject(world, currGao);
                     OBJ_GameObject_Remove(currGao, TRUE);
@@ -471,7 +475,7 @@ void EOT_RemoveObjectFromTableIfBadFlag(tableDescStruct* table, int flagMask)
     for (last = ((tableElemStructPF*)(table->nextElemPtr)) - 1; elem <= last; ++elem)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
-        if (elem->objectPtr && ((uint8_t)gao & 3) != 1 && (flagMask & elem->objectFlags) != (flagMask & gao->flags))
+        if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao) && (flagMask & elem->objectFlags) != (flagMask & gao->flags))
             TAB_PFtable_RemoveElem(table, elem);
     }
 }
@@ -488,7 +492,7 @@ void EOT_UpdateIdentityFlagsOfTable(tableDescStruct* table)
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr)
         {
-            if (((uint8_t)gao & 3) != 1)
+            if (!OBJ_b_SlotIsUnresolved(gao))
                 elem->objectFlags = gao->flags;
         }
     }
@@ -545,7 +549,7 @@ void EOT_AISortWithPriority(tableDescStruct* table)
         for (elem = base; elem <= last; ++elem)
         {
             gao = (tGameObjectMain*)elem->objectPtr;
-            if (!elem->objectPtr || ((uint8_t)gao & 3) == 1)
+            if (!elem->objectPtr || OBJ_b_SlotIsUnresolved(gao))
             {
                 TAB_PFtable_RemoveHoles(table);
                 holeFound = 1;
@@ -667,7 +671,7 @@ void EOT_SetOfEOT_OneBuild(tableDescStruct* dest, int flagMask, tableDescStruct*
         gaoFlagsPtr = (int*)elem->objectPtr;
         if (elem->objectPtr)
         {
-            if (((uint8_t)gaoFlagsPtr & 3) != 1)
+            if (!OBJ_b_SlotIsUnresolved(gaoFlagsPtr))
             {
                 gaoFlags = *gaoFlagsPtr;
                 elem->objectFlags = gaoFlags;
@@ -697,7 +701,7 @@ void WOR_World_ResolveAIRef(struct sWorld* world)
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr)
         {
-            if (((uint8_t)gao & 3) != 1)
+            if (!OBJ_b_SlotIsUnresolved(gao))
             {
                 OBJ_ResolveAIRef(gao);
                 if ((gao->flags & 0x40) != 0)
@@ -1008,7 +1012,7 @@ void WOR_World_CheckGroup(tGameObjectMain* gao, tWorld* world)
                 for (; elem <= last; ++elem)
                 {
                     member = (tGameObjectMain*)elem->objectPtr;
-                    if (elem->objectPtr && ((uint8_t)member & 3) != 1)
+                    if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(member))
                     {
                         if (TAB_ul_PFtable_GetElemIndexWithPointer(&world->objectTablePF, elem->objectPtr) == -1)
                         {
@@ -1017,7 +1021,7 @@ void WOR_World_CheckGroup(tGameObjectMain* gao, tWorld* world)
                             grpTable = grp->tablePF;
                             if (elem->objectPtr)
                             {
-                                if (((int)elem->objectPtr & 3) != 1)
+                                if (!OBJ_b_SlotIsUnresolved(elem->objectPtr))
                                 {
                                     elem->objectPtr = (void*)1;
                                     --grpTable->actElemNum;
@@ -1178,7 +1182,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
         for (last = ((tableElemStructPF*)(target->objectTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
         {
             gao = (tGameObjectMain*)(elem->objectPtr);
-            if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+            if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
                 gao->process |= 0x10u;
         }
     }
@@ -1187,7 +1191,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
     for (i = 0; i < total; ++i)
     {
         gao = (tGameObjectMain*)(((tableElemStructPF*)(loaded->objectTablePF.firstElemPtr))[i].objectPtr);
-        if (gao && ((uint8_t)gao & 3) != 1 && (gao->process & 0x10) == 0)
+        if (gao && !OBJ_b_SlotIsUnresolved(gao) && (gao->process & 0x10) == 0)
         {
             WOR_gpst_CurrentWorld = target;
             WOR_World_JustAfterLoadObject(target, gao, resolveAI, 1);
@@ -1200,7 +1204,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
         for (last = ((tableElemStructPF*)(loaded->objectTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
         {
             gao = (tGameObjectMain*)elem->objectPtr;
-            if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+            if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
             {
                 if ((gao->process & 0x10) != 0)
                     ENG_ReinitOneObject(gao, 14);
@@ -1218,7 +1222,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
     for (last = ((tableElemStructPF*)(target->objectTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
-        if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+        if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
         {
             WOR_World_CheckFather(gao, target);
             WOR_World_CheckGroup(gao, target);
@@ -1706,7 +1710,7 @@ void WOR_BVMaskPreComputeAll(tWorld* world, tDDContainerStruct* dd)
         for (last = ((tableElemStructPF*)(world->objectsWithBVMaskTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
         {
             gao = (tGameObjectMain*)elem->objectPtr;
-            if (elem->objectPtr && ((uint8_t)gao & 3) != 1 && !OBJ_CullingObject(gao))
+            if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao) && !OBJ_CullingObject(gao))
             {
                 WOR_BVMaskPreCompute(gao, &dd->cam, 0);
                 ++BVMask_gi_Num;
@@ -1771,7 +1775,7 @@ void WOR_World_MakeObjectsVisible(struct sWorld* world)
     for (last = ((tableElemStructPF*)(world->objectTablePF.nextElemPtr)) - 1; elem <= last; ++elem)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
-        if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+        if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
         {
             flags2 = gao->flags2;
             if ((flags2 & 2) != 0)
@@ -1844,7 +1848,7 @@ void WOR_Render_All_GO(struct sWorld* world, struct sGdi_DisplayData* dxdd)
         for (last = &((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr))[-1]; elem <= last; ++elem)
         {
             gao = (tGameObjectMain*)elem->objectPtr;
-            if (!elem->objectPtr || ((uint8_t)gao & 3) == 1)
+            if (!elem->objectPtr || OBJ_b_SlotIsUnresolved(gao))
                 continue;
             flags2 = gao->flags2 & ~0x20000u | 4;
             gao->flags2 = flags2;
@@ -1902,7 +1906,7 @@ void WOR_Render_All_GO(struct sWorld* world, struct sGdi_DisplayData* dxdd)
         {
             gao = (tGameObjectMain*)elem->objectPtr;
             last = ((tableElemStructPF*)(world->visibleGameObjectsPF.nextElemPtr)) - 1;
-            if (elem->objectPtr && ((uint8_t)gao & 3) != 1)
+            if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(gao))
             {
                 if ((gao->flags2 & 4) == 0)
                 {
@@ -1959,7 +1963,7 @@ void WOR_Universe_Close()
         for (; elem <= last; ++elem)
         {
             world = (tWorld*)elem->objectPtr;
-            if (elem->objectPtr && ((uint8_t)world & 3) != 1)
+            if (elem->objectPtr && !OBJ_b_SlotIsUnresolved(world))
                 WOR_Universe_DeleteWorld(world);
         }
         if (WOR_gst_Universe.univAIInstance)
@@ -2046,7 +2050,7 @@ void WOR_Render(struct sWorld* world, struct sGdi_DisplayData* dxdd)
                     gao = (tGameObjectMain*)(elem->objectPtr);
                     if (elem->objectPtr)
                     {
-                        if (((uint8_t)gao & 3) != 1)
+                        if (!OBJ_b_SlotIsUnresolved(gao))
                         {
                             light = (tLIGHT*)(gao->extended->light);
                             if (light)

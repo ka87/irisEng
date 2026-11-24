@@ -3211,7 +3211,7 @@ struct sGameObjectMain* COL_Visual_RayCast(struct sWorld* world, struct sGameObj
     {
         currGao = (tGameObjectMain*)elem->objectPtr;
         if (!elem->objectPtr
-            || ((uint8_t)currGao & 3) == 1
+            || OBJ_b_SlotIsUnresolved(currGao)
             || !OBJ_b_test_flag(currGao, flagMustHave, flagMustNothave, whatToTest)
             || (currGao->flags & 0x4000) == 0 && (currGao->flags & 2) == 0
             || currGao == skipGao
@@ -3429,7 +3429,7 @@ void COL_UpdateOldMatrix(tWorld* world)
     for (end = ((tableElemStructPF*)(world->eot.collInstanceZDMGameObjectsPF.nextElemPtr)) - 1; elem <= end; ++elem)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
-        if (!elem->objectPtr || ((uint8_t)gao & 3) == 1 || (gao->flags & 0x200) == 0)
+        if (!elem->objectPtr || OBJ_b_SlotIsUnresolved(gao) || (gao->flags & 0x200) == 0)
             continue;
 
         instance = gao->extended->coll->colInstance;
@@ -6461,7 +6461,7 @@ void COL_UpdateBV(tableDescStruct* table)
     {
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr
-            && ((uint8_t)gao & 3) != 1
+            && !OBJ_b_SlotIsUnresolved(gao)
             && (gao->flags & 0x200) != 0
             && !OBJ_BV_IsSphere(gao->boundingVolume))
         {
@@ -6681,7 +6681,7 @@ void COL_UpdateRealTimeColMaps(tWorld* world)
         gao = (tGameObjectMain*)elem->objectPtr;
         if (!elem->objectPtr)
             continue;
-        if (((uint8_t)gao & 3) == 1)
+        if (OBJ_b_SlotIsUnresolved(gao))
             continue;
         flags2 = gao->flags2;
         if ((flags2 & 1) == 0 || (flags2 & 0x400000) != 0)
@@ -6744,7 +6744,7 @@ void COL_Compute(tWorld* world)
         colInstGao = (tGameObjectMain*)(elem->objectPtr);
         if (!elem->objectPtr)
             continue;
-        if (((uint8_t)colInstGao & 3) == 1)
+        if (OBJ_b_SlotIsUnresolved(colInstGao))
             continue;
         flags2 = colInstGao->flags2;
         if ((flags2 & 1) == 0
@@ -6816,7 +6816,7 @@ void COL_Compute(tWorld* world)
         colInstGao = (tGameObjectMain*)(elem->objectPtr);
         if (!elem->objectPtr)
             continue;
-        if (((uint8_t)colInstGao & 3) == 1)
+        if (OBJ_b_SlotIsUnresolved(colInstGao))
             continue;
         flags2 = colInstGao->flags2;
         if ((flags2 & 1) == 0
@@ -8486,7 +8486,7 @@ struct sGameObjectMain* COL_RayBV(struct tableDescStruct* table, Vec3* rayOrigin
     {
         gao = (tGameObjectMain*)elem->objectPtr;
         if (!elem->objectPtr
-            || ((uint8_t)gao & 3) == 1
+            || OBJ_b_SlotIsUnresolved(gao)
             || skipCrossObjects && (gao->flags2 & 0x1000000) != 0
             || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
@@ -8619,7 +8619,7 @@ struct sGameObjectMain* COL_ColMap_RayCast(struct sWorld* world, struct sGameObj
     {
         gao = (tGameObjectMain*)elem->objectPtr;
         if (!elem->objectPtr
-            || ((uint8_t)gao & 3) == 1
+            || OBJ_b_SlotIsUnresolved(gao)
             || (gao->flags & 0x100) == 0
             || (gao->flags2 & 1) == 0
             || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)
@@ -9523,7 +9523,7 @@ int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flag
     {
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr
-            && ((uint8_t)gao & 3) != 1
+            && !OBJ_b_SlotIsUnresolved(gao)
             && gao->distance
             && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
@@ -9795,7 +9795,7 @@ struct sGameObjectMain* COL_Visual_RayCast_OneObject(struct sGameObjectMain* gao
     COL_gst_Ray.skipRayCast = skipRayCast;
     COL_gst_Ray.skipVecsTransformationToGaoSpace = skipTransform;
     if (!gao
-        || ((uint8_t)gao & 3) == 1
+        || OBJ_b_SlotIsUnresolved(gao)
         || !OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)
         || (gao->flags & 0x4000) == 0 && (gao->flags & 2) == 0)
     {
@@ -10642,7 +10642,7 @@ int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNo
     {
         other = (tGameObjectMain*)elem->objectPtr;
         if (!elem->objectPtr
-            || ((uint8_t)other & 3) == 1
+            || OBJ_b_SlotIsUnresolved(other)
             || !OBJ_b_test_flag(other, flagMustHave, flagMustNothave, whatToTest)
             || other == gao)
         {
@@ -10702,7 +10702,7 @@ struct sGameObjectMain* COL_GetFirstObjectInRange(struct sWorld* world, Vec3* po
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr)
         {
-            if (((uint8_t)gao & 3) != 1 && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)) {
+            if (!OBJ_b_SlotIsUnresolved(gao) && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest)) {
                 dx = pos->x - gao->matrices->Pos.x;
                 dy = pos->y - gao->matrices->Pos.y;
                 dz = pos->z - gao->matrices->Pos.z;
@@ -11067,7 +11067,7 @@ int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest
         gao = (tGameObjectMain*)elem->objectPtr;
         if (elem->objectPtr)
         {
-            if (((uint8_t)gao & 3) != 1)
+            if (!OBJ_b_SlotIsUnresolved(gao))
             {
                 if (OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
                 {
