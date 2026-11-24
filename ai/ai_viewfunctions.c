@@ -1,4 +1,5 @@
 #include "../gameobject.h"
+#include "../handle.h"
 #include "../gdi.h"
 #include "../textures.h"
 #include "../memory.h"
@@ -183,7 +184,12 @@ tAINode* AI_EvalFunc_VIEWAssignObject(tAINode* aiNode)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
 
     viewIdx = AI_GetIntFromStack();
-    tmp[0] = (int)AI_EvalFunc_VIEWAssignObject_C(ultraBak, viewIdx);
+    /* The slot an object goes on the stack in is four bytes, so what
+       goes in it is a handle. The accessor on the way out resolves
+       one; a truncated address would come back out of it unchanged
+       and name nothing. */
+    tmp[0] = (int)HDL_ul_Handle(
+        AI_EvalFunc_VIEWAssignObject_C(ultraBak, viewIdx));
 
     AI_PutObjectToStack(tmp, AI_gaw_EnumLink[40]);
 
@@ -244,7 +250,7 @@ tAINode* AI_EvalFunc_VIEWGetObject(tAINode* aiNode)
     int tmp[5];
 
     viewIdx = AI_GetIntFromStack();
-    tmp[0] = (int)AI_EvalFunc_VIEWGetObject_C(viewIdx);
+    tmp[0] = (int)HDL_ul_Handle(AI_EvalFunc_VIEWGetObject_C(viewIdx));
 
     AI_PutObjectToStack(tmp, AI_gaw_EnumLink[40]);
 

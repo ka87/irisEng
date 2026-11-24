@@ -1,4 +1,5 @@
 #include "../ai.h"
+#include "../handle.h"
 #include "../loading.h"
 #include "../bigfiles.h"
 #include "../strings.h"
@@ -39,7 +40,7 @@ char* AI_GetStringFromStack()
 
     AI_GetVarFromStack(converted, &var);
     if (var.type == AI_gaw_EnumLink[38])
-        return (char*)((tTextGet*)converted)->key;
+        return (char*)HDL_p_Pointer((uint32_t)((tTextGet*)converted)->key);
     return AI_EvalFunc_TEXTToString_C((tTextGet*)converted);
 }
 
@@ -1031,7 +1032,11 @@ tAINode* AI_EvalFunc_TEXTToString(tAINode* node)
     slot = AI_PopStackSlot();
     //TODO FIXME: ezt is kideríteni és megcsinálni normálisan hogy mi az az enumlink[38] és milyen módon kell neki átadni, lehet ez egy stringptr?
     reference[3] = (int)slot;
-    reference[0] = (int)AI_EvalFunc_TEXTToString_C((tTextGet*)slot);
+    /* reference[0] is the key field of the text reference this
+       pushes, which is four bytes, so it holds a handle for the string
+       rather than its address. The read of it below resolves one. */
+    reference[0] = (int)HDL_ul_Handle(
+        AI_EvalFunc_TEXTToString_C((tTextGet*)slot));
     AI_PutObjectToStack(reference, AI_gaw_EnumLink[38]);
     return node + 1;
 }
