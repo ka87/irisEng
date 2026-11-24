@@ -754,7 +754,16 @@ void SND_HeaderMakeArray(BASStruct* array);
 void SND_LoadAllSounds();
 unsigned int SND_UpdateLang();
 int SND_l_AddStreamLoad(int soundKey);
+/* Offset is a position in the big file for read modes 1 and 5, and the
+   address of a header already in memory for mode 4, so it is as wide as
+   a pointer. The frozen copy in tests/ still holds that address in an
+   int and is compiled with SND_WAVEINFO_FROZEN, which keeps its own
+   signature; nothing in the game defines it. */
+#ifdef SND_WAVEINFO_FROZEN
 int SND_i_GetWaveInfo(int Offset, tSndWavHdrStruct* wavHdrStructDest, int readMode);
+#else
+int SND_i_GetWaveInfo(intptr_t Offset, tSndWavHdrStruct* wavHdrStructDest, int readMode);
+#endif
 tSndBank* SND_ul_CallbackLoadBank(int Offset);
 int SND_l_AddSModifierNoLoad(int soundKey, char** cursor);
 int SND_l_GetSoundIndex(int soundKEy);

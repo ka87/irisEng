@@ -11,7 +11,10 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# -Werror=implicit-function-declaration earns its place here: with -w
+# and no declaration in sight, a call to the allocator returned an int
+# and the driver memset a truncated pointer.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Werror=implicit-function-declaration -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 
@@ -25,6 +28,6 @@ $CC $CFLAGS -c sound.c                -o "$OUT/wavhdr.sut.o"
 $CC $CFLAGS -c tests/sound_mocks.c    -o "$OUT/wavhdr.mocks.o"
 $CC $CFLAGS -c basic_array.c          -o "$OUT/wavhdr.bas.o"
 $CC $CFLAGS -c math.c                 -o "$OUT/wavhdr.math.o"
-$CC -no-pie "$OUT/wavhdr.drv.o" "$OUT/wavhdr.sut.o" "$OUT/wavhdr.mocks.o" \
+$CC "$OUT/wavhdr.drv.o" "$OUT/wavhdr.sut.o" "$OUT/wavhdr.mocks.o" \
     "$OUT/wavhdr.bas.o" "$OUT/wavhdr.math.o" -o "$OUT/wavheader" "$OUT/wavheader.handle.o" -lm
 "$OUT/wavheader"
