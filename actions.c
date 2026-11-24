@@ -1,5 +1,6 @@
 #include "basic_array.h"
 #include "memory.h"
+#include "handle.h"
 #include "loading.h"
 #include "bigfiles.h"
 #include "events.h"
@@ -42,7 +43,11 @@ void ACT_FreeAction(tAction** act)
             if (transition)
             {
                 for (k = 0; k < transition->actElemNum; k++)
-                    MEM_Free((void *)(transition->keyValPtr[k].val));
+                {
+                    void* elem = HDL_p_Pointer((uint32_t)transition->keyValPtr[k].val);
+                    HDL_Release(elem);
+                    MEM_Free(elem);
+                }
 
                 BAS_bfree(transition);
                 MEM_Free(transition);
@@ -119,7 +124,9 @@ struct sTransitionElem* ACT_pst_FindTransition(tActionKit* ak, uint16_t action, 
     if (!actionStruct || !actionElems[actionElemIdx].transition)
         return 0;
     val = BAS_bsearch(id, (BASStruct*)actionElems[actionElemIdx].transition);
-    return (tTransitionElem*)(val == -1 ? 0 : val);
+    if (val == (int)HDL_NOT_FOUND)
+        return 0;
+    return (tTransitionElem*)HDL_p_Pointer((uint32_t)val);
 }
 
 void ACT_SetAction(struct sGameObjectMain* gao, int actionId, int forced)
@@ -476,7 +483,9 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
         for (k = 0; k < transition->actElemNum; k++, ++keyVal)
         {
             transitionElem = (tTransitionElem*)MEM_p_Alloc(sizeof(tTransitionElem));
-            keyVal->val = (int)transitionElem;
+            /* The value beside a key is four bytes, so what goes in it
+               is a handle for the transition and not its address. */
+            keyVal->val = (int)HDL_ul_Handle(transitionElem);
             transitionElem->actionID = LOA_ReadShort(&readPtr, 0, 1);
             transitionElem->flags = LOA_ReadChar(&readPtr, 0, 1);
             transitionElem->transitionLength = LOA_ReadChar(&readPtr, 0, 1);

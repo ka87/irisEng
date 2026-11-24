@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "actions_mocks.h"
+#include "../handle.h"
 #include "../memory.h"
 #include "../loading.h"
 #include "../bigfiles.h"
@@ -255,6 +256,11 @@ int LOA_ReadLong(char** offset, uint32_t* retVal, char readMode)
 void LOA_DeleteAddress(int pos)
 {
     ACTMOCK_Record("LOA_DeleteAddress", 1, 0, pos ? 1 : 0);
+    /* The real one gives the handle up on its way out, and a mock that
+       did not would leave every freed action holding one. Only the
+       presence of a value is logged, so the two sides of the
+       differential still agree about the call. */
+    HDL_Release(HDL_p_Pointer((uint32_t)pos));
 }
 
 #define ACTMOCK_CALLBACKS 8
@@ -505,8 +511,13 @@ static void ACTMOCK_BuildKit(tActKitBuf* kit, tActBuf* acts, int pattern)
                    finds them; every action id is a reachable key for
                    some element */
                 ACTMOCK_scene.keyVals[i][j][k].key = k * 2;
+                /* The value beside a key is four bytes, so the
+                   scene puts a handle there, exactly as the loader
+                   does. Where the translation layer is the identity
+                   -- which is how the differential builds -- that is
+                   the truncated address this used to write. */
                 ACTMOCK_scene.keyVals[i][j][k].val =
-                    (int)(size_t)&ACTMOCK_scene.transElems[i][j][k];
+                    (int)HDL_ul_Handle(&ACTMOCK_scene.transElems[i][j][k]);
                 ACTMOCK_scene.transElems[i][j][k].actionID =
                     (uint16_t)((k * 3 + i) % ACTMOCK_ACTIONS);
                 ACTMOCK_scene.transElems[i][j][k].flags =
