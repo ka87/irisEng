@@ -75,6 +75,7 @@ gfx/gfxsun.c
 gfx/gfxtable.c
 gfx/gfxwater2.c
 graphicsobjects/camera.c
+graphicsobjects/geo.c
 graphicsobjects/geomaterial.c
 graphicsobjects/geostr.c
 graphicsobjects/gro_common.c

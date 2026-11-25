@@ -122,6 +122,26 @@ static __inline int LOA_i_KeyFromRef(const void* ref)
 {
     return (int)(uintptr_t)ref;
 }
+
+/* A marker, which is not a key. Several loaders park a count or a magic
+   number from the file in a pointer slot and leave it there until the
+   allocator that reads it replaces it with the storage it sizes from
+   it. Zero extended, and the difference from the key above is not a
+   preference: a marker with its top bit set is tested against the
+   literal it was written as, and a sign extended one does not compare
+   equal to it on a build with wider pointers. The keys go the other way
+   because -1 is tested against a pointer of every bit set. So a value
+   that is compared against a literal is a marker, and a value that is
+   compared against -1 is a key. */
+static __inline uintptr_t LOA_ref_FromMarker(int marker)
+{
+    return (uintptr_t)(uint32_t)marker;
+}
+
+static __inline uint32_t LOA_ui_MarkerFromRef(const void* ref)
+{
+    return (uint32_t)(uintptr_t)ref;
+}
 int LOA_ul_SearchAddress(int pos);
 void LOA_ReadAINode(char** offset, tAINode* retVal, int readMode);
 BOOL LOA_IsSpecial(unsigned int key);
