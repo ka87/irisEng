@@ -476,7 +476,13 @@ void TEX_Procedural_AfterLoad(struct sGdi_DisplayData* dd)
         pro->height = tle->normalData.height;
         pro->width = tle->normalData.width;
         if ((dd->texManager.flags & 0x200000) != 0 && (pro->s2 & 1) != 0)
-            pro->proceduralPicData = (uint32_t *)(gpst_DX_stDD->Request(34, (void *)(tle->texKey)));
+            // the key goes through the request parameter the way the
+            // backends read one back out of it, with (int)(size_t).
+            // Request returns int, so it cannot carry an address at
+            // all: neither backend serves request 34, and the NULL
+            // that comes back is handled below.
+            pro->proceduralPicData = (uint32_t*)(intptr_t)
+                gpst_DX_stDD->Request(34, (void*)(size_t)tle->texKey);
         if (!pro->proceduralPicData)
         {
             pro->proceduralPicData = (uint32_t*)MEM_p_AllocAligned(4 * tle->normalData.height * tle->normalData.width, 16);
@@ -699,8 +705,8 @@ void TEX_File_FreeDescription(struct sEngTexIntermediateStruct* tex)
 {
     if (tex->descriptionPtr && tex->tgaUnkS1)
     {
-        MEM_Free((void*)tex->descriptionPtr);
-        tex->descriptionPtr = 0;
+        MEM_Free(tex->descriptionPtr);
+        tex->descriptionPtr = NULL;
     }
     if (tex->imgDataPtr)
     {
@@ -895,8 +901,8 @@ int TEX_l_File_LoadTga(char* data, tEngTexIntermediateStruct* tex)
         tex->colorDepth2 = colorDepth;
         tex->colorDepth1 = colorDepth;
         tex->tgaUnk1b = mapEntryBits;
-        tex->tgaDataEndPtr = (int)afterHeader;
-        tex->tgaDataStartPtr = 0;
+        tex->tgaDataEndPtr = afterHeader;
+        tex->tgaDataStartPtr = NULL;
         if ((tex->tp.flagsUnkAndProceduralUnkb1 & 8) != 0)
             tex->bmpUnkb1 |= 0x10u;
         switch (colorDepth)
@@ -921,8 +927,8 @@ int TEX_l_File_LoadTga(char* data, tEngTexIntermediateStruct* tex)
             tex->blueMask = 0xFF;
             break;
         case 8:
-            tex->tgaDataStartPtr = (int)afterHeader;
-            tex->tgaDataEndPtr = (int)&afterHeader[mapLength * (mapEntryBits >> 3)];
+            tex->tgaDataStartPtr = afterHeader;
+            tex->tgaDataEndPtr = &afterHeader[mapLength * (mapEntryBits >> 3)];
             break;
         default:
             return 0;
@@ -1452,7 +1458,10 @@ tMatSpriteElem* MAT_pst_SpriteGen_Load(int id, char* offset, int size)
         sprite->f5 = LOA_ReadFloat(&offset, 0, 1);
         sprite->f6 = LOA_ReadFloat(&offset, 0, 1);
         sprite->bumpMapID = LOA_ReadLong(&offset, 0, 1);
-        sprite->bumpMapPtr = (tBumpMapElem*)LOA_ReadLong(&offset, 0, 1);
+        // read and then replaced below by MAT_pst_BumpMap_Add, so the
+        // word from the file never leaves this slot
+        sprite->bumpMapPtr =
+            (tBumpMapElem*)LOA_ref_FromMarker(LOA_ReadLong(&offset, 0, 1));
         sprite->f7 = LOA_ReadFloat(&offset, 0, 1);
         sprite->i7 = LOA_ReadLong(&offset, 0, 1);
         sprite->i8 = LOA_ReadLong(&offset, 0, 1);
