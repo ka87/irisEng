@@ -154,6 +154,7 @@ sprites.c
 strings.c
 tables.c
 textget.c
+textures.c
 time.c
 video.c
 view.c

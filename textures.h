@@ -260,10 +260,14 @@ typedef struct sEngTexIntermediateStruct
     int greenMask;
     int blueMask;
     int alphaMask;
-    int descriptionPtr;
+    // the description block, which TEX_File_FreeDescription hands to
+    // the allocator, so it is an address
+    void* descriptionPtr;
     char* imgDataPtr;
-    int tgaDataStartPtr;
-    int tgaDataEndPtr;
+    // the colour map's bounds inside the loaded file, which the tga
+    // loader writes and nothing reads
+    char* tgaDataStartPtr;
+    char* tgaDataEndPtr;
     struct sEngTexIntermediateElemStruct elems[4];
     int16_t textureID;
     int16_t paletteID;

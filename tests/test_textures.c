@@ -115,6 +115,7 @@ extern void NEW_TEX_Manager_ComputeCompression(struct sTexManagerStruct*, tEngTe
 
 extern int BASE_TEX_l_File_LoadTga(char*, tEngTexIntermediateStruct*);
 extern int NEW_TEX_l_File_LoadTga(char*, tEngTexIntermediateStruct*);
+extern void NEW_TEX_File_FreeDescription(tEngTexIntermediateStruct*);
 extern int BASE_TEX_l_File_LoadBmp(tTexWeirdBMPHeader*, tEngTexIntermediateStruct*);
 extern int NEW_TEX_l_File_LoadBmp(tTexWeirdBMPHeader*, tEngTexIntermediateStruct*);
 extern int BASE_TEX_l_File_LoadRaw(char*, tEngTexIntermediateStruct*);
@@ -232,6 +233,84 @@ static void compareBytes(const void* a, const void* b, int len, const char* what
     if (shown)
     {
         printf("    DIFF %s | %s: %d of %d bytes differ\n", g_case, what, shown, len);
+        g_fails++;
+    }
+}
+
+/* The tga loader's two colour-map bounds, which nothing in the engine
+   reads back. They were int fields holding addresses, so on a build
+   with wider pointers they held the bottom half of one; the
+   differential beside this cannot see that, because the frozen copy
+   truncates them the same way and the comparison above comes out
+   equal.
+
+   This is the part that can: both slots hold a whole address, and it
+   has to be an address inside the stream the loader was handed. A
+   truncated one is not, here, because a static in this build is above
+   thirty-two bits -- which is asserted first, so this check cannot go
+   quiet without saying so. */
+static int g_tgaBoundsEnd;      /* cases that asserted an end bound   */
+static int g_tgaBoundsStart;    /* cases that asserted a start bound  */
+
+static void checkTgaBounds(const tEngTexIntermediateStruct* tex,
+                           char* stream, int streamLen,
+                           int depth, int type, int flags)
+{
+    (void)type;
+
+    if (!((uintptr_t)stream >> 32))
+    {
+        static int said;
+
+        if (!said)
+        {
+            printf("    NOTE the stream is below thirty-two bits here, so "
+                   "a truncated address would pass this check\n");
+            said = 1;
+        }
+        return;
+    }
+
+    /* The loader only fills these when it read a header at all. */
+    if ((flags & 1) == 0)
+        return;
+
+    if (tex->tgaDataEndPtr == NULL)
+    {
+        printf("    FAIL %s: the tga loader left no colour-map end\n", g_case);
+        g_fails++;
+        return;
+    }
+    ++g_tgaBoundsEnd;
+    if (tex->tgaDataEndPtr < stream
+        || tex->tgaDataEndPtr > stream + streamLen)
+    {
+        printf("    FAIL %s: the colour-map end is not in the stream, so "
+               "the slot does not hold a whole address\n", g_case);
+        g_fails++;
+    }
+    /* Only the 8-bit case sets a start. */
+    if (depth == 8)
+    {
+        ++g_tgaBoundsStart;
+        if (tex->tgaDataStartPtr < stream
+            || tex->tgaDataStartPtr > stream + streamLen)
+        {
+            printf("    FAIL %s: the colour-map start is not in the "
+                   "stream\n", g_case);
+            g_fails++;
+        }
+        else if (tex->tgaDataStartPtr > tex->tgaDataEndPtr)
+        {
+            printf("    FAIL %s: the colour map starts after it ends\n",
+                   g_case);
+            g_fails++;
+        }
+    }
+    else if (tex->tgaDataStartPtr != NULL)
+    {
+        printf("    FAIL %s: a colour map was recorded for a depth that "
+               "has none\n", g_case);
         g_fails++;
     }
 }
@@ -939,8 +1018,26 @@ static void caseLoaders(void)
 
                 compareBytes(&texA, &texB, (int)((char*)&texA.imgDataPtr - (char*)&texA),
                              "tex head");
-                compareInt(texA.tgaDataStartPtr, texB.tgaDataStartPtr, "tgaDataStartPtr");
-                compareInt(texA.tgaDataEndPtr, texB.tgaDataEndPtr, "tgaDataEndPtr");
+                /* These two slots hold addresses into the stream, and
+                   they are pointer-wide now. The frozen copy stores
+                   them through (int), so above thirty-two bits the two
+                   sides differ by construction and only the low half
+                   is comparable -- which is what these two lines say
+                   explicitly, rather than leaving compareInt's
+                   parameter type to do it quietly.
+
+                   checkTgaBounds below is the part that gives up on,
+                   and it is the point of widening them: it asks
+                   whether the new copy's slots hold the whole address.
+                   The frozen copy cannot pass it. */
+                compareInt((int)(intptr_t)texA.tgaDataStartPtr,
+                           (int)(intptr_t)texB.tgaDataStartPtr,
+                           "tgaDataStartPtr, low half");
+                compareInt((int)(intptr_t)texA.tgaDataEndPtr,
+                           (int)(intptr_t)texB.tgaDataEndPtr,
+                           "tgaDataEndPtr, low half");
+                checkTgaBounds(&texB, (char*)stream, sizeof(stream),
+                               depths[d], types[t], flags);
                 if (texA.imgDataPtr && texB.imgDataPtr)
                     compareBytes(texA.imgDataPtr, texB.imgDataPtr,
                                  MOCKT_BlockSpan(texA.imgDataPtr), "image");
@@ -1206,6 +1303,77 @@ static void caseParams(void)
     }
 }
 
+/* The description block, which is the third slot in this struct that
+   held an address in an int.
+ *
+ * Nothing in the engine ever puts one there -- the only write is a 0 --
+ * so the field is dead and this is the only place the widened slot is
+ * exercised at all. The one thing worth asserting is that
+ * TEX_File_FreeDescription hands the allocator the address that is in
+ * the slot: the mock reads a block's size header back through the
+ * pointer it is given, so a truncated one does not read as the block's
+ * size, and on this build it does not read at all.
+ *
+ * Unlike the two tga bounds, the frozen copy passes this too -- its
+ * cast was (void*) and not (int), so widening the slot left it alone.
+ * That is worth saying rather than leaving as a silent pass. */
+static void caseFreeDescription(void)
+{
+    tEngTexIntermediateStruct tex;
+    void* block;
+    int i;
+    int freed = 0;
+
+    sprintf(g_case, "FreeDescription");
+    MOCKT_Reset();
+    block = MEM_p_Alloc(777u);
+    memset(&tex, 0, sizeof(tex));
+    tex.descriptionPtr = block;
+    tex.tgaUnkS1 = 1;               /* the guard the free is behind */
+
+    MOCKT_Reset();
+    NEW_TEX_File_FreeDescription(&tex);
+
+    for (i = 0; i < MOCKT_logLen; i++)
+        if (!strcmp(MOCKT_log[i].fn, "MEM_Free"))
+        {
+            ++freed;
+            if (MOCKT_log[i].a != 777)
+            {
+                printf("    FAIL %s: the allocator was handed a block it "
+                       "reads as %d bytes and the description is 777, so "
+                       "the slot did not hold the whole address\n",
+                       g_case, MOCKT_log[i].a);
+                g_fails++;
+            }
+        }
+    if (freed != 1)
+    {
+        printf("    FAIL %s: the description was freed %d times\n",
+               g_case, freed);
+        g_fails++;
+    }
+    if (tex.descriptionPtr != NULL)
+    {
+        printf("    FAIL %s: the slot was not cleared\n", g_case);
+        g_fails++;
+    }
+
+    /* And the guard: no tgaUnkS1 means the block is left alone. */
+    MOCKT_Reset();
+    tex.descriptionPtr = block;
+    tex.tgaUnkS1 = 0;
+    NEW_TEX_File_FreeDescription(&tex);
+    for (i = 0; i < MOCKT_logLen; i++)
+        if (!strcmp(MOCKT_log[i].fn, "MEM_Free"))
+        {
+            printf("    FAIL %s: the description was freed with no "
+                   "tgaUnkS1\n", g_case);
+            g_fails++;
+        }
+    g_cases++;
+}
+
 int main(void)
 {
     MOCKT_Reset();
@@ -1223,9 +1391,19 @@ int main(void)
     caseList();
     caseAnim();
     caseParams();
+    caseFreeDescription();
 
     printf("textures: %d cases, %d differences"
            " (%d ConvertPF format pairs skipped as undefined)\n",
            g_cases, g_fails, g_pfSkipped);
+    printf("  the tga colour-map bounds, which the comparison above can "
+           "only see the low half of: %d end, %d start\n",
+           g_tgaBoundsEnd, g_tgaBoundsStart);
+    if (!g_tgaBoundsEnd || !g_tgaBoundsStart)
+    {
+        printf("  FAIL one of those is nought, so that check asserted "
+               "nothing\n");
+        g_fails++;
+    }
     return g_fails ? 1 : 0;
 }
