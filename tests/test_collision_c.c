@@ -50,6 +50,10 @@
 #include "../tables.h"
 #include "../snp.h"
 
+/* The two copies under test, which no header names. */
+void BASE_COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id);
+void NEW_COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id);
+
 /* ---- the two copies ---------------------------------------------- */
 
 #define D(ret, name, args) ret NEW_##name args; ret BASE_##name args;

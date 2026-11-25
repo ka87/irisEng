@@ -108,7 +108,11 @@ struct sGroGeneric* MAT_pst_CreateSingleFromBuffer(struct sGroGeneric* gro, char
     memset(mat, 0, sizeof(tGEOMAT));
     GRO_Struct_Init((tGroGeneric*)mat, gro->intf->id);
     mat->multiMaterialNumIfType4ThenAmbiantColor = LOA_ReadLong(readptr, 0, 1);
-    mat->multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)LOA_ReadLong(readptr, 0, 1);
+    // the diffuse colour, not a pointer: only a type 4 keeps children
+    // in this slot, and MAT_GetColorPtr hands out its address so the
+    // colour is read and written where the long went
+    mat->multiMaterialPtrIfType4ThenDiffuseColor =
+        (tGEOMAT**)(intptr_t)LOA_ReadLong(readptr, 0, 1);
     mat->solidVertexColor = LOA_ReadLong(readptr, 0, 1);
     mat->unkFloat1 = LOA_ReadFloat(readptr, 0, 1);
     mat->unkFloat2 = LOA_ReadFloat(readptr, 0, 1);
@@ -172,7 +176,7 @@ struct sGroGeneric* MAT_pst_CreateMultiFromBuffer(struct sGroGeneric* gro, char*
     int i;
 
     WOR_gpst_WorldToLoadIn = world;
-    mat = (tGEOMAT*)MEM_p_Alloc(20); // TODO FIXME ez nem a rendes tGEOMAT struktúra, csinálni egy sajátot neki
+    mat = (tGEOMAT*)MEM_p_Alloc(MAT_MULTI_BYTES); // TODO FIXME ez nem a rendes tGEOMAT struktúra, csinálni egy sajátot neki
     mat->intf = 0;
     mat->usageCount = 0;
     mat->multiMaterialNumIfType4ThenAmbiantColor = 0;
@@ -271,15 +275,19 @@ struct sGroGeneric* MAT_pst_CreateMultiTextureFromBuffer(tGroGeneric* gro, char*
                                                          tWorld* world)
 {
     tGEOMAT* mat;
+    tMultiTextureElemStruct* head;
     tMultiTextureElemStruct** link;
     tEngTexListElemStruct* texElem;
     int nextMarker;
+    int texKey;
 
     mat = (tGEOMAT*)MEM_p_Alloc(sizeof(tGEOMAT));
     memset(mat, 0, sizeof(tGEOMAT));
     GRO_Struct_Init((tGroGeneric*)mat, gro->intf->id);
     mat->multiMaterialNumIfType4ThenAmbiantColor = LOA_ReadLong(readptr, 0, 1);
-    mat->multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)LOA_ReadLong(readptr, 0, 1);
+    // the diffuse colour, as above
+    mat->multiMaterialPtrIfType4ThenDiffuseColor =
+        (tGEOMAT**)(intptr_t)LOA_ReadLong(readptr, 0, 1);
     mat->solidVertexColor = LOA_ReadLong(readptr, 0, 1);
     mat->unkFloat1 = LOA_ReadFloat(readptr, 0, 1);
     mat->unkFloat2 = LOA_ReadFloat(readptr, 0, 1);
@@ -293,7 +301,11 @@ struct sGroGeneric* MAT_pst_CreateMultiTextureFromBuffer(tGroGeneric* gro, char*
         return (tGroGeneric*)mat;
     }
 
-    link = (tMultiTextureElemStruct**)&mat->idxOrPtr;
+    // the head goes through a local rather than through the address of
+    // the slot, which is wide enough for the pointer but is not a
+    // tMultiTextureElemStruct* and cannot be written through as one
+    head = NULL;
+    link = &head;
     do
     {
         *link = (tMultiTextureElemStruct*)MEM_p_Alloc(sizeof(tMultiTextureElemStruct));
@@ -302,27 +314,28 @@ struct sGroGeneric* MAT_pst_CreateMultiTextureFromBuffer(tGroGeneric* gro, char*
         (*link)->subTextureFlags = LOA_ReadLong(readptr, 0, 1);
         (*link)->transform1 = LOA_ReadLong(readptr, 0, 1);
         (*link)->transform2 = LOA_ReadLong(readptr, 0, 1);
-        (*link)->nextTextureKey = (tMultiTextureElemStruct*)LOA_ReadLong(readptr, 0, 1);
+        (*link)->nextTextureKey =
+            (tMultiTextureElemStruct*)LOA_ref_FromKey(LOA_ReadLong(readptr, 0, 1));
 
         // the short holds whether another element follows and the long
         // holds this element's texture key, which is the other way round
         // from what the two fields are named
         nextMarker = (*link)->texElemIdx;
-        texElem = TEX_pst_List_FindTexture(&TEX_gst_GlobalList,
-                                           (int)(*link)->nextTextureKey);
+        texKey = LOA_i_KeyFromRef((*link)->nextTextureKey);
+        texElem = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, texKey);
         if (texElem)
             (*link)->texElemIdx = texElem->textElemIdx;
         else
-            (*link)->texElemIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList,
-                                                        (int)(*link)->nextTextureKey);
+            (*link)->texElemIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, texKey);
 
         link = &(*link)->nextTextureKey;
         // a pointert beállítja az id-ra ami nyilván invalid, de ha az id
         // nulla az akkor az gyakorlatilag a NULL, egyébként meg
         // felülíródik a következõ ciklusban
-        *link = (tMultiTextureElemStruct*)nextMarker;
+        *link = (tMultiTextureElemStruct*)(intptr_t)nextMarker;
     } while (nextMarker);
 
+    mat->idxOrPtr = (intptr_t)head;
     MAT_Validate_Multitexture(mat);
     return (tGroGeneric*)mat;
 }
@@ -331,7 +344,7 @@ static tGEOMAT* MAT_l_AllocMulti(void)
 {
     tGEOMAT* mat;
 
-    mat = (tGEOMAT*)MEM_p_Alloc(20u);
+    mat = (tGEOMAT*)MEM_p_Alloc(MAT_MULTI_BYTES);
     mat->intf = 0;
     mat->usageCount = 0;
     mat->multiMaterialNumIfType4ThenAmbiantColor = 0;

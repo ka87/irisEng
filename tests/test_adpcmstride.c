@@ -18,6 +18,13 @@
 #include <stdio.h>
 #include "../platform/sndbackend.h"
 
+/* platform/sndbackend.c has no header. */
+void pcSND_StreamReinitAndPlay(tSndSoundBufferElem* sbe, int len,
+                               int startPos, int from, int to, char flags,
+                               int freq, int pan, int att);
+unsigned int pcSND_calcMemoryNeededForTheSound(unsigned int fullsoundlen,
+                                               int channels);
+
 static int failures;
 
 /* What the function should work out, written out the long way so that

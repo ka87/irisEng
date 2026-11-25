@@ -271,7 +271,7 @@ static void worldInit(void)
     if (STRW_multiTex)
         STRW_multiTex->texElemIdx = 1;
     STRW_mats[5].intf = &STRW_matIntf5;
-    STRW_mats[5].idxOrPtr = (int)(intptr_t)STRW_multiTex;
+    STRW_mats[5].idxOrPtr = (intptr_t)STRW_multiTex;
     STRW_mats[6].intf = &STRW_matIntf5;
     STRW_mats[6].idxOrPtr = 0;                 /* a null multi-texture     */
     STRW_multiList[0] = &STRW_mats[0];
