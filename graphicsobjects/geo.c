@@ -224,7 +224,7 @@ void GEO_AllocContent(struct sGEOGRO* geo)
     unsigned int i;
     int vertexColorNum;
     int* vertexColors;
-    void *mrmMagic;
+    uint32_t mrmMagic;
 
     if (geo == NULL) return;
 
@@ -234,7 +234,8 @@ void GEO_AllocContent(struct sGEOGRO* geo)
         LOA_ul_FileTypeSize_21 += sizeof(Vec3) * geo->vertexNum;
         geo->vertices = (Vec3*)MEM_GEO_p_AllocAlign(sizeof(Vec3) * geo->vertexNum, 16);
         geo->normals = (Vec3*)(GEO_b_IsInFix ? MEM_GEO_p_AllocAlign(16 * geo->vertexNum, 16) : 0); // FIXME, ez miert 16?
-        vertexColorNum = (int)geo->vertexColors;
+        /* a count until this function replaces it with the array */
+        vertexColorNum = (int)LOA_ui_MarkerFromRef(geo->vertexColors);
 
         if (vertexColorNum)
         {
@@ -247,10 +248,11 @@ void GEO_AllocContent(struct sGEOGRO* geo)
 
     if (geo->mrm)
     {
-        mrmMagic = geo->mrm;
+        /* a magic number from the file, not an address yet */
+        mrmMagic = LOA_ui_MarkerFromRef(geo->mrm);
         geo->mrm = (tGeoMRM*)MEM_GEO_p_Alloc(sizeof(tGeoMRM));
         geo->mrm->shorts = (uint16_t*)MEM_GEO_p_Alloc(sizeof(uint16_t) * geo->vertexNum);
-        if (mrmMagic == (void*)0xc0de0008)
+        if (mrmMagic == 0xc0de0008)
             geo->mrm->ptr = (uint16_t*)MEM_GEO_p_Alloc(sizeof(uint16_t) * geo->vertexNum);
         else
             geo->mrm->ptr = NULL;
@@ -977,17 +979,20 @@ struct sGroGeneric* GEO_p_CreateFromBuffer(struct sGroGeneric* gro, char** readP
     
     geogro = GEO_pst_Create(0, 0, 0, 0);
     geogro->vertexNum = LOA_ReadLong(&currReadPtr, 0, 1);
-    geogro->vertexColors = (int*)LOA_ReadLong(&currReadPtr, 0, 1);
+    // the colour count, which GEO_AllocContent turns into the array
+    geogro->vertexColors =
+        (int*)LOA_ref_FromMarker(LOA_ReadLong(&currReadPtr, 0, 1));
     geogro->uvNum = LOA_ReadLong(&currReadPtr, 0, 1);
     geogro->triangleChunkCount = LOA_ReadLong(&currReadPtr, 0, 1);
     
     LOA_ReadLong(&currReadPtr, 0, 2);
 
-    vertexColorNum = (unsigned int)geogro->vertexColors;
+    vertexColorNum = LOA_ui_MarkerFromRef(geogro->vertexColors);
     if (vertexColorNum)
-        geogro->vertexColors = (int*)geogro->vertexNum;
+        geogro->vertexColors = (int*)LOA_ref_FromMarker(geogro->vertexNum);
 
-    geogro->mrm = (tGeoMRM*)LOA_ReadLong(&currReadPtr, 0, 1);
+    // a magic number, which GEO_AllocContent reads and replaces
+    geogro->mrm = (tGeoMRM*)LOA_ref_FromMarker(LOA_ReadLong(&currReadPtr, 0, 1));
     flags = LOA_ReadLong(&currReadPtr, 0, 1);
     geogro->skinning = NULL;
 
@@ -1086,7 +1091,10 @@ struct sGroGeneric* GEO_p_CreateFromBuffer(struct sGroGeneric* gro, char** readP
     {
         geogro->triangleChunks[i].triangleNum = LOA_ReadLong(&currReadPtr, 0, 1);
         geogro->triangleChunks[i].materialNum = LOA_ReadLong(&currReadPtr, 0, 1);
-        geogro->triangleChunks[i].MRMUVIndexElems = (tGeoMRMUVIndexElem*)LOA_ReadLong(&currReadPtr, 0, 1);
+        // a flag, which GEO_AllocElementContent reads and replaces
+        geogro->triangleChunks[i].MRMUVIndexElems =
+            (tGeoMRMUVIndexElem*)LOA_ref_FromMarker(
+                LOA_ReadLong(&currReadPtr, 0, 1));
         geogro->triangleChunks[i].MRMUVIndicesNum = LOA_ReadLong(&currReadPtr, 0, 1);
 
         for (j = 0; j < 6; j++) {
