@@ -182,9 +182,15 @@ void GAO_ModifierLegLink_Apply(struct sModifier* mdf, void* unk1)
     grp = MDF_Modifier_GetCurGroup(mdf);
     if (grp)
     {
-        leg->gao0 = OBJ_pst_GroupGetByRank(grp, (int)savedGao0);
-        leg->gao1 = OBJ_pst_GroupGetByRank(grp, (int)savedGao1);
-        leg->gao2 = OBJ_pst_GroupGetByRank(grp, (int)savedGao2);
+        /* The three slots hold a rank within the group here, not a
+           game object: the loader leaves the word from the file in
+           them when flags & 0x10 is set and binds it as a key when it
+           is not, and this converts whichever is there whenever the
+           modifier has a group at all. The tail puts the saved values
+           back. */
+        leg->gao0 = OBJ_pst_GroupGetByRank(grp, LOA_i_KeyFromRef(savedGao0));
+        leg->gao1 = OBJ_pst_GroupGetByRank(grp, LOA_i_KeyFromRef(savedGao1));
+        leg->gao2 = OBJ_pst_GroupGetByRank(grp, LOA_i_KeyFromRef(savedGao2));
     }
 
     flags = leg->flags;
@@ -222,7 +228,7 @@ static void GAO_l_ModifierLegLink_BindRef(tGameObjectMain** slot)
 {
     int key;
 
-    key = (int)*slot;
+    key = LOA_i_KeyFromRef(*slot);
     if (!key || key == -1)
         *slot = 0;
     else
@@ -238,11 +244,13 @@ int GAO_ModifierLegLink_Load(struct sModifier* mdf, char* data)
     mdf->modifierFlags |= 0x1000000u;
     start = data;
     LOA_ReadLong(&data, 0, 1);
-    leg->gao0 = (tGameObjectMain*)LOA_ReadLong(&data, 0, 1);
-    leg->gao1 = (tGameObjectMain*)LOA_ReadLong(&data, 0, 1);
+    // a game object key, or a rank within the group when flags & 0x10
+    // says so; BindRef below binds the key form and leaves the other
+    leg->gao0 = (tGameObjectMain*)LOA_ref_FromKey(LOA_ReadLong(&data, 0, 1));
+    leg->gao1 = (tGameObjectMain*)LOA_ref_FromKey(LOA_ReadLong(&data, 0, 1));
     leg->i3 = LOA_ReadFloat(&data, 0, 1);
     leg->i4 = LOA_ReadFloat(&data, 0, 1);
-    leg->gao2 = (tGameObjectMain*)LOA_ReadLong(&data, 0, 1);
+    leg->gao2 = (tGameObjectMain*)LOA_ref_FromKey(LOA_ReadLong(&data, 0, 1));
     leg->flags = LOA_ReadLong(&data, 0, 1) & ~0x40u;
     if ((leg->flags & 0x10) == 0)
     {

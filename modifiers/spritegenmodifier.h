@@ -26,7 +26,10 @@ typedef struct sSpgUnkStruct
 typedef struct sSpgMdfStruct
 {
     int i1;
-    int material;
+    // the material to draw the sprites with, which nothing in this
+    // engine sets: the loader writes the not-set marker and the apply
+    // normalises that to none, so the override is never taken
+    struct sGEOMAT* material;
     float globalSize;
     float globalRatio;
     float extraction;

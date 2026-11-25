@@ -48,15 +48,15 @@ void SPG_Modifier_Unapply(tModifier* mdf, tGEOGRO* geogro)
         return;
     }
 
-    if (spg->material == 0xffffffff)
-        spg->material = 0;
+    if (spg->material == (struct sGEOMAT*)LOA_ref_FromMarker(0xffffffff))
+        spg->material = NULL;
 
     QueryPerformanceCounter(&PerfCounterStruct[42]);
 
 
     pst_CurrentObj = geogro;
     if (spg->material)
-        pst_CurrentMat = (tGEOMAT*)(spg->material);
+        pst_CurrentMat = spg->material;
     else
         pst_CurrentMat = (tGEOMAT*)(((tGameObjectVisualObject*)(mdf->gao->basic->actorObjectOrVisualObject))->GROMAT);
     SPG_stIndxSp[0].globalRatio = spg->globalRatio;
@@ -240,7 +240,7 @@ void SPG_InitModifier(tSpgMdfStruct* mdf)
 {
     mdf->noise = 0.0f;
     mdf->i1 = -1;
-    mdf->material = 0xffffffff;
+    mdf->material = (struct sGEOMAT*)LOA_ref_FromMarker(0xffffffff);
     mdf->materialMask = 0xffffffff;
     mdf->globalRatio = 1.0f;
     mdf->globalSize = 0.0099999998f;
@@ -362,7 +362,9 @@ int SPG_ul_Modifier_Load(struct sModifier* mdf, char* readptr)
             }
         }
     }
-    spg->material = 0xffffffff;
+    // not set: zero extended, because the comparison in the apply is
+    // against the literal and a sign extended one would not match it
+    spg->material = (struct sGEOMAT*)LOA_ref_FromMarker(0xffffffff);
 
     return currReadPtr - readptr;
 }

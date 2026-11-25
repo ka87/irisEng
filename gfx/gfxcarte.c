@@ -56,7 +56,10 @@ void GFX_Carte_UpdatePalette(tGfxCarteData* carte, int16_t texelemIdx)
                 srcEntry = (int*)&carte->paletteData[32 * ((carte->flags & 0x20) == 0)];
                 for (i = 0; i < 8; i++)
                     dstEntry[i] = LIGHT_ul_Interpol2Colors(dstEntry[i], srcEntry[i], blend);
-                gpst_DX_stDD->Request(22, (void*)(tex->palettedData.paletteID));
+                // the id goes through the request parameter the way the
+                // backends read one back out of it, with (int)(size_t)
+                gpst_DX_stDD->Request(22,
+                    (void*)(size_t)tex->palettedData.paletteID);
                 return;
             }
             carte->remainingUncoverTime = 1.5;
@@ -64,7 +67,7 @@ void GFX_Carte_UpdatePalette(tGfxCarteData* carte, int16_t texelemIdx)
         carte->uncoverPiecePaletteID = -1;
     }
 
-    gpst_DX_stDD->Request(22, (void*)(tex->palettedData.paletteID));
+    gpst_DX_stDD->Request(22, (void*)(size_t)tex->palettedData.paletteID);
 }
 
 // the map's sixteen piece textures live on the texture key chain behind the
