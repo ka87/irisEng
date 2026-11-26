@@ -12,7 +12,8 @@ typedef struct sGdi_D3DRenderParams
     int d3d_Adapter;
     int d3d_AdapterFormat;
     int ZBufferDepth;
-    int hwnd2_dword_B3162C;
+    // the window, which nothing here reads back
+    void* hwnd2_dword_B3162C;
     IDirect3D9* d3d_if;
     D3DPRESENT_PARAMETERS presentParams;
     LPDIRECT3DDEVICE9 d3dDev;

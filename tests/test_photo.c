@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../handle.h"
 #include "photo_mocks.h"
 
 /* The frozen copy and the rewrite, in one binary. Only two of the
@@ -394,6 +395,59 @@ static void sweepHighByte(void)
     PHMOCK_designOverride = 0;
 }
 
+/* IMG_Analyser_Bis answers mission -2 with IMG_Gao, and that answer
+ * goes onto the AI stack, which is four bytes wide -- so it has to be
+ * a handle rather than the address truncated.
+ *
+ * The sweep above walks mission -2, so the differential does reach the
+ * site, but it sets IMG_Gao to NULL first and a handle for NULL is
+ * nought on either spelling. That is why this is here and not there.
+ * It also cannot be there: the frozen copy returns the truncated
+ * address by construction, so a non-NULL object would make the two
+ * sides disagree at that word and the comparison would have to be
+ * given up rather than kept.
+ *
+ * So this asks the new copy alone, with the handle layer in its real
+ * form, whether the answer resolves back to the object. */
+static void checkAnalyserBisHandsBackAHandle(void)
+{
+    tGameObjectMain* gao = &PHMOCK_objects[0];
+    unsigned int answer;
+
+    printf("-- mission -2, which answers with an object\n");
+
+    if (!((uintptr_t)gao >> 32))
+        printf("    NOTE the object is below thirty-two bits here, so a "
+               "truncated address would survive and this proves less\n");
+
+    /* Each side has its own copy of the global, and the sweep's
+       harness is what normally syncs them -- this one calls the new
+       copy directly, so it sets the new copy's. */
+    NEW_IMG_Gao = gao;
+    answer = NEW_IMG_Analyser_Bis(&PHMOCK_world, -2);
+
+    if (HDL_p_Pointer(answer) != (void*)gao)
+    {
+        printf("  FAIL mission -2 answered 0x%x, which does not resolve "
+               "to the object it was given\n", answer);
+        PHMOCK_failures++;
+    }
+    if (answer == (unsigned int)(uintptr_t)gao && ((uintptr_t)gao >> 32))
+    {
+        printf("  FAIL mission -2 answered the truncated address\n");
+        PHMOCK_failures++;
+    }
+
+    /* And no object still answers nought, which is what the sweep's
+       own -2 cases rely on. */
+    NEW_IMG_Gao = NULL;
+    if (NEW_IMG_Analyser_Bis(&PHMOCK_world, -2) != 0)
+    {
+        printf("  FAIL mission -2 with no object did not answer nought\n");
+        PHMOCK_failures++;
+    }
+}
+
 int main(void)
 {
     PHMOCK_Init();
@@ -401,6 +455,7 @@ int main(void)
     sweepWalks();
     sweepByteSet();
     sweepHighByte();
+    checkAnalyserBisHandsBackAHandle();
     PHMOCK_Summary("photo.c");
     if (PHMOCK_logOverflow)
         printf("  WARNING: the call log overflowed\n");

@@ -129,6 +129,7 @@ modifiers/xmenmodifier.c
 ok3.c
 particlegenerator.c
 perfbars.c
+photo.c
 platform.c
 platform/adpcm.c
 platform/d3daftereffects.c

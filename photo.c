@@ -1,3 +1,4 @@
+#include "handle.h"
 #include "photo.h"
 #include "modifiers.h"
 #include "modifiers/photomodifier.h"
@@ -582,7 +583,9 @@ unsigned int IMG_Analyser_Bis(tWorld* world, int mission)
     if (mission == -1)
         return IMG_PhotoSummary;
     if (mission == -2)
-        return (unsigned int)IMG_Gao;
+        // the answer goes onto the AI stack, which is four bytes wide,
+        // so what the script gets is a handle and not an address
+        return HDL_ul_Handle(IMG_Gao);
     IMG_Gao = 0;
     IMG_PhotoSummary = 0;
     packed = 0;
