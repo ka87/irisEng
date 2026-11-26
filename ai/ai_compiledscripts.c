@@ -1,5 +1,6 @@
 #include "ai_compiledscripts.h"
 #include "../ai.h"
+#include "../loading.h"
 #include "../time.h"
 #include "ai_debugfunctions.h"
 #include "ai_aifunctions.h"
@@ -37,20 +38,28 @@ int sc_dummy() {
 }
 
 int hack() {        
-        int x = AI_ul_RealResolveOneRefObject(0x620031e5);
-        AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain*)x, 0);
+        /* The resolver answers with what the address store holds, which
+           is a handle where pointers are wider than a slot. Casting it
+           is not resolving it; LOA_p_FromStored is. */
+        tGameObjectMain* x = LOA_p_FromStored(
+            AI_ul_RealResolveOneRefObject(0x620031e5));
+        AI_EvalFunc_VIEWAssignObject_C(x, 0);
         return 1000;
 }
 
 int hackViewActorSelector = 0;
 
 int levelHack() {
-    int _pj_cam = AI_ul_RealResolveOneRefObject(0x71003F56u);
-    int INV_reference_WP = AI_ul_RealResolveOneRefObject(0x620013B8u); // INV WP (group), board panel calls it in original game
-    AI_EvalFunc_GRPInactiveSet_C((tGameObjectMain*)INV_reference_WP, 1); // disable inventory menu
+    /* Resolved once here rather than cast at each use: the store answers
+       with a handle where pointers are wider than a slot. */
+    tGameObjectMain* _pj_cam = LOA_p_FromStored(
+        AI_ul_RealResolveOneRefObject(0x71003F56u));
+    tGameObjectMain* INV_reference_WP = LOA_p_FromStored(
+        AI_ul_RealResolveOneRefObject(0x620013B8u)); // INV WP (group), board panel calls it in original game
+    AI_EvalFunc_GRPInactiveSet_C(INV_reference_WP, 1); // disable inventory menu
     Vec3 v;
 
-    AI_EvalFunc_VIEWAssignObject_C((tGameObjectMain * )_pj_cam, 0);
+    AI_EvalFunc_VIEWAssignObject_C(_pj_cam, 0);
 
     //DBG_OutputDebugString("WK: %x\n", AI_EvalFunc_WORGetKey_C());
 
@@ -73,7 +82,7 @@ int levelHack() {
             v2.y = -0.57f; // ez a z igazabol
             v2.z = 7.0;
         }
-        OBJ_SetAbsolutePosition((tGameObjectMain*)_pj_cam, &v2);
+        OBJ_SetAbsolutePosition(_pj_cam, &v2);
         // eddig
     }
     else {
@@ -84,8 +93,8 @@ int levelHack() {
         v.x = 74.52093f;
         v.y = 20.953468f;
         v.z = 61.516752f;
-        OBJ_SetAbsolutePosition((tGameObjectMain*)_pj_cam, &v);
-        AI_EvalFunc_OBJRotateGlobalZ_C((tGameObjectMain*)_pj_cam, TIM_gf_dt/4.0f);
+        OBJ_SetAbsolutePosition(_pj_cam, &v);
+        AI_EvalFunc_OBJRotateGlobalZ_C(_pj_cam, TIM_gf_dt/4.0f);
     }
     //AI_EvalFunc_WORColorAmbiantSet_C(0, 0x7b723c);
     //AI_EvalFunc_WORColorAmbiant2Set_C(0, 0x908854);

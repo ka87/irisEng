@@ -12,6 +12,7 @@ ai/ai_animationfunctions.c
 ai/ai_arrfunctions.c
 ai/ai_categories.c
 ai/ai_colfunctions.c
+ai/ai_compiledscripts.c
 ai/ai_debugfunctions.c
 ai/ai_dynfunctions.c
 ai/ai_eventtrackfunctions.c
