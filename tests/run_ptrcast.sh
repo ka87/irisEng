@@ -29,9 +29,21 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
+mkdir -p tests/build
+# per-run, so two runs cannot read each other's diagnostics
+ERR=tests/build/ptrcast.err
 INC="-Itests/stub -Itests -Ithirdparty/SDL3/include -Ithirdparty/freetype/include -Ithirdparty/ffmpeg/include"
 CFLAGS="-m64 -std=gnu99 -fcommon -fms-extensions -fsyntax-only $INC"
-WARN="-Wint-to-pointer-cast -Wpointer-to-int-cast"
+# -Wint-conversion is the third of these and was missing, which left
+# the ratchet blind to the fault it exists for whenever the source
+# has no cast in it. `slot = ptr;` with slot an int compiles, warns
+# only under -Wint-conversion, and says "makes integer from pointer
+# without a cast" rather than "of different size" -- so neither the
+# warning nor the grep below saw it, and a pointer truncated into a
+# four-byte slot passed this file.
+WARN="-Wint-to-pointer-cast -Wpointer-to-int-cast -Wint-conversion"
+# What any of the three says. Matched in both directions below.
+BAD="of different size|makes integer from pointer|makes pointer from integer"
 LIST=tests/ptrcast-clean.txt
 
 # The sources the build actually compiles, which is the project file's
@@ -57,12 +69,13 @@ for f in $(cat "$LIST"); do
         continue
     fi
     if LC_ALL=C $CC $CFLAGS $WARN -Werror=int-to-pointer-cast \
-            -Werror=pointer-to-int-cast "$f" 2>/tmp/ptrcast.err; then
+            -Werror=pointer-to-int-cast -Werror=int-conversion \
+            "$f" 2>"$ERR"; then
         clean=$((clean + 1))
     else
         regressed="$regressed $f"
-        echo "  FAIL $f now casts between a pointer and a narrower integer:"
-        grep "of different size" /tmp/ptrcast.err | sed 's/^/      /' | head -4
+        echo "  FAIL $f now converts between a pointer and a narrower integer:"
+        grep -E "$BAD" "$ERR" | sed 's/^/      /' | head -4
     fi
 done
 echo "  $clean file(s) clean"
@@ -79,7 +92,7 @@ for f in $built; do
     if grep -qxF "$f" "$LIST"; then
         continue
     fi
-    n=$(LC_ALL=C $CC $CFLAGS $WARN "$f" 2>&1 | grep -c "of different size" || true)
+    n=$(LC_ALL=C $CC $CFLAGS $WARN "$f" 2>&1 | grep -cE "$BAD" || true)
     if [ "$n" -eq 0 ]; then
         newlyClean="$newlyClean $f"
     else
