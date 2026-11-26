@@ -412,7 +412,16 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
 
     if (size && 20 * elemNum != 0xFFFFFFFC)
     {
-        act = (tAction*)MEM_p_Alloc(20 * elemNum + 4);
+        /* 20 was sizeof(tActionElem) and 4 is sizeof(tAction), and the
+           element carries three reference fields -- so the element is
+           32 bytes where pointers are eight and this allocated 20 of
+           them. The array below starts at sizeof(tAction) and is
+           indexed as tActionElem, so every element after the first sat
+           past the block. Sized from the types now; the 20 that reads
+           the file's own record stays a 20, because that is the
+           file. */
+        act = (tAction*)MEM_p_Alloc(sizeof(tAction)
+                                    + ACT_ELEM_BYTES * elemNum);
         act->actionElemNum = elemNum;
         act->actionElemIDForTransition = LOA_ReadChar(&readPtr, 0, 1);
         LOA_ReadShort(&readPtr, 0, 2);
@@ -440,7 +449,9 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
     }
     else
     {
-        act = (tAction*)MEM_p_Alloc(324u);
+        /* 324 was 4 + 20 * 16: the header and sixteen elements. */
+        act = (tAction*)MEM_p_Alloc(sizeof(tAction)
+                                    + ACT_ELEM_BYTES * 16);
         act->actionElemNum = 0;
         act->actionElemIDForTransition = 0;
     }
