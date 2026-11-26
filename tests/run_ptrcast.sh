@@ -32,7 +32,7 @@ CC=${CC:-gcc}
 mkdir -p tests/build
 # per-run, so two runs cannot read each other's diagnostics
 ERR=tests/build/ptrcast.err
-INC="-Itests/stub -Itests -Ithirdparty/SDL3/include -Ithirdparty/freetype/include -Ithirdparty/ffmpeg/include"
+INC="-Itests/stub -Itests -Ithirdparty/SDL3/include -Ithirdparty/freetype/include -Ithirdparty/ffmpeg/x32/include"
 CFLAGS="-m64 -std=gnu99 -fcommon -fms-extensions -fsyntax-only $INC"
 # -Wint-conversion is the third of these and was missing, which left
 # the ratchet blind to the fault it exists for whenever the source

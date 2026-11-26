@@ -77,7 +77,7 @@ cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
-CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
+CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/x32/include"
 CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 # font.c needs these to parse at all, and a file that does not parse
 # reports no implicit declarations -- see UNSWEEPABLE below

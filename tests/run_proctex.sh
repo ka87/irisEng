@@ -63,14 +63,14 @@ PC_VideoStreamCloseAll"
 BASECOMPAT="-DbinkKey=videoKey -DbinkIFPtr=videoStream"
 
 # shellcheck disable=SC2086
-$CC $CFLAGS -Ithirdparty/ffmpeg/include -c proceduraltextures.c \
+$CC $CFLAGS -Ithirdparty/ffmpeg/x32/include -c proceduraltextures.c \
     -o "$OUT/proctex.new.o" $(defs NEW_ $proctex_syms) $(defs NEW_ $proctex_new_only)
 # shellcheck disable=SC2086
 $CC $CFLAGS $BASECOMPAT -c tests/baseline_proceduraltextures.c \
     -o "$OUT/proctex.base.o" $(defs BASE_ $proctex_syms) $(defs BASE_ $proctex_base_only)
-$CC $CFLAGS -Ithirdparty/ffmpeg/include -c tests/proctex_mocks.c \
+$CC $CFLAGS -Ithirdparty/ffmpeg/x32/include -c tests/proctex_mocks.c \
     -o "$OUT/proctex.mocks.o"
-$CC $CFLAGS -Ithirdparty/ffmpeg/include -c tests/test_proceduraltextures.c \
+$CC $CFLAGS -Ithirdparty/ffmpeg/x32/include -c tests/test_proceduraltextures.c \
     -o "$OUT/proctex.drv.o"
 $CC "$OUT/proctex.new.o" "$OUT/proctex.base.o" "$OUT/proctex.mocks.o" \
     "$OUT/proctex.drv.o" -o "$OUT/proctex" -lm

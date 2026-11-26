@@ -252,7 +252,24 @@ endif()
 add_library(irisEngFFmpeg INTERFACE)
 
 if(WIN32)
-    target_include_directories(irisEngFFmpeg INTERFACE thirdparty/ffmpeg/include)
+    # The vendored tree is split by pointer width: the libraries and the
+    # headers they belong to differ between the two, and a header that
+    # does not match its DLL goes wrong at run time rather than at the
+    # link. thirdparty/ffmpeg/x64 is not committed; its README says what
+    # goes in it.
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(IRIS_FFMPEG_DIR thirdparty/ffmpeg/x64)
+    else()
+        set(IRIS_FFMPEG_DIR thirdparty/ffmpeg/x32)
+    endif()
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${IRIS_FFMPEG_DIR}/include/libavcodec/avcodec.h")
+        message(FATAL_ERROR
+            "${IRIS_FFMPEG_DIR} has no libav headers. Put a win"
+            "${CMAKE_SIZEOF_VOID_P}0 LGPL shared build's include, lib and "
+            "bin there, laid out as thirdparty/ffmpeg/x32 is; that "
+            "directory's README.md says which build and what goes where.")
+    endif()
+    target_include_directories(irisEngFFmpeg INTERFACE ${IRIS_FFMPEG_DIR}/include)
     # These libraries are not built by this project and not built by
     # MSVC, and a good deal of them is hand-written assembly, so their
     # objects carry no safe exception handler table. On x86 the linker
@@ -276,10 +293,10 @@ if(WIN32)
     foreach(lib avcodec avformat avutil swscale swresample)
         if(MSVC)
             target_link_libraries(irisEngFFmpeg INTERFACE
-                "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/${lib}.lib")
+                "${CMAKE_CURRENT_SOURCE_DIR}/${IRIS_FFMPEG_DIR}/lib/${lib}.lib")
         else()
             target_link_libraries(irisEngFFmpeg INTERFACE
-                "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ffmpeg/lib/lib${lib}.dll.a")
+                "${CMAKE_CURRENT_SOURCE_DIR}/${IRIS_FFMPEG_DIR}/lib/lib${lib}.dll.a")
         endif()
     endforeach()
 else()

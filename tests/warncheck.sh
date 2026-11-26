@@ -72,7 +72,7 @@ if [ -z "$FCC" ]; then
     else FCC="$CC"; fi
 fi
 CFLAGS="-fsyntax-only -std=gnu11 -fms-extensions -Itests/stub"
-CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/include"
+CFLAGS="$CFLAGS -Ithirdparty/ffmpeg/x32/include"
 CFLAGS="$CFLAGS -Ithirdparty/SDL3/include"
 CFLAGS="$CFLAGS -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng"
 
