@@ -1816,14 +1816,16 @@ struct sGameObjectMain* AI2C_CheckActorGao(struct sGameObjectMain* gao) {
 }
 
 struct sGameObjectMain* AI2C_GaoGetFromAI(struct sAI* aiPtr, char* name) {
-    tGameObjectMain* ret = *(tGameObjectMain**)AI2C_VarGetFromAI(aiPtr, name);
+    /* An object variable is a four-byte reference slot, so the slot is
+       one word and not a pointer: the two values that name a main
+       actor are answered as that actor, and anything else is resolved.
+       Reading the slot as a pointer took the next four bytes of the
+       variable block with it. */
+    uint32_t stored = *(uint32_t*)AI2C_VarGetFromAI(aiPtr, name);
 
-    if (ret)
-    {
-        if ((uintptr_t)ret <= 2)
-            return AI_MainActor[(uintptr_t)ret - 1];
-    }
-    return ret;
+    if (stored && stored <= 2)
+        return AI_MainActor[stored - 1];
+    return (tGameObjectMain*)HDL_p_Pointer(stored);
 }
 
 void AI2C_IntSetFromAI(struct sAI* aiPtr, char* name, int val) {
@@ -1839,11 +1841,18 @@ void AI2C_VecSetFromAI(struct sAI* aiPtr, char* name, Vec3* val) {
 }
 
 void AI2C_GaoSetFromAI(struct sAI* aiPtr, char* name, struct sGameObjectMain* val) {
-    *(tGameObjectMain**)AI2C_VarGetFromAI(aiPtr, name) = val;
+    /* Four bytes, so a handle and not the address. */
+    *(uint32_t*)AI2C_VarGetFromAI(aiPtr, name) = HDL_ul_Handle(val);
 }
 
 void AI2C_TextGetSetFromAI(struct sAI* aiPtr, char* name, struct sTextGet* val) {
-    *(tTextGet**)AI2C_VarGetFromAI(aiPtr, name) = val;
+    /* A text variable's slot holds a tTextGet, not a pointer to one:
+       the type declares eight bytes and the struct is two four-byte
+       fields. So the value is copied in, as AI2C_VecSetFromAI copies a
+       vector -- storing the argument's address here was wrong at every
+       width, and wrote four bytes past the slot where pointers are
+       eight. */
+    *(tTextGet*)AI2C_VarGetFromAI(aiPtr, name) = *val;
 }
 
 void AI2C_IntArraySetFromAI(struct sAI* aiPtr, char* name, int idx, int val) {

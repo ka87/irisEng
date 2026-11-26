@@ -93,6 +93,7 @@ tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* node)
     int flagMustNothave;
     int num;
     int kept;
+    uint32_t stored;
     int i;
 
     flagMustHave = AI_GetIntFromStack();
@@ -104,9 +105,15 @@ tAINode* AI_EvalFunc_ARRObjCopyIdFlags(tAINode* node)
     kept = 0;
     for (i = 0; i < num; ++i)
     {
-        gao = *(tGameObjectMain**)&srcVar.ptr[4 * i];
+        /* The array's elements are four-byte reference slots, which is
+           what the 4 * i steps by -- so the slot is read as one word
+           and resolved, rather than read as a pointer, which took the
+           next slot's low half along with it. The word is written back
+           as it was found, so nothing is re-resolved. */
+        stored = *(uint32_t*)&srcVar.ptr[4 * i];
+        gao = (tGameObjectMain*)HDL_p_Pointer(stored);
         if (gao && (flagMustHave & gao->flags) != 0 && (flagMustNothave & gao->flags) == 0)
-            *(tGameObjectMain**)&srcVar.ptr[4 * kept++] = gao;
+            *(uint32_t*)&srcVar.ptr[4 * kept++] = stored;
     }
     AI_PutIntToStack(kept);
     return node + 1;
@@ -125,6 +132,7 @@ tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* node)
     int flagMustNothave;
     int num;
     int kept;
+    uint32_t stored;
     int i;
 
     flagMustHave = AI_GetIntFromStack();
@@ -136,12 +144,18 @@ tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* node)
     kept = 0;
     for (i = 0; i < num; ++i)
     {
-        gao = *(tGameObjectMain**)&srcVar.ptr[4 * i];
+        /* The array's elements are four-byte reference slots, which is
+           what the 4 * i steps by -- so the slot is read as one word
+           and resolved, rather than read as a pointer, which took the
+           next slot's low half along with it. The word is written back
+           as it was found, so nothing is re-resolved. */
+        stored = *(uint32_t*)&srcVar.ptr[4 * i];
+        gao = (tGameObjectMain*)HDL_p_Pointer(stored);
         if (gao
             && (flagMustHave & gao->flags2 & 0xFF00) != 0
             && (flagMustNothave & gao->flags2 & 0xFF00) == 0)
         {
-            *(tGameObjectMain**)&srcVar.ptr[4 * kept++] = gao;
+            *(uint32_t*)&srcVar.ptr[4 * kept++] = stored;
         }
     }
     AI_PutIntToStack(kept);
