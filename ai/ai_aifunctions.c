@@ -63,7 +63,7 @@ static tAINode* AI_l_EntryNode(tAIFunction* func)
 static tAINode* AI_l_ControlCode(int code, tAINode* node)
 {
     if (code == 1 || code == 3 || code == 4 || code == 5)
-        return (tAINode*)code;
+        return AI_pst_ControlCode(code);
     return node + 1;
 }
 

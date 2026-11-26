@@ -29,7 +29,7 @@ unsigned int AI_EvalFunc_COLORGetAlpha_C(int color);
 void AI_EvalFunc_SetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId, int threshold);
 unsigned int AI_EvalFunc_GetALPHATRESH_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemId);
 int AI_EvalFunc_MATGetDiffuse_C(struct sGameObjectMain* gao, unsigned int subMatID);
-void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* diffuse, unsigned int subMatID);
+void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int diffuse, unsigned int subMatID);
 int AI_EvalFunc_GetFlag_C(struct sGameObjectMain* gao, unsigned int subMatID, int multiMatElemID);
 
 tAINode* AI_EvalFunc_MATSetConstant(tAINode* node);

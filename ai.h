@@ -179,6 +179,16 @@ struct sAIFunction* AI_gpst_CurrentFunction;
 int AI_gul_CurrentTrack;
 int AI_gi_RunFctLevel;
 
+// A builtin that ends the current evaluation returns one of the
+// interpreter's control codes where a node would go, and the code is
+// read back by comparing the slot against the literal it was written
+// as -- so it goes in zero extended, like any other marker in a
+// pointer slot.
+static __inline tAINode* AI_pst_ControlCode(int code)
+{
+    return (tAINode*)(uintptr_t)(uint32_t)code;
+}
+
 int AI_GetIntFromStack();
 int AI_PutIntToStack(int value);
 float AI_GetFloatFromStack();
