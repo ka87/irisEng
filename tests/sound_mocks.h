@@ -26,6 +26,12 @@ int snd_log_len(void);
 const unsigned char* snd_heap_base(void);
 int snd_heap_used(void);
 
+/* What a block was asked for, as opposed to the room it got. Blocks
+   here are given twice their request on purpose (see sound_mocks.c),
+   so a request that is too small for what the caller then indexes is
+   invisible unless it is read back -- which is what this is for. */
+int snd_heap_block_request(const void* block);
+
 /* ---- the fake big file ---------------------------------------------- */
 void snd_bigfile_clear(void);
 int snd_bigfile_add(unsigned int key, const void* data, int len);

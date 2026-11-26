@@ -5488,7 +5488,11 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     list = SND_gast_AndFamillyList;
     if (SND_gi_AndFamillyNb <= 0)
     {
-        familly = (tSoundFamilyStruct*)bits; // TODO FIXME: ez mi, jó ez így? kidebuggolni
+        // Nothing reads this: the next test is idx == 0, which an empty
+        // list satisfies, so the branch below replaces it. The list's
+        // count only ever grows from nought or is reset to it, so the
+        // other way out of that test cannot be reached from here.
+        familly = NULL;
     }
     else
     {
@@ -5506,13 +5510,14 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
     {
         if (SND_gi_AndFamillyNb >= SND_gi_AndFamillyListSize)
         {
-            size = 16 * (9 * SND_gi_AndFamillyListSize + sizeof(tSoundFamilyStruct));
+            size = SND_FAMILY_LIST_BYTES(SND_gi_AndFamillyListSize);
             if (SND_gi_AndFamillyListSize)
                 grown = (tSoundFamilyStruct*)MEM_p_Realloc(SND_gast_AndFamillyList, size);
             else
                 grown = (tSoundFamilyStruct*)MEM_p_Alloc(size);
             SND_gast_AndFamillyList = grown;
-            memset(&grown[SND_gi_AndFamillyNb], 0, size);
+            memset(&grown[SND_gi_AndFamillyNb], 0,
+                   SND_FAMILY_GROWN_CLEAR(SND_gi_AndFamillyListSize));
             list = SND_gast_AndFamillyList;
             SND_gi_AndFamillyListSize += 16;
             famillyNb = SND_gi_AndFamillyNb;
