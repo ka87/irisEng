@@ -54,46 +54,15 @@ static const int expect_ids[23] = {
 
 static const int NTYPES = (int)(sizeof(expect_ids) / sizeof(expect_ids[0]));
 
-/* The mismatches the engine carries on purpose, because the table it
-   reproduces has them.
+/* There is no list of allowed mismatches here, and there was one.
  *
- * 0x84 is one of the vec family, 0x7C..0x85, and every other member
- * declares twelve bytes and copies a vector. This one declares four
- * and copies a vector too -- the same function as its nine siblings --
- * so the declared size is four and the copier writes twelve. The
- * engine's table is a faithful copy and the line carries the original
- * author's own "? size" beside it.
- *
- * Preserved rather than corrected, as with the raster loop in
- * profiler.c: changing it would be a divergence and the call is not
- * this file's to make. Listed here so the run can be green while the
- * mismatch is on the record, and the run fails if one of these stops
- * mismatching -- a list that keeps entries nothing needs stops being
- * evidence of anything. */
-struct known
-{
-    int id;
-    int declared;
-    int writes;
-    int seen;
-};
-
-static struct known known_mismatches[] = {
-    { 0x84, 4, 12, 0 },
-};
-
-static const int NKNOWN =
-    (int)(sizeof(known_mismatches) / sizeof(known_mismatches[0]));
-
-static struct known* known_for(int id)
-{
-    int i;
-
-    for (i = 0; i < NKNOWN; i++)
-        if (known_mismatches[i].id == id)
-            return &known_mismatches[i];
-    return NULL;
-}
+ * 0x84 declared four bytes with the vector copier, which writes
+ * twelve, and this file carried that as a declared mismatch so the run
+ * could be green while it stayed on the record. It has since been
+ * corrected in the table, so the list is empty and gone rather than
+ * kept at nothing: a mismatch appearing again should turn the suite
+ * red and be looked at, not be added to a list of exceptions.
+ */
 
 /* How many bytes the copier at `i` writes, measured. */
 static int bytes_written(int i, unsigned char fill)
@@ -142,36 +111,6 @@ static void check_every_copier_stays_inside_its_width(void)
             ++failures;
             continue;
         }
-        {
-            struct known* k = known_for(AI_gast_Types[i].funcid);
-
-            if (k)
-            {
-                k->seen = 1;
-                if (wrote == declared)
-                {
-                    printf("  FAIL id 0x%02X is on the known list and no "
-                           "longer mismatches; take it off\n",
-                           AI_gast_Types[i].funcid);
-                    ++failures;
-                }
-                else if (declared != k->declared || wrote != k->writes)
-                {
-                    printf("  FAIL id 0x%02X is known to declare %d and "
-                           "write %d, and now declares %d and writes %d\n",
-                           AI_gast_Types[i].funcid, k->declared, k->writes,
-                           declared, wrote);
-                    ++failures;
-                }
-                else
-                {
-                    printf("  known  id 0x%02X declares %d and copies %d, "
-                           "as the original's table does\n",
-                           AI_gast_Types[i].funcid, declared, wrote);
-                }
-                continue;
-            }
-        }
         if (wrote > declared)
         {
             printf("  FAIL id 0x%02X declares %d bytes and its copier "
@@ -179,14 +118,6 @@ static void check_every_copier_stays_inside_its_width(void)
             ++failures;
         }
     }
-
-    for (i = 0; i < NKNOWN; i++)
-        if (!known_mismatches[i].seen)
-        {
-            printf("  FAIL id 0x%02X is on the known list and is not in the "
-                   "table; take it off\n", known_mismatches[i].id);
-            ++failures;
-        }
 }
 
 /* The main-actor substitution in AI_EvalType_GetGAO, which is the one
