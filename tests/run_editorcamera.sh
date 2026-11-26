@@ -16,7 +16,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -Ithirdparty/ffmpeg/include"
+CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -Ithirdparty/ffmpeg/x32/include"
 OUT=tests/build
 mkdir -p "$OUT"
 

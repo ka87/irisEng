@@ -22,7 +22,7 @@ CC=${CC:-gcc}
 # allocator was asked for -- the mock logs it -- so the rewrite has
 # to ask for the same thing, and the mock's own double headroom
 # covers the shortfall. The game build gets the real width.
-CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -Ithirdparty/ffmpeg/include -DMEM_PTR_BYTES=4"
+CFLAGS="-std=gnu11 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -Ithirdparty/ffmpeg/x32/include -DMEM_PTR_BYTES=4"
 OUT=tests/build
 mkdir -p "$OUT"
 

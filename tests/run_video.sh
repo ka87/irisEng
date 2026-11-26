@@ -35,17 +35,21 @@ echo "=== video ==="
 # which shows up as every open failing rather than as a link error.
 # Compiling against them still catches the thing worth catching: an
 # API call that is right for one version of libav and not the other.
-if [ -d thirdparty/ffmpeg/include ]; then
+# x32, deliberately: these are the public headers and they do not
+# differ between the two Windows builds -- avconfig.h carries only
+# endianness and fast-unaligned -- so the sweeps here read the ones
+# that are committed rather than the x64 tree, which is not.
+if [ -d thirdparty/ffmpeg/x32/include ]; then
     # no -w here: on gcc 13 it disables the implicit-declaration
     # error beside it, and a call declared in a header that one
     # version pulls in transitively and the other does not is
     # exactly what this pass is for
     if $CC -fsyntax-only -std=gnu11 -fcommon -fms-extensions \
         -Werror=implicit-function-declaration \
-        -Itests/stub -Ithirdparty/ffmpeg/include video.c 2>"$OUT/video.hdr.log"; then
-        echo "  compiles against the headers in thirdparty/ffmpeg"
+        -Itests/stub -Ithirdparty/ffmpeg/x32/include video.c 2>"$OUT/video.hdr.log"; then
+        echo "  compiles against the headers in thirdparty/ffmpeg/x32"
     else
-        echo "  does NOT compile against the headers in thirdparty/ffmpeg:"
+        echo "  does NOT compile against the headers in thirdparty/ffmpeg/x32:"
         grep -E 'error' "$OUT/video.hdr.log" | head -5
         exit 1
     fi

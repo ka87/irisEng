@@ -16,15 +16,23 @@ It is the mainline case rather than an afterthought: the project's
 primary platform is `Win32`, and i686 is a first-class FFmpeg target
 with hand-written MMX and SSE paths.
 
-**The build is in the repository**, under `thirdparty/ffmpeg`:
-headers, MSVC import libraries and the five runtime DLLs of
-`ffmpeg-n9.0.2-48-gd4070a14ce-win32-lgpl-shared-9.0`. The two `Win32`
-configurations link it and copy the DLLs next to the exe after a
-build; `video.c` is excluded from the two `x64` configurations,
-because a 32-bit import library has nothing for an x64 link to
-resolve against. `thirdparty/ffmpeg/README.md` has the details,
+**The 32-bit build is in the repository**, under
+`thirdparty/ffmpeg/x32`: headers, MSVC import libraries and the five
+runtime DLLs of `ffmpeg-n9.0.2-48-gd4070a14ce-win32-lgpl-shared-9.0`.
+The two `Win32` configurations link it and copy the DLLs next to the
+exe after a build. `thirdparty/ffmpeg/x32/README.md` has the details,
 including the LGPL position and how to put a much smaller build in
 its place.
+
+**The 64-bit half is `thirdparty/ffmpeg/x64` and is not committed.**
+The two `x64` configurations are otherwise complete -- `video.c` and
+`platform/sndvideo.c` are in that build, the headers and libraries are
+on its paths, and the DLLs are copied after it -- so the only thing
+missing is a `win64` LGPL shared build dropped in with the same
+layout. The project checks for it before compiling and stops with a
+message rather than letting it arrive as five unresolved externals.
+`thirdparty/ffmpeg/x64/README.md` says which build and what goes
+where.
 
 **Bink 1 only.** libav's `bink` demuxer and its `binkvideo`,
 `binkaudio_dct` and `binkaudio_rdft` decoders were reverse-engineered
@@ -120,7 +128,7 @@ test says so and is skipped rather than failing — FFmpeg is not part
 of the engine's own toolchain.
 
 Before any of that it does a **compile-only pass against the headers
-in `thirdparty/ffmpeg`**, which are what the engine builds against
+in `thirdparty/ffmpeg/x32`**, which are what the engine builds against
 and are usually a different version from whatever shared libraries
 the machine running the test has. They cannot be linked here -- a
 version mismatch shows up as every open failing rather than as a link
@@ -305,4 +313,4 @@ rule the other harnesses already follow.
 - **A smaller libav.** The build committed here is 90 MB of DLLs
   because a default FFmpeg carries every codec; one configured for
   Bink alone is a few hundred KB. The configure line is in
-  `thirdparty/ffmpeg/README.md`; it needs an MSYS2 toolchain.
+  `thirdparty/ffmpeg/x32/README.md`; it needs an MSYS2 toolchain.

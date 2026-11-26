@@ -36,7 +36,7 @@ cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
 CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -w"
-INCLUDES="-Itests/stub -Ithirdparty/SDL3/include -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng -Ithirdparty/ffmpeg/include"
+INCLUDES="-Itests/stub -Ithirdparty/SDL3/include -Ithirdparty/freetype/include -Ithirdparty/freetype/iriseng -Ithirdparty/ffmpeg/x32/include"
 OUT=tests/build/wholelink
 rm -rf "$OUT"
 mkdir -p "$OUT"
