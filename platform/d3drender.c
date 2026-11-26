@@ -921,7 +921,21 @@ void D3D_RenderStateRestore(tD3dRenderStateConfigStruct* cfg)
         if (renderStateConfig.fvf != cfg->fvf)
         {
             renderStateConfig.fvf = cfg->fvf;
-            D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(D3DRenderParams.d3dDev, (IDirect3DVertexDeclaration9 *)(renderStateConfig.fvf)); // TODO FIXME: ez micsoda gányolás de az IDA ezt mutatja, játékban ez van
+            /* The value is a bitfield and not an address, so it is
+               widened explicitly rather than cast from a narrower int.
+               SetFVF is what D3D9 takes an FVF code through, and the
+               seven other places that pass this same field pass it
+               there -- but the call is left as the frozen copy has it,
+               because this arm is unreachable in the engine and the
+               differential's randomised configs do enter it, so
+               changing the call changes what that compares and nothing
+               that the game does. Reported rather than altered.
+
+               Unreachable because nothing ever sets a vertex shader:
+               every assignment to renderStateConfig.vertexShader, here
+               and in d3daftereffects.c, is NULL or 0, and every
+               D3D_SetVertexShader call outside this arm passes 0. */
+            D3DRenderParams.d3dDev->lpVtbl->SetVertexDeclaration(D3DRenderParams.d3dDev, (IDirect3DVertexDeclaration9*)(uintptr_t)renderStateConfig.fvf);
         }
         D3D_SetVertexShader(cfg->vertexShader);
     }

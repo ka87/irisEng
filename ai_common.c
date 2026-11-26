@@ -796,7 +796,12 @@ tAINode* AI_pst_RunFunction(tAIFunction* funcPtr, tAINode** jumpNode, int stackD
     AI_gppst_CurrentJumpNode = jumpNode;
     AI_gpst_CurrentFunction = funcPtr;
     if (AI_CompiledAIEnabled && funcPtr->funcPtr)
-        return (tAINode*)funcPtr->funcPtr();
+        /* A compiled function answers with a small number in the node
+           channel rather than a node -- the loop below separates the
+           two with `>= 7`, and the keywords return 0, 1, 2, 4 and 6 the
+           same way. So this widens a marker and does not carry an
+           address, and saying so is what stops it reading as one. */
+        return (tAINode*)(uintptr_t)funcPtr->funcPtr();
     AI_gul_SizeLocalStack += stackDecrease;
     for (i = *jumpNode; (uintptr_t)i >= 7 && i->category != 31; i = AI_gast_Categs[i->category].funcptr(i))
         AI_gppst_CurrentJumpNode = jumpNode;
@@ -1725,7 +1730,11 @@ void AI2C_ResolveBuffer(uint32_t* varPtr, void* gaoOrGaoIdxOrAIPtr, int varOffse
         }
         aiPtr = gao->extended->AIInstance;
     }
-    *varPtr = (uint32_t)&aiPtr->instanceVarDataCurrent[varOffset];
+    /* The out-param is four bytes and the generated callers declare it,
+       so what goes in it is a handle rather than an address: the same
+       value where pointers already fit, and resolvable instead of
+       truncated where they do not. */
+    *varPtr = HDL_ul_Handle(&aiPtr->instanceVarDataCurrent[varOffset]);
 }
 
 void* AI2C_ResolveBufferPtr(void* gaoOrGaoIdxOrAIPtr)
@@ -1899,7 +1908,10 @@ void AI2C_ResolveBufferByName(uint32_t* varPtr, void* gaoOrGaoIdxOrAIPtr, char* 
 
     for (i = 0; i < aiPtr->model->vars->varNum; i++) {
         if (!strcasecmp(aiPtr->model->vars->varNames[i].varName, name)) {
-            *varPtr = (uint32_t)&aiPtr->instanceVarDataCurrent[aiPtr->model->vars->variables[i].varOffset];
+            /* A handle, as in AI2C_ResolveBuffer above. */
+            *varPtr = HDL_ul_Handle(
+                &aiPtr->instanceVarDataCurrent[
+                    aiPtr->model->vars->variables[i].varOffset]);
             return;
         }
     }

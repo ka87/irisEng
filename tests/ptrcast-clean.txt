@@ -38,6 +38,7 @@ ai/ai_types.c
 ai/ai_viewfunctions.c
 ai/ai_wayfunctions.c
 ai/ai_worldfunctions.c
+ai_common.c
 animation.c
 basic_array.c
 bigfiles.c
@@ -136,6 +137,7 @@ photo.c
 platform.c
 platform/adpcm.c
 platform/d3daftereffects.c
+platform/d3drender.c
 platform/d3drow.c
 platform/d3dsun.c
 platform/d3dtex.c
