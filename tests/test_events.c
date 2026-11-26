@@ -1573,6 +1573,191 @@ static void case_edges(int side)
 
 /* -------------------------------------------------------------- main */
 
+/* ------- the two paths the comparison above cannot reach ------- */
+
+/* Both of these were read out of the compiled retail code, and neither
+ * can be checked by comparing the two copies: the frozen copy has the
+ * old behaviour by construction, so it would disagree at exactly the
+ * word under test. The sweep reaches each site and neither fires --
+ * case_aiResolve sets flags2 to 0x40, which takes the AI arm and not
+ * the 0x20 one, and case_duplicate sets every key's slot to NULL
+ * because the old length reading asked for a megabyte. So these call
+ * the new copy alone.
+ */
+
+static int g_directFails;
+
+/* What the mock allocator rounds a request up to. */
+#define ROUNDUP(n) (((unsigned int)(n) + 15u) & ~15u)
+
+/* EVE_ResolveTrackRef's 0x20 arm. Both indices live in the slot's own
+   two halves -- the list in the low one, the track in the high one --
+   and the resolved value is that track element's own slot. */
+static void checkResolveTrackRefUsesBothHalves(void)
+{
+    static tGameObjectEventsList list;
+    static tGameObjectEventsListElem listElems[4];
+    static tGameObjectEventElem inner[4][4];
+    static tGameObjectEventsListElem track;
+    static tGameObjectEventElem keys[3];
+    static char targets[4][4][8];
+    int li, ti, i;
+
+    printf("-- resolving a track reference from the slot's two halves\n");
+
+    for (li = 0; li < 4; ++li)
+    {
+        for (ti = 0; ti < 4; ++ti)
+            inner[li][ti].eptrdu.data = &targets[li][ti][0];
+        listElems[li].trackElems = inner[li];
+        listElems[li].elemNum = 4;
+    }
+    memset(&list, 0, sizeof(list));
+    list.listElems = listElems;
+    list.num = 4;
+
+    /* Three keys, each naming a different (list, track) pair. */
+    memset(keys, 0, sizeof(keys));
+    memset(&track, 0, sizeof(track));
+    track.trackElems = keys;
+    track.elemNum = 3;
+    track.flags = 0x10;
+    for (i = 0; i < 3; ++i)
+    {
+        keys[i].flags2 = 0x20;
+        keys[i].eptrdu.size = (uint16_t)(i + 1);        /* the list  */
+        keys[i].eptrdu.type = (uint16_t)(3 - i);        /* the track */
+    }
+
+    NEW_EVE_ResolveTrackRef(&list, &track);
+
+    for (i = 0; i < 3; ++i)
+    {
+        void* want = &targets[i + 1][3 - i][0];
+
+        if (keys[i].eptrdu.data != want)
+        {
+            printf("  FAIL key %d resolved to %p and the list puts %p at "
+                   "(%d,%d)\n", i, keys[i].eptrdu.data, want, i + 1, 3 - i);
+            ++g_directFails;
+        }
+    }
+
+    /* The other arms are left alone: a key with neither flag keeps
+       whatever was in its slot. */
+    memset(keys, 0, sizeof(keys));
+    keys[0].flags2 = 0;
+    keys[0].eptrdu.data = (void*)(uintptr_t)0x1234;
+    track.elemNum = 1;
+    NEW_EVE_ResolveTrackRef(&list, &track);
+    if (keys[0].eptrdu.data != (void*)(uintptr_t)0x1234)
+    {
+        printf("  FAIL a key with no reference flag was resolved anyway\n");
+        ++g_directFails;
+    }
+}
+
+/* EVE_pst_DuplicateData's per-key block copy. The length is the first
+   word of the block the slot points at. */
+static void checkDuplicateReadsTheLengthFromTheBlock(void)
+{
+    static tEventData eve;
+    static tGameObjectEventsList srcList;
+    static tGameObjectEventsListElem srcTracks[2];
+    static tGameObjectEventElem srcKeys[2][2];
+    static uint8_t blocks[2][2][64];
+    tEventData* copy;
+    unsigned int before;
+    unsigned int grew;
+    unsigned int want;
+    int t, k, i;
+
+    printf("-- duplicating a key's data block\n");
+
+    for (t = 0; t < 2; ++t)
+    {
+        for (k = 0; k < 2; ++k)
+        {
+            int len = 8 + 8 * (t * 2 + k);      /* 8, 16, 24, 32 */
+            int16_t w = (int16_t)len;
+
+            memset(blocks[t][k], 0, sizeof(blocks[t][k]));
+            memcpy(&blocks[t][k][0], &w, 2);
+            for (i = 2; i < len; ++i)
+                blocks[t][k][i] = (uint8_t)(0xA0 + t * 16 + k * 4 + i);
+            srcKeys[t][k].duration = (uint16_t)(1 + k);
+            srcKeys[t][k].flags2 = 0;
+            srcKeys[t][k].eptrdu.data = blocks[t][k];
+        }
+        memset(&srcTracks[t], 0, sizeof(srcTracks[t]));
+        srcTracks[t].trackElems = srcKeys[t];
+        srcTracks[t].elemNum = 2;
+    }
+    memset(&srcList, 0, sizeof(srcList));
+    srcList.listElems = srcTracks;
+    srcList.num = 2;
+    srcList.usageCount = 1;
+    memset(&eve, 0, sizeof(eve));
+    eve.eventListStruct = &srcList;
+
+    before = MOCK_HeapUsed();
+    copy = NEW_EVE_pst_DuplicateData(&eve);
+    grew = MOCK_HeapUsed() - before;
+    if (!copy || !copy->eventListStruct)
+    {
+        printf("  FAIL the duplicate gave back nothing\n");
+        ++g_directFails;
+        return;
+    }
+
+    for (t = 0; t < 2; ++t)
+        for (k = 0; k < 2; ++k)
+        {
+            int len = 8 + 8 * (t * 2 + k);
+            void* got = copy->eventListStruct->listElems[t]
+                            .trackElems[k].eptrdu.data;
+
+            if (!got)
+            {
+                printf("  FAIL track %d key %d has no block\n", t, k);
+                ++g_directFails;
+                continue;
+            }
+            if (got == (void*)blocks[t][k])
+            {
+                printf("  FAIL track %d key %d still points at the "
+                       "original block\n", t, k);
+                ++g_directFails;
+                continue;
+            }
+            if (memcmp(got, blocks[t][k], (size_t)len) != 0)
+            {
+                printf("  FAIL track %d key %d copied %d bytes wrong\n",
+                       t, k, len);
+                ++g_directFails;
+            }
+        }
+
+    /* The content comparison above cannot see a copy that is too
+       *long* -- the first len bytes match either way -- and too long
+       is exactly what the old reading gave, since it took the length
+       from the low half of the block's own address. So this asks what
+       the duplicate actually allocated, against the same rounding the
+       mock allocator uses. */
+    want = ROUNDUP(sizeof(tEventData))
+         + ROUNDUP(sizeof(tGameObjectEventsList))
+         + ROUNDUP(sizeof(tGameObjectEventsListElem) * 2)
+         + 2 * ROUNDUP(sizeof(tGameObjectEventElem) * 2)
+         + ROUNDUP(8) + ROUNDUP(16) + ROUNDUP(24) + ROUNDUP(32);
+    if (grew != want)
+    {
+        printf("  FAIL the duplicate took %u bytes of heap and its parts "
+               "come to %u -- a block was copied at the wrong length\n",
+               grew, want);
+        ++g_directFails;
+    }
+}
+
 int main(void)
 {
     static const float dts[4] = { 0.0f, 0.016666667f, 0.05f, 0.2f };
@@ -1887,9 +2072,15 @@ int main(void)
     if (g_floatDiffs)
         printf("%d float words differed, worst abs %.3g, worst rel %.3g\n",
                g_floatDiffs, g_worstAbs, g_worstRel);
-    if (g_fails)
+    checkResolveTrackRefUsesBothHalves();
+    checkDuplicateReadsTheLengthFromTheBlock();
+
+    if (g_fails || g_directFails)
     {
-        printf("%d differences\n", g_fails);
+        if (g_fails)
+            printf("%d differences\n", g_fails);
+        if (g_directFails)
+            printf("%d failure(s) in the two direct checks\n", g_directFails);
         return 1;
     }
     printf("equivalent\n");

@@ -50,6 +50,7 @@ depthblur.c
 dynamics.c
 editorcamera.c
 engine.c
+events.c
 fileio.c
 flatlayer.c
 fog.c
