@@ -2523,7 +2523,15 @@ int pcSND_i_FxGetDelay(tSoundFxParams* params)
     case 8:
     case 9:
     case 0xC:
-        result = (int)params; // TODO FIXME: ezt nem gondolnám, hogy jó megnézni. mi hívja ezt?
+        /* The author's note here asked what calls this. Nothing does:
+           the slot is filled in the interface and never read through
+           it, while FxSetDelay beside it is called twice from the
+           sound module. So returning the parameter block's own
+           address rather than its delay field is unreachable, and it
+           is left exactly as it stands -- the delay this should
+           answer with has not been established, and a guess would be
+           a divergence nothing can check. */
+        result = (int)params;
         break;
     default:
         params->mode = 0;
