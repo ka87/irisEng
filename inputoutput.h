@@ -68,7 +68,7 @@ typedef struct sSavIdxElem
    has to stay exactly this wide: a byte either way and every slot
    after the first is read from the wrong place, with no error to
    say so. */
-_Static_assert(sizeof(tSavIdxElem) == 64,
+IRIS_STATIC_ASSERT(sizeof(tSavIdxElem) == 64,
                "the save index record must stay 64 bytes wide");
 
 /* What a script hands over when it asks for a slot to be written.

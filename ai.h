@@ -29,7 +29,7 @@ typedef struct sAINode
    sized from a byte count. */
 #define AI_NODE_FILE_BYTES 8
 
-_Static_assert(sizeof(tAINode) == AI_NODE_FILE_BYTES,
+IRIS_STATIC_ASSERT(sizeof(tAINode) == AI_NODE_FILE_BYTES,
                "a node in memory is no longer the size it is in a world "
                "file; the stride is still AI_NODE_FILE_BYTES, but every "
                "allocation sized from a node block's byte count has to "
