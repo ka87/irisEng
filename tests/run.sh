@@ -507,6 +507,7 @@ for one in tests/run_sdl3.sh \
            tests/run_geo.sh \
            tests/run_loarefs.sh \
            tests/run_aimat.sh \
+           tests/run_aistring.sh \
            tests/run_sndfamily.sh \
            tests/run_wholelink.sh \
            tests/run_gridheight.sh \
