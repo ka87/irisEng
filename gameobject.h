@@ -226,6 +226,7 @@ typedef struct sActionElem
     uint8_t _pad;
 } tActionElem;
 
+
 typedef struct sAction
 {
     uint8_t actionElemNum;

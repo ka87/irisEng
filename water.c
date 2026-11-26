@@ -1636,7 +1636,7 @@ void WTR_SetExportParams(tUserWaterParamsStruct* exported)
         else
         {
             pst_GlobalsWaterParams =
-                (tWaterParamsGlobalStruct*)MEM_p_AllocAligned(16168, 32);
+                (tWaterParamsGlobalStruct*)MEM_p_AllocAligned(sizeof(tWaterParamsGlobalStruct), 32);
             WTR_SetDefault(pst_GlobalsWaterParams);
             water = pst_GlobalsWaterParams;
             needsRealloc = 1;

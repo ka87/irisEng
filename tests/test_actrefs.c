@@ -248,6 +248,72 @@ static void check_load_and_free(int pattern)
         }
 }
 
+/* The block an action is loaded into has to hold the elements that are
+   then written into it.
+ *
+ * It was sized at the literal 20 an element, which is what tActionElem
+ * measures where pointers are four. The element carries three
+ * reference fields, so it is 32 where they are eight, and every
+ * element after the first sat past the block -- which surfaced as a
+ * shape field holding a value that is not a shape and not nought, and
+ * a crash in ACT_SetUsageCounts reading through it.
+ *
+ * The actions differential cannot ask this. It compares the figure the
+ * allocator was asked for against a frozen copy that asks for 20 an
+ * element and cannot be changed, so that build pins ACT_ELEM_BYTES to
+ * 20 and both agree. This binary does not pin it, so here the figure
+ * is the real one and can be measured against what gets written. */
+static void check_the_action_block_holds_its_elements(void)
+{
+    tAction* act;
+    size_t off;
+    size_t needed;
+    int i;
+    int found = 0;
+
+    printf("-- the room an action's block is given\n");
+
+    setup(0x5A17u, 0);
+    act = ACT_ul_ActionCallback(0);
+    if (!act)
+    {
+        fail("the loader returned no action to measure");
+        return;
+    }
+
+    /* The element count is the loader's own, read back out of what it
+       returned -- not a constant from the mocks. Comparing against a
+       constant is what made the first version of this check pass with
+       the fault put back: twenty bytes times the count in the file is
+       more than thirty-two times a smaller constant. */
+    needed = sizeof(tAction)
+           + sizeof(tActionElem) * (size_t)act->actionElemNum;
+
+    /* And the block is identified by where it landed, so this measures
+       the action's own allocation and not one of the others the loader
+       makes. */
+    off = (size_t)((unsigned char*)act - ACTMOCK_arena);
+    for (i = 0; i < ACTMOCK_logLen; i++)
+    {
+        const tActMockCall* c = &ACTMOCK_log[i];
+
+        if (strcmp(c->fn, "MEM_p_Alloc") != 0 || (size_t)c->ia[1] != off)
+            continue;
+        found = 1;
+        if ((size_t)c->ia[0] < needed)
+        {
+            printf("  FAIL the block is %d bytes and holds %d element(s) "
+                   "of %u, which needs %u\n", c->ia[0],
+                   act->actionElemNum, (unsigned int)sizeof(tActionElem),
+                   (unsigned int)needed);
+            ++failures;
+        }
+    }
+
+    if (!found)
+        fail("the action's own allocation is not in the log");
+}
+
 int main(void)
 {
     int pattern;
@@ -257,6 +323,7 @@ int main(void)
     ACTMOCK_Init();
 
     check_the_value_is_not_the_address();
+    check_the_action_block_holds_its_elements();
     check_no_action();
     for (pattern = 0; pattern < 8; pattern++)
     {

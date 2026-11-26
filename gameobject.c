@@ -1790,7 +1790,7 @@ void OBJ_ChangeIdentityFlags(tGameObjectMain* gao, unsigned int newFlags, int ol
     {
         if ((oldFlags & 0x400000) == 0)
         {
-            gao->basic->mtx = (tGaoMatrix*)MEM_p_AllocAligned(96, 16);
+            gao->basic->mtx = (tGaoMatrix*)MEM_p_AllocAligned(IRIS_SIZEOF(tGaoMatrix, 96), 16);
             gao->basic->mtx->refGao = 0;
             gao->basic->mtx->refGao2 = 0;
             MATH_SetIdentityMatrix(&gao->basic->mtx->mtx);
