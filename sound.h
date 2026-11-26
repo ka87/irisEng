@@ -827,6 +827,33 @@ tSndRasterStatStruct sndRasterStat;
 tSoundFxParams SND_gst_FxDefaultParam;
 tSoundFxParams SND_gst_FxParam;
 
+/* How much room the AND-family list takes for a given capacity.
+ *
+ * The frozen copies write this folded, as
+ * 16 * (9 * size + sizeof(tSoundFamilyStruct)), where 9 * 16 is the
+ * struct's own size on a 32-bit target -- so the two forms agree there
+ * and the folded one comes out a whole element short per element once
+ * the struct is wider, which the list then indexes past. The harness
+ * builds both copies with SND_FAMILY_FROZEN so they stay comparable;
+ * ./tests/run_sndfamily.sh --asan is the check on the real one.
+ */
+#ifndef SND_FAMILY_FROZEN
+#define SND_FAMILY_FROZEN 0
+#endif
+
+#if SND_FAMILY_FROZEN
+#define SND_FAMILY_LIST_BYTES(cap) \
+    (16 * (9 * (cap) + sizeof(tSoundFamilyStruct)))
+#define SND_FAMILY_GROWN_CLEAR(cap) SND_FAMILY_LIST_BYTES(cap)
+#else
+#define SND_FAMILY_LIST_BYTES(cap) \
+    (sizeof(tSoundFamilyStruct) * ((unsigned int)(cap) + 16u))
+/* Only the sixteen the list just grew by. Clearing the whole figure
+   above from the first new element runs off the end by every element
+   the list already had. */
+#define SND_FAMILY_GROWN_CLEAR(cap) (sizeof(tSoundFamilyStruct) * 16u)
+#endif
+
 tSoundFamilyStruct* SND_gast_AndFamillyList;
 int SND_gi_AndFamillyNb;
 int SND_gi_AndFamillyListSize;

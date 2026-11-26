@@ -93,6 +93,11 @@ defs() {
 }
 
 # shellcheck disable=SC2086
+# SND_FAMILY_FROZEN: the AND-family list's size is folded in the frozen
+# copy, and the figure it folds is right only while the struct is 144
+# bytes. Both copies take the folded form here so the heap they dump
+# stays comparable; ./tests/run_sndfamily.sh --asan checks the real one.
+CFLAGS="$CFLAGS -DSND_FAMILY_FROZEN=1"
 new_defs="$(defs NEW_ $sound_syms) -DSIDE_RUN=NEW_snd_side_run -DSIDE_CASES=NEW_snd_side_cases"
 # shellcheck disable=SC2086
 # SND_WAVEINFO_FROZEN: the rewrite takes a pointer-wide position for a

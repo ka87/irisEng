@@ -158,6 +158,7 @@ sideload.c
 sndplatform.c
 snp.c
 soft.c
+sound.c
 soundmodifier.c
 sprites.c
 strings.c

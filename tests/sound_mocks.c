@@ -56,6 +56,16 @@ typedef struct sBlockHdr { int size; int pad[3]; } tBlockHdr;
 const unsigned char* snd_heap_base(void) { return heap; }
 int snd_heap_used(void) { return heap_used; }
 
+int snd_heap_block_request(const void* block)
+{
+    const unsigned char* p = (const unsigned char*)block;
+
+    if (!p || p < heap + sizeof(tBlockHdr)
+        || p > heap + sizeof(heap))
+        return -1;
+    return ((const tBlockHdr*)(p - sizeof(tBlockHdr)))->size;
+}
+
 /* Blocks get twice the room they ask for plus a slack of GUARD bytes.
 
    Several of the engine's arrays are pointer arrays, and this runner
