@@ -1,4 +1,5 @@
 #include "../memory.h"
+#include "../handle.h"
 #include "../ai.h"
 #include "../world.h"
 #include "../engine.h"
@@ -107,7 +108,8 @@ tAINode* AI_EvalFunc_WORGetObject(tAINode* node)
 
     objectIndex = AI_GetIntFromStack();
     worldIndex = AI_GetIntFromStack();
-    AI_PutIntToStack((int)AI_EvalFunc_WORGetObject_C(worldIndex, objectIndex));
+    AI_PutIntToStack((int)HDL_ul_Handle(
+        AI_EvalFunc_WORGetObject_C(worldIndex, objectIndex)));
     return node + 1;
 }
 
@@ -171,7 +173,7 @@ int AI_EvalFunc_WORReinit_C()
 // builtins end the current evaluation rather than carrying on.
 tAINode* AI_EvalFunc_WORReinit(tAINode* node)
 {
-    return (tAINode*)AI_EvalFunc_WORReinit_C();
+    return AI_pst_ControlCode(AI_EvalFunc_WORReinit_C());
 }
 
 void AI_EvalFunc_WORPause_C(int worldIndex, int flagMask)
@@ -355,7 +357,8 @@ tAINode* AI_EvalFunc_WORPlayAbsTime(tAINode* node)
 
     specDT = AI_GetFloatFromStack();
     specTime = AI_GetFloatFromStack();
-    return (tAINode*)AI_EvalFunc_WORPlayAbsTime_C(specTime, specDT);
+    return AI_pst_ControlCode(
+        AI_EvalFunc_WORPlayAbsTime_C(specTime, specDT));
 }
 
 tAINode* AI_EvalFunc_WORIsPlayAbs(tAINode* node)

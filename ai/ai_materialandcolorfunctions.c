@@ -2,6 +2,7 @@
 #include "../bigfiles.h"
 #include "../textures.h"
 #include "../materialanddraw.h"
+#include "../handle.h"
 #include "ai_materialandcolorfunctions.h"
 
 // The sub-material a script names. A non-zero top byte makes the id a
@@ -163,11 +164,15 @@ tAINode* AI_EvalFunc_MATGetConstant(tAINode* node)
 }
 
 // The diffuse colour shares its field with the multi-material pointer,
-// which is why it is handled as a pointer-wide value.
-void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* diffuse, unsigned int subMatID)
+// but it is still a four-byte colour: MAT_GetColorPtr hands out that
+// field's address only for a material whose id is 3 or 5, where it
+// holds a colour and never children.
+void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int diffuse, unsigned int subMatID)
 {
     tGEOMAT* material;
-    int** slot;
+    // the colour, as MATGetDiffuse below reads it: four bytes, not a
+    // pointer to four bytes
+    int* slot;
 
     slot = 0;
     material = MAT_ValidateSUBMAT_C(gao, subMatID);
@@ -180,14 +185,14 @@ void AI_EvalFunc_MATSetDiffuse_C(struct sGameObjectMain* gao, int* diffuse, unsi
 tAINode* AI_EvalFunc_MATSetDiffuse(tAINode* node)
 {
     tGameObjectMain* gaoUltra;
-    int* diffuse;
+    int diffuse;
     int subMatID;
 
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     subMatID = AI_GetIntFromStack();
-    diffuse = (int*)AI_GetIntFromStack();
+    diffuse = AI_GetIntFromStack();
     AI_EvalFunc_MATSetDiffuse_C(gaoUltra, diffuse, subMatID);
     return node + 1;
 }
@@ -223,8 +228,11 @@ tAINode* AI_EvalFunc_MATSetAmbient(tAINode* node)
 {
     tGameObjectMain* gaoUltra;
     tGEOMAT* material;
-    int** slot;
-    int* ambient;
+    // the colour and where it lives, which is a four-byte field: as an
+    // int** this wrote eight bytes over it and over what follows it,
+    // and MATGetAmbient below has always had it right
+    int* slot;
+    int ambient;
     int subMatID;
 
     gaoUltra = AI_gpst_CurrentUltra;
@@ -232,7 +240,7 @@ tAINode* AI_EvalFunc_MATSetAmbient(tAINode* node)
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
     subMatID = AI_GetIntFromStack();
     material = MAT_ValidateSUBMAT_C(gaoUltra, subMatID);
-    ambient = (int*)AI_GetIntFromStack();
+    ambient = AI_GetIntFromStack();
 
     slot = 0;
     if (material)
@@ -601,7 +609,8 @@ tAINode* AI_EvalFunc_MATGetPro(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack((int)AI_EvalFunc_MATGetPro_C(gaoUltra, subMatID, multiMatElemId));
+    AI_PutIntToStack((int)HDL_ul_Handle(
+        AI_EvalFunc_MATGetPro_C(gaoUltra, subMatID, multiMatElemId)));
     return node + 1;
 }
 
@@ -631,7 +640,9 @@ void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* procedural, int field
         }
         else if (field == 2)
         {
-            TEXPRO_Photo_SetMapGao(procedural, (tGameObjectMain*)param1);
+            // this field's param is a game object, not a number
+            TEXPRO_Photo_SetMapGao(procedural,
+                (tGameObjectMain*)HDL_p_Pointer((uint32_t)param1));
         }
         else if (field == 3 && photo->x == 0x10000000)
         {
@@ -665,7 +676,9 @@ void AI_EvalFunc_MATProSeti_C(struct sTexProceduralStruct* procedural, int field
         mpeg->flags = (mpeg->flags & ~0x00ff0000) | (param1 << 16);
         break;
     case 11:
-        TEX_Procedural_UpdateWithAnother(procedural, (tTexProceduralStruct*)param1);
+        // and this one's is another procedural texture
+        TEX_Procedural_UpdateWithAnother(procedural,
+            (tTexProceduralStruct*)HDL_p_Pointer((uint32_t)param1));
         break;
     }
 }
@@ -678,7 +691,8 @@ tAINode* AI_EvalFunc_MATProSeti(tAINode* node)
 
     param1 = AI_GetIntFromStack();
     field = AI_GetIntFromStack();
-    procedural = (tTexProceduralStruct*)AI_GetIntFromStack();
+    procedural = (tTexProceduralStruct*)HDL_p_Pointer(
+        (uint32_t)AI_GetIntFromStack());
     AI_EvalFunc_MATProSeti_C(procedural, field, param1);
     return node + 1;
 }
@@ -821,7 +835,8 @@ tAINode* AI_EvalFunc_MATProGeti(tAINode* node)
     int field;
 
     field = AI_GetIntFromStack();
-    procedural = (tTexProceduralStruct*)AI_GetIntFromStack();
+    procedural = (tTexProceduralStruct*)HDL_p_Pointer(
+        (uint32_t)AI_GetIntFromStack());
     AI_PutIntToStack(AI_EvalFunc_MATProGeti_C(procedural, field));
     return node + 1;
 }
@@ -852,7 +867,8 @@ tAINode* AI_EvalFunc_MATAntGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack((int)AI_EvalFunc_MATAntGet_C(gaoUltra, subMatID, multiMatElemId));
+    AI_PutIntToStack((int)HDL_ul_Handle(
+        AI_EvalFunc_MATAntGet_C(gaoUltra, subMatID, multiMatElemId)));
     return node + 1;
 }
 
@@ -892,7 +908,8 @@ tAINode* AI_EvalFunc_MATAntSeti(tAINode* node)
 
     value = AI_GetIntFromStack();
     field = AI_GetIntFromStack();
-    anim = (tTexAnimatedElem*)AI_GetIntFromStack();
+    anim = (tTexAnimatedElem*)HDL_p_Pointer(
+        (uint32_t)AI_GetIntFromStack());
     AI_EvalFunc_MATAntSeti_C(anim, field, value);
     return node + 1;
 }
