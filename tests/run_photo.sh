@@ -40,7 +40,14 @@ $CC $CFLAGS $FILEDEFS -c tests/baseline_photo.c -o "$OUT/photo.base.o" $(defs BA
 $CC $CFLAGS -c math.c -o "$OUT/photo.math.o"
 $CC $CFLAGS -c tests/photo_mocks.c -o "$OUT/photo.mocks.o"
 $CC $CFLAGS -c datapath.c -o "$OUT/photo.datapath.o"
+# The real handle layer, not the identity: mission -2 answers with an
+# object across a four-byte slot, and the check for that asks whether
+# the answer resolves back. The frozen copy returns the address
+# truncated, so the sweep only reaches that site with no object at all,
+# where both spellings answer nought.
+$CC $CFLAGS -c handle.c -o "$OUT/photo.handle.o"
 $CC $CFLAGS -c tests/test_photo.c -o "$OUT/photo.drv.o"
 $CC "$OUT/photo.new.o" "$OUT/photo.base.o" "$OUT/photo.math.o" \
-    "$OUT/photo.mocks.o" "$OUT/photo.datapath.o" "$OUT/photo.drv.o" -o "$OUT/photo" -lm
+    "$OUT/photo.mocks.o" "$OUT/photo.datapath.o" "$OUT/photo.handle.o" \
+    "$OUT/photo.drv.o" -o "$OUT/photo" -lm
 "$OUT/photo"

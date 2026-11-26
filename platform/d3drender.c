@@ -2890,7 +2890,7 @@ int D3D_l_Init(HWND hWnd, struct sGdi_DisplayData* dd)
         D3DRenderParams.Rect.right = dispMode.Width;
         D3DRenderParams.Rect.bottom = dispMode.Height;
     }
-    D3DRenderParams.hwnd2_dword_B3162C = (int)hWnd;
+    D3DRenderParams.hwnd2_dword_B3162C = hWnd;
     D3DRenderParams.dword_B317A0 = 0;
     D3DRenderParams.argbIsSupportedForTextures = 0;
     D3DRenderParams.setsDefaultZEnableAtBeginScene = 0;
