@@ -15,10 +15,26 @@ and stops with a message if the half it wants is empty, as the project
 file does.
 
 The Linux sweeps under `tests/` read `x32/include` whichever width
-they compile at. The public headers do not differ between the two
-Windows builds -- `avconfig.h` carries only endianness and
-fast-unaligned -- so they read the half that is committed.
+they compile at. The two halves are the 9.0 branch at different
+commits, so their headers are not byte-identical -- five micro
+versions, the version string and two documentation comments differ --
+but no declaration, type or constant does, and that is what those
+sweeps are checking. `tests/run_ffmpegtrees.sh` is what keeps it
+true.
 
 `x32/README.md` has the version, the LGPL position, what is and is not
 included and how to build a far smaller one. `x64/README.md` says what
 to put in the other half.
+
+## It is 211 MB between them
+
+93 MB for `x32` and 118 MB for `x64`, of which the two `avcodec` DLLs
+are 155 MB, because a default FFmpeg carries every codec it knows and
+the engine wants exactly one: Bink.
+
+`x32/README.md` has the `configure` line for a build with only Bink
+enabled, which comes out in the region of a few hundred kilobytes.
+Doing that for both halves would take this directory from 211 MB to
+under 2, and needs no change to the project file as long as the layout
+is kept. It has not been done because it needs an MSYS2 toolchain this
+repository does not carry.
