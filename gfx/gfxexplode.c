@@ -509,9 +509,22 @@ BOOL GFX_i_Explode_Render(struct sGfxExplodeData* expl, struct sGEOMAT* material
    
     if (expl->GFXDirectly) p_Current_SOFT_gst_ZList = SOFT_gpc_BigBufferZlists - 3;
    
+    /* The second term's 16 is what sZListElem measured on the original
+       target, and the compiled constant is a folded 0x20 -- so this is
+       32 whatever the struct measures here. Written as a literal for
+       that reason: following sizeof changes the constant at a build
+       with wider pointers, where the struct is 32 bytes and the term
+       would become 64.
+
+       The comparison cannot be true. The first term is a count of mesh
+       elements already used and so is not negative, and the second is
+       at least 34 because triangleNum is at least 1 by the return
+       above -- against <= 10. That is the original's own arithmetic and
+       not a slip in transcribing it, so this branch has never run, on
+       any target. Left as it is rather than guessed at. */
     if (expl->GFXDirectly
         && ((char*)zListData->currMeshOffset - (char*)(&zListData->meshElems[0])) / sizeof(struct sZListMeshElem) +
-        2 * (expl->triangleNum + sizeof(struct sZListElem)) <= 10) //check if at least 10 elems can fit into the buffer
+        2 * (expl->triangleNum + 16) <= 10) //check if at least 10 elems can fit into the buffer
     {
         GFX_NeedGeomEx(4 * expl->triangleNum, 4, 4, (expl->triangleNum / 2) + 8, 1);
         GFX_NeedGeomExElem(1, ((unsigned int)expl->triangleNum / 2) + 8);
