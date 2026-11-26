@@ -25,6 +25,31 @@
 #include <limits.h>
 /* The same story for offsetof, which gdi.c measures a buffer with. */
 #include <stddef.h>
+
+
+/* A compile-time check that holds on every compiler this builds with.
+ *
+ * `_Static_assert` is C11. MSVC's C compiler takes it only under
+ * /std:c11 or later and this project sets no standard, so on a default
+ * MSVC build the keyword is unknown, the assertion parses as a
+ * function declaration, and each one is five or six syntax errors in a
+ * header -- which reads as a broken header rather than as a missing
+ * switch. Four headers grew one of these and nothing here compiles
+ * with MSVC, so both Windows configurations had been failing for three
+ * days before anyone built them.
+ *
+ * So the checks go through this: the keyword where the compiler says
+ * it has C11, and an array that cannot have its size otherwise. The
+ * message stays an argument either way, so it is on the screen beside
+ * the failure even where the compiler cannot print it. */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#define IRIS_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+#else
+#define IRIS_SA_JOIN2(a, b) a##b
+#define IRIS_SA_JOIN(a, b) IRIS_SA_JOIN2(a, b)
+#define IRIS_STATIC_ASSERT(cond, msg) \
+    typedef char IRIS_SA_JOIN(iris_static_assert_, __COUNTER__)[(cond) ? 1 : -1]
+#endif
 /* The debugger check and the C library's POSIX spellings, which the
    engine uses everywhere and so are asked for here. */
 #include "platform/syscompat.h"

@@ -116,7 +116,7 @@ typedef struct sMessage
    three separate wrongs with nothing to announce them. */
 #define MSG_FILE_BYTES 52
 
-_Static_assert(sizeof(tMessage) == MSG_FILE_BYTES,
+IRIS_STATIC_ASSERT(sizeof(tMessage) == MSG_FILE_BYTES,
                "a message in memory is no longer the size it is in a world "
                "file; the variable block's layout, the scratch buffers the "
                "keywords copy one into, and the loader's stride all assume "

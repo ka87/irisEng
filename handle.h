@@ -117,7 +117,7 @@ void HDL_CloseModule(void);
    told apart from a slot holding a reference, by whoever reads it
    without knowing which it was given. */
 #define HDL_TAG_INDEX          2u
-_Static_assert(HDL_TAG_INDEX <= HDL_TAG_MASK,
+IRIS_STATIC_ASSERT(HDL_TAG_INDEX <= HDL_TAG_MASK,
                "every tag has to fit in the tag bits");
 
 /* The top bit, which has to stay clear because the key/value search
@@ -151,10 +151,10 @@ _Static_assert(HDL_TAG_INDEX <= HDL_TAG_MASK,
    handle there is -- the first index with generation zero -- has to
    clear the reserved values. Neither holds for every choice of widths,
    so both are asserted rather than reasoned about again later. */
-_Static_assert(HDL_TAG_BITS + HDL_GEN_BITS + HDL_IDX_BITS + HDL_SIGN_BITS
+IRIS_STATIC_ASSERT(HDL_TAG_BITS + HDL_GEN_BITS + HDL_IDX_BITS + HDL_SIGN_BITS
                    == HDL_WORD_BITS,
                "a handle's tag, generation, index and sign bit must fill "
                "the word exactly, with nothing spare and nothing overlapping");
-_Static_assert((HDL_FIRST_INDEX << HDL_IDX_SHIFT) > HDL_MAIN_ACTOR_LAST,
+IRIS_STATIC_ASSERT((HDL_FIRST_INDEX << HDL_IDX_SHIFT) > HDL_MAIN_ACTOR_LAST,
                "the smallest handle must be larger than every value a slot "
                "may hold that is not an address");
