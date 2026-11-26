@@ -1,10 +1,10 @@
 # irisEng, built with CMake.
 #
 # The engine builds and runs as a 32-bit program. The check below
-# refuses a 64-bit configure, and its own comment says exactly what
-# that refusal does and does not rest on -- the short version is that
-# the pointer casts are nearly gone and the file formats are the
-# reason, not them.
+# refuses a 64-bit configure, and its own comment is a ledger of what
+# that refusal rests on -- the short version is that the port is
+# unfinished and has never been run, which is a different thing from
+# anything in the engine making it impossible.
 #
 # What this links today is the Windows game. Off Windows it builds
 # every engine source but the Direct3D renderer's six, which are left
@@ -35,39 +35,48 @@ endif()
 
 # ---------------------------------------------------------------- 32-bit
 #
-# This refuses a 64-bit configure, and it is worth being exact about
-# why, because the reason has changed and the old one is no longer the
-# obstacle.
+# This refuses a 64-bit configure. An earlier version of this comment
+# gave the file formats as the reason and put a figure on it -- 65
+# places advancing a load cursor by the sizeof of a struct. That figure
+# was a grep, not a finding, and reading the list took it apart: 45 of
+# the 65 are write-only memory tallies that nothing in the engine ever
+# reads, one is commented out, and of the 19 real cursors exactly one
+# strides over a type that changes size. So the ledger below is what
+# has been measured, and the refusal rests on the last two lines of it
+# rather than on the formats.
 #
-# What a 64-bit port has established, and the audit that says so:
+# What a 64-bit port has established:
 #
-#   - all 181 engine sources compile at -m64, none failing;
-#   - the 181 objects relocatably link together, with nothing
-#     engine-internal unresolved (tests/run_wholelink.sh);
-#   - 12 pointer/int cast sites are left in those sources, and every
-#     one of them is an internal 32-bit slot that wants a wider
-#     declaration. None needs an address-translation layer. Six of
-#     the twelve are a convention of the generated compiled-script C
-#     rather than the engine's, two are in the Direct3D renderer that
-#     is not compiled off Windows, and three are unreachable from
-#     anything the project file builds.
+#   - all 181 engine sources compile at -m64, none failing, and the
+#     181 objects relocatably link with nothing engine-internal
+#     unresolved (tests/run_wholelink.sh);
+#   - 12 pointer/int cast sites are left, and every one is an internal
+#     four-byte slot wanting a wider declaration. None needs an
+#     address-translation layer. Six belong to the generated
+#     compiled-script C rather than the engine, two to the Direct3D
+#     renderer that is not compiled off Windows, and three are
+#     unreachable from anything the project file builds;
+#   - a world file does not depend on a struct's layout. It is read
+#     field by field, through about 1,700 typed LOA_ReadLong,
+#     LOA_ReadFloat, LOA_ReadChar and LOA_ReadShort calls, so only a
+#     cursor's step could carry a width -- and no cursor steps over a
+#     type that changes size. The one that does walks an in-memory
+#     array of profiler rasters, through a fault the original had and
+#     this keeps, which ends that loop after one pass either way;
+#   - the only structs a file is read into whole are the .bf archive's
+#     header, file table and FAT, and all three are plain integer
+#     fields that measure the same at both widths.
 #
 # What it has not established, and this is the refusal:
 #
-#   - 230 of the 409 structs with members change size between 32 and
-#     64 bits, and 65 places in 14 files advance a load cursor by the
-#     sizeof of a struct. Those strides are file formats. A struct
-#     that gains a pointer silently changes how a world file is read,
-#     and the four-byte slots inside those files -- a variable block's
-#     refs, a node's operand -- are fixed on disk and cannot widen
-#     with the pointer. That is the work, and it is not a compiler
-#     flag.
+#   - the four-byte reference slots the file formats fix cannot widen
+#     with the pointer, so each one has to go through the handle layer
+#     instead, and that is still being carried through the engine;
 #   - nothing has been linked into a running program at 64 bits, let
 #     alone run.
 #
-# So: the casts are no longer the reason, the formats are. Until a
-# 64-bit build has been run, this refuses rather than letting it be
-# discovered at run time.
+# So this refuses because the port is unfinished and unverified, not
+# because the engine cannot get there.
 #
 # IRIS_CONFIGURE_ONLY_64 configures 64-bit anyway. It is for looking at
 # this file's own workings where there is no 32-bit toolchain to hand
@@ -77,16 +86,18 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     if(IRIS_CONFIGURE_ONLY_64)
         message(WARNING
             "Configuring 64-bit because IRIS_CONFIGURE_ONLY_64 is set. "
-            "The sources compile at this width, but the on-disk formats "
-            "are still read by striding over structs that change size, "
-            "so anything this builds must not be run. This is for "
-            "inspecting the configuration and nothing else.")
+            "The sources compile at this width, but the file formats' "
+            "four-byte reference slots are not all on the handle layer "
+            "yet and nothing has been run here, so anything this builds "
+            "must not be run. This is for inspecting the configuration "
+            "and nothing else.")
     else()
         message(FATAL_ERROR
-            "irisEng builds 32-bit. The sources compile at 64 bits, but "
-            "the world-file formats are read by striding over structs "
-            "that change size there, and no 64-bit build has been run. "
-            "This file's 32-bit section says what that rests on.\n"
+            "irisEng builds 32-bit. The sources compile and link at 64 "
+            "bits, but the four-byte reference slots the file formats fix "
+            "are still being moved onto the handle layer, and no 64-bit "
+            "build has ever been run. This file's 32-bit section is the "
+            "ledger of what has and has not been established.\n"
             "  Visual Studio:  cmake -S . -B build -A Win32\n"
             "  Linux:          cmake -S . -B build --toolchain "
             "cmake/linux-i386.cmake\n"
