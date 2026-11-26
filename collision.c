@@ -1762,7 +1762,10 @@ void COL_ResolveRefs(struct sGameObjectMain* gao)
         memset(instance->selectedInstElemPtrs, 0,
                sizeof(*instance->selectedInstElemPtrs) * instance->zoneNum);
         for (i = 0; i < instance->zoneNum; ++i)
-            instance->selectedInstElemPtrs[i] = (tColInstanceElem*)i;
+            // the zone's own index, which the walk below resolves into
+            // a colInstElems entry
+            instance->selectedInstElemPtrs[i] =
+                (tColInstanceElem*)LOA_ref_FromMarker(i);
         instance->instElemBitmask = 0;
     }
 
@@ -1772,7 +1775,7 @@ void COL_ResolveRefs(struct sGameObjectMain* gao)
         while (1)
         {
             slot = &instance->selectedInstElemPtrs[zone];
-            index = (uint8_t)*slot;
+            index = (uint8_t)LOA_ui_MarkerFromRef(*slot);
             if (index > 16u)
             {
                 gao->flags &= ~0x600u;
@@ -8129,7 +8132,8 @@ struct sColInstance* COL_ul_CallBackLoadInstance(uint32_t Offset)
             memset(zoneSlots, 0, zoneSlotBytes);
         }
         for (zone = 0; zone < instance->zoneNum; ++zone)
-            instance->selectedInstElemPtrs[zone] = (tColInstanceElem*)(uint8_t)LOA_ReadChar(&cursor, 0, 1);
+            instance->selectedInstElemPtrs[zone] = (tColInstanceElem*)
+                LOA_ref_FromMarker((uint8_t)LOA_ReadChar(&cursor, 0, 1));
         if (instance->instElemNum)
         {
             elem = (tColInstanceElem*)MEM_p_Alloc(sizeof(tColInstanceElem) * instance->instElemNum);

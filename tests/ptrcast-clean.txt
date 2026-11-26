@@ -38,6 +38,7 @@ basic_array.c
 bigfiles.c
 cameraengine.c
 cinebands.c
+collision.c
 common.c
 datapath.c
 dbg.c
@@ -57,6 +58,7 @@ geovertex.c
 gfx.c
 gfx/gfxanotherflare.c
 gfx/gfxborderfade.c
+gfx/gfxcarte.c
 gfx/gfxdesintegrate.c
 gfx/gfxdiaphragm.c
 gfx/gfxexplode.c
@@ -101,6 +103,7 @@ modifiers/crushmodifier.c
 modifiers/explodemodifier.c
 modifiers/gensoundmodifier.c
 modifiers/lazymodifier.c
+modifiers/leglinkmodifier.c
 modifiers/loadingsoundmodifier.c
 modifiers/morphmodifier.c
 modifiers/otcmodifier.c
@@ -115,6 +118,7 @@ modifiers/snakemodifier.c
 modifiers/snapmodifier.c
 modifiers/soundfxmodifier.c
 modifiers/speciallookatmodifier.c
+modifiers/spritegenmodifier.c
 modifiers/stpmodifier.c
 modifiers/symetriemodifier.c
 modifiers/xmecmodifier.c
