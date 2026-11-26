@@ -35,10 +35,12 @@ echo "=== video ==="
 # which shows up as every open failing rather than as a link error.
 # Compiling against them still catches the thing worth catching: an
 # API call that is right for one version of libav and not the other.
-# x32, deliberately: these are the public headers and they do not
-# differ between the two Windows builds -- avconfig.h carries only
-# endianness and fast-unaligned -- so the sweeps here read the ones
-# that are committed rather than the x64 tree, which is not.
+# x32, deliberately, and not because the two trees' headers are the
+# same -- they are not. The halves are the 9.0 branch at different
+# commits, so eight header files differ: five micro versions, the
+# version string, and two documentation comments. No declaration,
+# type or constant does, which is what this compile-only pass is
+# about, and tests/run_ffmpegtrees.sh is what keeps that true.
 if [ -d thirdparty/ffmpeg/x32/include ]; then
     # no -w here: on gcc 13 it disables the implicit-declaration
     # error beside it, and a call declared in a header that one

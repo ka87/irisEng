@@ -530,6 +530,7 @@ for one in tests/run_sdl3.sh \
            tests/run_gloverlay.sh \
            tests/run_glrender.sh \
            tests/ifacecheck.sh \
+           tests/run_ffmpegtrees.sh \
            tests/projcheck.sh \
            tests/glconvcheck.sh \
            tests/tweakcheck.sh \

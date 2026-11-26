@@ -41,10 +41,11 @@ before compiling, with a message naming `../x64/README.md`, if that
 directory is still empty.
 
 The Linux sweeps under `tests/` read **this** directory's headers
-whichever width they compile at, deliberately: these are the public
-headers and they do not differ between the two Windows builds --
-`avconfig.h` carries only endianness and fast-unaligned -- so they
-read the ones that are committed.
+whichever width they compile at. Not because the two halves are
+identical -- they are the 9.0 branch at different commits and eight
+header files differ -- but because none of what differs is a
+declaration, a type or a constant, which is what those sweeps check.
+`tests/run_ffmpegtrees.sh` is what keeps that true.
 
 ## LGPL
 
