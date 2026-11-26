@@ -40,14 +40,14 @@ cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
 CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -no-pie -fno-pie -Itests/stub -Itests"
-# ACT_ELEM_BYTES=20: the frozen copy sizes an action's block at twenty
+# IRIS_FROZEN_SIZES: the frozen copy sizes an action's block at twenty
 # bytes an element, which is what tActionElem measures where pointers
-# are four, and it cannot be changed. This build pins the rewrite to
-# the same figure so the two agree on what the allocator was asked
+# are four, and it cannot be changed. This build pins every such figure in the rewrite to
+# the same figures so the two agree on what the allocator was asked
 # for; the mock's 512-byte guard covers the elements being wider than
 # that here. Whether the real size is enough is checked below instead,
 # which is the half a differential against a 32-bit copy cannot do.
-DIFFCFLAGS="$CFLAGS -DHDL_TRANSLATES=0 -DACT_ELEM_BYTES=20"
+DIFFCFLAGS="$CFLAGS -DHDL_TRANSLATES=0 -DIRIS_FROZEN_SIZES"
 # The translating build: no -no-pie and nothing forced, so the layer
 # is whatever this host's pointer width asks for.
 CFLAGS_T="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"

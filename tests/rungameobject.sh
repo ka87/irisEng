@@ -26,7 +26,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# IRIS_FROZEN_SIZES: a tGaoMatrix is 96 bytes where pointers are four
+# and 104 where they are eight, and the frozen copy asks the allocator
+# for 96 and cannot be changed. This build pins the rewrite to the same
+# figure so the two agree on what was asked for; common.h says what
+# that macro is for.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -DIRIS_FROZEN_SIZES -Itests/stub -Itests"
 OUT=tests/build
 mkdir -p "$OUT"
 

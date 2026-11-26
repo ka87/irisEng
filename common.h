@@ -42,6 +42,31 @@
  * it has C11, and an array that cannot have its size otherwise. The
  * message stays an argument either way, so it is on the screen beside
  * the failure even where the compiler cannot print it. */
+/* The size of a type, and the figure a frozen copy asks for instead.
+ *
+ * Several loaders sized a block with the literal their struct measured
+ * where pointers are four. That is wrong wherever the struct grew, and
+ * the block then held fewer elements than were written into it -- but
+ * correcting it moves the one thing some differentials compare, which
+ * is the figure the allocator was asked for, against a frozen copy
+ * that asks for the old literal and cannot be changed.
+ *
+ * So the real size goes in the source with the old figure beside it,
+ * and the builds that make that comparison define IRIS_FROZEN_SIZES
+ * and get the old one. Their mocks' own headroom covers the shortfall,
+ * which is what that headroom is for, and a direct check measures the
+ * real figure where the differential cannot. Every other build --
+ * every real build -- gets sizeof.
+ *
+ * The second argument is documentation as much as anything: it says
+ * what the struct used to measure, which is the only record of why the
+ * literal was ever right. */
+#ifdef IRIS_FROZEN_SIZES
+#define IRIS_SIZEOF(type, frozen) ((unsigned int)(frozen))
+#else
+#define IRIS_SIZEOF(type, frozen) ((unsigned int)sizeof(type))
+#endif
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define IRIS_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 #else

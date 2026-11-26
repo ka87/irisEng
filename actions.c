@@ -421,7 +421,7 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
            the file's own record stays a 20, because that is the
            file. */
         act = (tAction*)MEM_p_Alloc(sizeof(tAction)
-                                    + ACT_ELEM_BYTES * elemNum);
+                                    + IRIS_SIZEOF(tActionElem, 20) * elemNum);
         act->actionElemNum = elemNum;
         act->actionElemIDForTransition = LOA_ReadChar(&readPtr, 0, 1);
         LOA_ReadShort(&readPtr, 0, 2);
@@ -451,7 +451,7 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
     {
         /* 324 was 4 + 20 * 16: the header and sixteen elements. */
         act = (tAction*)MEM_p_Alloc(sizeof(tAction)
-                                    + ACT_ELEM_BYTES * 16);
+                                    + IRIS_SIZEOF(tActionElem, 20) * 16);
         act->actionElemNum = 0;
         act->actionElemIDForTransition = 0;
     }

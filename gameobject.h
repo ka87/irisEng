@@ -226,24 +226,6 @@ typedef struct sActionElem
     uint8_t _pad;
 } tActionElem;
 
-/* What one element occupies, which the action loader sizes its block
-   from.
- *
- * It was the literal 20, which is what the element measures where
- * pointers are four: the element carries three reference fields, so it
- * is 32 where they are eight and the block was twenty bytes an element
- * short. Every element after the first then sat past it, which is a
- * garbage shape read through a guard that only tests for nought.
- *
- * A gate rather than a bare sizeof, for the same reason MEM_PTR_BYTES
- * is one: the actions differential compares the figure the allocator
- * was asked for against a frozen copy that asks for 20 an element and
- * cannot be changed, so that build pins this to 20 and the mock's own
- * guard covers the shortfall. Every other build gets the real size,
- * and tests/run_actions.sh checks it is enough. */
-#ifndef ACT_ELEM_BYTES
-#define ACT_ELEM_BYTES ((unsigned int)sizeof(tActionElem))
-#endif
 
 typedef struct sAction
 {

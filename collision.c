@@ -1559,7 +1559,7 @@ void COL_ColMap_AddGeometric(struct sColCollisionObject* cob, struct sGEOGRO* ge
     }
 
     mesh->meshChunkElemNum = geo->triangleChunkCount;
-    mesh->meshChunkElems = (tCobMeshChunkElem*)MEM_p_Alloc(16 * geo->triangleChunkCount);
+    mesh->meshChunkElems = (tCobMeshChunkElem*)MEM_p_Alloc(sizeof(tCobMeshChunkElem) * geo->triangleChunkCount);
 
     geoChunk = geo->triangleChunks;
     geoChunkEnd = &geoChunk[geo->triangleChunkCount];
@@ -8336,7 +8336,7 @@ tColCollisionObject* COL_ul_CallBackLoadCob(uint32_t Offset)
         }
         count = LOA_ReadLong(&cursor, 0, 1);
         cobMesh->meshChunkElemNum = count;
-        chunk = (tCobMeshChunkElem*)MEM_p_Alloc(16 * count);
+        chunk = (tCobMeshChunkElem*)MEM_p_Alloc(sizeof(tCobMeshChunkElem) * count);
         chunkEnd = &chunk[cobMesh->meshChunkElemNum];
         cobMesh->meshChunkElems = chunk;
         for (savedChunkEnd = chunkEnd; chunk < chunkEnd; ++chunk)
