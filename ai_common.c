@@ -519,6 +519,35 @@ BOOL AI_SpecialWParam(char w)
     return w == 24;
 }
 
+/* Give back the handles AI_ResolveAllFctRef took for a function's
+   string constants.
+ *
+ * It took one per node that holds a string, and the layer answers with
+ * the same handle for the same address, so this is one release per
+ * address. Without it a world reloaded enough times would run the
+ * index space down, since the block lands somewhere new each time.
+ *
+ * The walk has to use the remapped ids: the resolve rewrites every
+ * node's category and val2 through AI_gaw_EnumLink as it goes, which
+ * is why the read side compares against AI_gaw_EnumLink[38] rather
+ * than 38. The terminator keeps its own category, because the resolve
+ * stops when it sees it rather than rewriting it. */
+static void AI_ReleaseStringConsts(tAIFunction* func)
+{
+    tAINode* node;
+
+    if (!func->nodes || !func->localStringConstsData)
+        return;
+    /* bit 2 of the first node is what the resolve sets when it has run;
+       a function that never resolved took no handles. */
+    if ((func->nodes->flags & 0x4) == 0)
+        return;
+    for (node = func->nodes; node->category != 31; ++node)
+        if (node->category == (char)AI_gaw_EnumLink[1]
+            && node->val2 == AI_gaw_EnumLink[38])
+            HDL_Release(HDL_p_Pointer((uint32_t)node->val));
+}
+
 unsigned int AI_ul_RealResolveOneRef(int type, unsigned int key)
 {
     unsigned int pos;
@@ -581,7 +610,16 @@ void AI_ResolveAllFctRef(tAIModel* aiModel)
                         if (currNode->category == 1)
                         {
                             if (currNode->val2 == 38)
-                                currNode->val += (int)aiModel->funcs[i]->localStringConstsData;
+                                // val is an offset into the function's
+                                // string constants and has four bytes
+                                // to hold the result, which an address
+                                // does not fit. A handle does, and the
+                                // read side already resolves one:
+                                // AI_GetStringFromStack takes this
+                                // word through HDL_p_Pointer.
+                                currNode->val = (int)HDL_ul_Handle(
+                                    aiModel->funcs[i]->localStringConstsData
+                                    + currNode->val);
                             else
                                 currNode->val = AI_ul_ResolveOneRef(currNode->val2, currNode->val);
                         }
@@ -996,6 +1034,8 @@ void AI_FreeModel(tAIModel* aiModel)
         {
             if (!--aiModel->funcs[i]->usageCount)
             {
+                // before the nodes go, because the handles are in them
+                AI_ReleaseStringConsts(aiModel->funcs[i]);
                 if (aiModel->funcs[i]->nodes)
                     MEM_FreeAlign(aiModel->funcs[i]->nodes);
                 if (aiModel->funcs[i]->localStringConstsData)
