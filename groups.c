@@ -84,7 +84,11 @@ tGameObjectMain* GRP_pst_CorresGAO(tGroup* group1, tGroup* group2, tGameObjectMa
     tGameObjectMain* retGao;
     tableElemStructPF* currElem;
     tableElemStructPF* lastElem;
-    int twoGroupMemoryPosDistance;
+    /* A byte distance between two tables' allocations, so the type a
+       pointer difference has: an int holds it only while the two are
+       within two gigabytes of each other, which is a property of the
+       allocator and not something this can rely on. */
+    ptrdiff_t twoGroupMemoryPosDistance;
 
     if (gaoOrGaoID == (tGameObjectMain*)1)
         return (tGameObjectMain*)1;

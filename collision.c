@@ -10989,7 +10989,14 @@ void COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id)
     tColInstanceElem* own;
     void* shape;
     uint8_t design;
-    int moved;
+    /* How far the realloc moved the block, which is the type a pointer
+       difference has. An int holds it only while the old and new
+       blocks are within two gigabytes of each other: true of a 32-bit
+       address space, and not something a realloc promises where the
+       space is wider -- a large block often gets a fresh mapping. Every
+       pointer rebased below would then be rebased by a truncated
+       distance. */
+    ptrdiff_t moved;
 
     if (id == 0xFF)
         return;

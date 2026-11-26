@@ -1,4 +1,6 @@
 #include "../ai.h"
+#include "../loading.h"
+#include "../dbg.h"
 #include "../memory.h"
 #include "../engine.h"
 #include "ai_aifunctions.h"
@@ -41,9 +43,28 @@ static tAIFunction* AI_l_PopFunction(void)
 {
     char converted[52];
     tVarStackElem var;
+    int32_t stored;
 
     AI_GetVarFromStack(converted, &var);
-    return *(tAIFunction**)converted;
+
+    /* A function variable is a four-byte reference slot: its type
+       declares four bytes and copies them with the int copier, so
+       AI_GetVarFromStack fills the first word of the buffer and
+       nothing else. Reading the buffer as a pointer therefore took
+       that word plus four bytes of whatever the frame had there,
+       which is an address where the two happen to tile and nonsense
+       where they do not.
+
+       And the word is what the slot holds rather than an address, so
+       it is resolved and not cast. LOA_p_FromStored keeps the
+       not-found value, which the callers compare against. */
+    stored = *(int32_t*)converted;
+    if (stored == LOA_ADDRESS_NOT_FOUND || stored == 0)
+        DBG_OutputDebugString(
+            "AI: a function reference resolved to %d, so the slot held "
+            "no function. AI_l_EntryNode will be given %s.\n",
+            stored, stored ? "the not-found sentinel" : "nought");
+    return (tAIFunction*)LOA_p_FromStored(stored);
 }
 
 // Where a behaviour runs, a function with no nodes but a C
