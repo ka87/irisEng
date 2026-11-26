@@ -1,11 +1,10 @@
 # irisEng, built with CMake.
 #
-# The engine is a 32-bit program and only a 32-bit program. That is not
-# a preference: it casts pointers to int in a dozen places -- a sound
-# buffer is keyed by (int)sbe, and the differentials have to be linked
-# -no-pie to survive it -- so a 64-bit build would not be the same
-# program, it would be a broken one. The check below refuses rather
-# than letting that be discovered at run time.
+# The engine builds and runs as a 32-bit program. The check below
+# refuses a 64-bit configure, and its own comment says exactly what
+# that refusal does and does not rest on -- the short version is that
+# the pointer casts are nearly gone and the file formats are the
+# reason, not them.
 #
 # What this links today is the Windows game. Off Windows it builds
 # every engine source but the Direct3D renderer's six, which are left
@@ -35,25 +34,65 @@ if(NOT IRIS_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # ---------------------------------------------------------------- 32-bit
-
-# IRIS_CONFIGURE_ONLY_64 is for looking at this file's own workings
-# where there is no 32-bit toolchain to hand -- it was how the source
-# list and the library targets below were checked. It does not make a
-# 64-bit build work; it makes one that configures and must not be run.
+#
+# This refuses a 64-bit configure, and it is worth being exact about
+# why, because the reason has changed and the old one is no longer the
+# obstacle.
+#
+# What a 64-bit port has established, and the audit that says so:
+#
+#   - all 181 engine sources compile at -m64, none failing;
+#   - the 181 objects relocatably link together, with nothing
+#     engine-internal unresolved (tests/run_wholelink.sh);
+#   - 12 pointer/int cast sites are left in those sources, and every
+#     one of them is an internal 32-bit slot that wants a wider
+#     declaration. None needs an address-translation layer. Six of
+#     the twelve are a convention of the generated compiled-script C
+#     rather than the engine's, two are in the Direct3D renderer that
+#     is not compiled off Windows, and three are unreachable from
+#     anything the project file builds.
+#
+# What it has not established, and this is the refusal:
+#
+#   - 230 of the 409 structs with members change size between 32 and
+#     64 bits, and 65 places in 14 files advance a load cursor by the
+#     sizeof of a struct. Those strides are file formats. A struct
+#     that gains a pointer silently changes how a world file is read,
+#     and the four-byte slots inside those files -- a variable block's
+#     refs, a node's operand -- are fixed on disk and cannot widen
+#     with the pointer. That is the work, and it is not a compiler
+#     flag.
+#   - nothing has been linked into a running program at 64 bits, let
+#     alone run.
+#
+# So: the casts are no longer the reason, the formats are. Until a
+# 64-bit build has been run, this refuses rather than letting it be
+# discovered at run time.
+#
+# IRIS_CONFIGURE_ONLY_64 configures 64-bit anyway. It is for looking at
+# this file's own workings where there is no 32-bit toolchain to hand
+# -- it was how the source list and the library targets below were
+# checked -- and it does not make a 64-bit build work.
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     if(IRIS_CONFIGURE_ONLY_64)
         message(WARNING
             "Configuring 64-bit because IRIS_CONFIGURE_ONLY_64 is set. "
-            "Anything this builds stores pointers in ints and will not "
-            "run. This is for inspecting the configuration and nothing "
-            "else.")
+            "The sources compile at this width, but the on-disk formats "
+            "are still read by striding over structs that change size, "
+            "so anything this builds must not be run. This is for "
+            "inspecting the configuration and nothing else.")
     else()
         message(FATAL_ERROR
-            "irisEng is 32-bit only: it stores pointers in ints in several "
-            "places and a 64-bit build would truncate them.\n"
+            "irisEng builds 32-bit. The sources compile at 64 bits, but "
+            "the world-file formats are read by striding over structs "
+            "that change size there, and no 64-bit build has been run. "
+            "This file's 32-bit section says what that rests on.\n"
             "  Visual Studio:  cmake -S . -B build -A Win32\n"
             "  Linux:          cmake -S . -B build --toolchain "
             "cmake/linux-i386.cmake\n"
+            "\n"
+            "To configure 64-bit anyway, for inspection and not for "
+            "running, pass -DIRIS_CONFIGURE_ONLY_64=ON.\n"
             "\n"
             "Passing -m32 by hand instead moves the compiler and leaves "
             "CMake's library search and pkg-config on the 64-bit paths, "
