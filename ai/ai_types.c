@@ -68,7 +68,13 @@ tOfc_scriptengine_functions_types AI_gast_Types[23] = {
                                     {0x81, sizeof(Vec3), (void (*)(void *, void *))AI_EvalType_GetVector}, // vec
                                     {0x82, sizeof(Vec3), (void (*)(void *, void *))AI_EvalType_GetVector}, // vec
                                     {0x83, sizeof(Vec3), (void (*)(void *, void *))AI_EvalType_GetVector}, // vec
-                                    {0x84, 4, (void (*)(void *, void *))AI_EvalType_GetVector}, // ? size  // vec
+                                    {0x84, 4, (void (*)(void *, void *))AI_EvalType_GetVector}, // vec
+                                    // four bytes with the vector copier, which
+                                    // writes twelve -- the original's own table
+                                    // says four here and the same copier as its
+                                    // nine siblings, and this reproduces it.
+                                    // tests/run_aitypes.sh carries it as a known
+                                    // mismatch so it cannot go unnoticed.
                                     {0x85, sizeof(Vec3), (void (*)(void *, void *))AI_EvalType_GetVector}  // vec
 
 };

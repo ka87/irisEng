@@ -1030,11 +1030,18 @@ tAINode* AI_EvalFunc_TEXTToString(tAINode* node)
     char* slot;
 
     slot = AI_PopStackSlot();
-    //TODO FIXME: ezt is kideríteni és megcsinálni normálisan hogy mi az az enumlink[38] és milyen módon kell neki átadni, lehet ez egy stringptr?
-    reference[3] = (int)slot;
-    /* reference[0] is the key field of the text reference this
-       pushes, which is four bytes, so it holds a handle for the string
-       rather than its address. The read of it below resolves one. */
+    /* reference[0] is the key field of the text reference this pushes,
+       and it is the only word that travels: the string type's entry in
+       AI_gast_Types declares four bytes and copies with
+       AI_EvalType_GetInt, so AI_PutObjectToStack moves reference[0] and
+       nothing else. Four bytes is why it holds a handle for the string
+       rather than its address, and the read of it resolves one.
+
+       A `reference[3] = (int)slot` stood here, under the author's
+       question of what the string type is and how it should be passed.
+       It is answered by the entry above, and the store was writing a
+       truncated copy of the slot's address into a word the push does
+       not look at. */
     reference[0] = (int)HDL_ul_Handle(
         AI_EvalFunc_TEXTToString_C((tTextGet*)slot));
     AI_PutObjectToStack(reference, AI_gaw_EnumLink[38]);

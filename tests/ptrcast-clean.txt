@@ -18,6 +18,7 @@ ai/ai_eventtrackfunctions.c
 ai/ai_fields.c
 ai/ai_functions.c
 ai/ai_gameobjectfunctions.c
+ai/ai_gameobjecttextfunctions.c
 ai/ai_gfxfunctions.c
 ai/ai_gridfunctions.c
 ai/ai_inofunctions.c
