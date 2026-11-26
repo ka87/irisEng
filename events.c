@@ -169,9 +169,16 @@ tEventData* EVE_pst_DuplicateData(tEventData* eve)
                     {
                         if (newListElems->trackElems[j].eptrdu.data)
                         {
-                            // eptrdu is a union, so this length is the data pointer's own low half.
-                            newElemPtr = MEM_p_Alloc(newListElems->trackElems[j].eptrdu.size);
-                            memcpy(newElemPtr, newListElems->trackElems[j].eptrdu.data, newListElems->trackElems[j].eptrdu.size);
+                            // the length is the first word of the block
+                            // the slot points at, not anything in the
+                            // slot itself
+                            int elemLen = *(int16_t*)
+                                newListElems->trackElems[j].eptrdu.data;
+
+                            newElemPtr = MEM_p_Alloc(elemLen);
+                            memcpy(newElemPtr,
+                                   newListElems->trackElems[j].eptrdu.data,
+                                   elemLen);
                             newListElems->trackElems[j].eptrdu.data = newElemPtr;
                         }
                     }
@@ -1835,8 +1842,11 @@ void EVE_ResolveTrackRef(tGameObjectEventsList* list, tGameObjectEventsListElem*
             key = &track->trackElems[i];
             if ((key->flags2 & 0x20) != 0)
             {
-                // The track index is the elemPtr value itself, but the key index is read through it.
-                key->eptrdu.data = list->listElems[(int16_t)key->eptrdu.data].trackElems[(int16_t)(((*((uint32_t*)key->eptrdu.data)) >> 16) & 0xffff)].eptrdu.data;
+                // Both indices are in the slot's own two halves: the
+                // list in the low one and the track in the high one.
+                key->eptrdu.data =
+                    list->listElems[(int16_t)key->eptrdu.size]
+                        .trackElems[(int16_t)key->eptrdu.type].eptrdu.data;
             }
             else if ((key->flags2 & 0x7C0) == 64)
             {
@@ -2228,7 +2238,9 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* r
                 if (isLink)
                 {
                     link = LOA_ReadLong(&src, 0, 1);
-                    keys[i].eptrdu.data = (void*)link; // link
+                    // the file's word, which EVE_ResolveTrackRef reads
+                    // back as the slot's two halves and replaces
+                    keys[i].eptrdu.data = (void*)LOA_ref_FromMarker(link);
                 }
                 else
                 {
