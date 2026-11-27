@@ -4,6 +4,7 @@
 #include "ai/ai_debugfunctions.h"
 #include "soft.h"
 #include "platform.h"
+#include "dbg.h"
 
 #include <SDL3/SDL_mutex.h>
 
@@ -211,9 +212,16 @@ void MEM_DescribeBlock(const void* ptr, char* out, unsigned int n)
     {
     case MEM_MARK_BLOCK:         kind = "a live block"; break;
     case MEM_MARK_ALIGNED:       kind = "an aligned block's descriptor"; break;
-    case MEM_MARK_HOLE:          kind = "a freed block"; break;
     case MEM_MARK_FROMEND:       kind = "a block taken from the far end"; break;
-    case MEM_MARK_FROMEND_FREED: kind = "a freed far-end block"; break;
+    /* A freed block keeps its chain link where a live one keeps its
+       length, so there is no length to report for these two and
+       printing the word as one reads as a corrupted block rather
+       than a freed one. */
+    case MEM_MARK_HOLE:
+    case MEM_MARK_FROMEND_FREED:
+        snprintf(out, n, "a block that is already free, %llu into the arena",
+                 (unsigned long long)(addr - start));
+        return;
     default:
         snprintf(out, n,
                  "%llu into the arena, and no block starts here "
@@ -274,6 +282,30 @@ unsigned int MEM_GetElemIDBySize(unsigned int size)
        request at all: each band's range already ends on a multiple of
        four. */
     size = (size + MEM_WORD_MASK) & ~MEM_WORD_MASK;
+    /* Deliberately not what the compiled engine does, and the one
+       figure in here that is not its.
+
+       The first band is (size - 1) >> 2, which for a size of zero is
+       an unsigned underflow: 0x3FFFFFFF, against an array of 2304.
+       The compiled engine computes the same index and does not fault
+       on it, because its element is sixteen bytes and the subscript
+       wraps -- 0x3FFFFFFF * 16 is 0xFFFFFFF0 in thirty-two bits, so
+       it reads the sixteen bytes in front of the array, which are
+       the fields above it, and carries on with a wrong class.
+
+       At eight-byte words the element is twenty-four bytes and the
+       arithmetic is sixty-four bits wide, so nothing wraps and the
+       same index lands twenty-three gigabytes past the array. The
+       read faults, which is how it was found.
+
+       A size below the smallest block cannot name a class, and the
+       allocator already raises a request to that floor before asking
+       -- so this is where the other callers, which pass a block's own
+       recorded length, are held to the same floor. Where the length
+       is zero the block is not one, and MEM_Free says so below
+       rather than quietly chaining it. */
+    if (size < MEM_MIN_BLOCK_BYTES)
+        size = MEM_MIN_BLOCK_BYTES;
     if (size <= 512)
         return (size - 1) >> 2;
     if (size <= 1536)
@@ -518,6 +550,26 @@ void MEM_Free(void* ptr)
             }
             MEM_l_TakeLock();
             tmpPtr = (MEM_Word*)realBlockStartPtr;
+            /* Everything below reads the block's own recorded length
+               and chains the block on the class that length names, so
+               a block that is not live has nothing here worth
+               believing: a freed one holds its chain link where the
+               length goes, and freeing it again puts it on a chain it
+               is already on. Saying so and leaving it alone costs one
+               compare on the free path, and is the difference between
+               a line naming the pointer and a heap that is wrong from
+               here on. */
+            if (tmpPtr[-2] != MEM_MARK_BLOCK)
+            {
+                char where[160];
+
+                MEM_l_GiveLock();
+                MEM_DescribeBlock(ptr, where, sizeof(where));
+                DBG_OutputDebugString(
+                    "mem: %p is not a live block and was not freed -- %s\n",
+                    ptr, where);
+                return;
+            }
             holeElem = &tmpPtr[-1];
             elemID = MEM_GetElemIDBySize((unsigned int)tmpPtr[-1]);
             realBlockSize = MEM_gst_MemoryInfo.memInfoElems[elemID].size;
