@@ -11,7 +11,11 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# IRIS_FROZEN_SIZES: the frozen copy fills the AI object lists with
+# addresses, which is what fitted an element before pointers were
+# eight bytes. It cannot be changed, so the rewrite is told to
+# write the same thing here and the two fill the same array.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DIRIS_FROZEN_SIZES"
 OUT=tests/build
 mkdir -p "$OUT"
 

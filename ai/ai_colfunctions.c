@@ -194,7 +194,7 @@ tAINode* AI_EvalFunc_COLBVGetFirstOverlap(tAINode* node)
 
 // The list the script gets is terminated with a null entry as well as
 // counted.
-int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* gao, tAIObjRef* outList, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLBVGetAllOverlaps_C(struct sGameObjectMain* gao, tAIObjOut* outList, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     tGameObjectCollDetectionList* overlaps;
     tGameObjectMain** entry;
@@ -231,7 +231,7 @@ tAINode* AI_EvalFunc_COLBVGetAllOverlaps(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLBVGetAllOverlaps_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLBVGetAllOverlaps_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                        flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -639,7 +639,7 @@ tAINode* AI_EvalFunc_COLCrossableSet(tAINode* node)
     return node + 1;
 }
 
-int AI_EvalFunc_COLZDMObjectListGet_C(tGameObjectMain* gao, tAIObjRef* outList, Vec3* pos, int reportFilter)
+int AI_EvalFunc_COLZDMObjectListGet_C(tGameObjectMain* gao, tAIObjOut* outList, Vec3* pos, int reportFilter)
 {
     return COL_Report_GetZDMGameObjectList(gao, WOR_gpst_CurrentWorld, outList, pos, reportFilter);
 }
@@ -658,7 +658,7 @@ tAINode* AI_EvalFunc_COLZDMObjectListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLZDMObjectListGet_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLZDMObjectListGet_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                        &pos, reportFilter));
     return node + 1;
 }
@@ -876,7 +876,7 @@ tAINode* AI_EvalFunc_COLGetAllReportsNormal(tAINode* node)
 }
 
 // gao is unused: the list is built over the whole world.
-int AI_EvalFunc_COLGetAllVisibleObjects_C(struct sGameObjectMain* gao, tAIObjRef* outList, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLGetAllVisibleObjects_C(struct sGameObjectMain* gao, tAIObjOut* outList, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_VisibleObjectListCreate(WOR_gpst_CurrentWorld, flagMustHave, flagMustNothave,
                                        whatToTest, outList);
@@ -898,7 +898,7 @@ tAINode* AI_EvalFunc_COLGetAllVisibleObjects(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLGetAllVisibleObjects_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLGetAllVisibleObjects_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                            flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -1234,7 +1234,7 @@ tAINode* AI_EvalFunc_COLDesignGet(tAINode* node)
    the one that takes that route, which is why it is the only one whose
    mode comes from the script. */
 
-int AI_EvalFunc_COLZDEZDEListGet_C(struct sGameObjectMain* gao, tAIObjRef* outList, char zone, char otherZone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEZDEListGet_C(struct sGameObjectMain* gao, tAIObjOut* outList, char zone, char otherZone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, otherZone);
@@ -1260,13 +1260,13 @@ tAINode* AI_EvalFunc_COLZDEZDEListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLZDEZDEListGet_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLZDEZDEListGet_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                     zone, otherZone,
                                                     flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_COLZDEBVListGet_C(tGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEBVListGet_C(tGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 255);
@@ -1290,7 +1290,7 @@ tAINode* AI_EvalFunc_COLZDEBVListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLZDEBVListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLZDEBVListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                    flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -1357,7 +1357,7 @@ tAINode* AI_EvalFunc_COLZDEPivotCollide(tAINode* node)
     return node + 1;
 }
 
-int AI_EvalFunc_COLZDEPivotListGet_C(struct sGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEPivotListGet_C(struct sGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 0xFB);
@@ -1381,13 +1381,13 @@ tAINode* AI_EvalFunc_COLZDEPivotListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLZDEPivotListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLZDEPivotListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                       flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
 // No zone: a bounding volume against a pivot does not need one.
-int AI_EvalFunc_COLBVPivotListGet_C(struct sGameObjectMain* gao, tAIObjRef* outList, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLBVPivotListGet_C(struct sGameObjectMain* gao, tAIObjOut* outList, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, 0,
                           WOR_gpst_CurrentWorld, outList, 253);
@@ -1409,12 +1409,12 @@ tAINode* AI_EvalFunc_COLBVPivotListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLBVPivotListGet_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLBVPivotListGet_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                      flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_COLBVZDEListGet_C(tGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLBVZDEListGet_C(tGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 254);
@@ -1438,12 +1438,12 @@ tAINode* AI_EvalFunc_COLBVZDEListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLBVZDEListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLBVZDEListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                    flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_COLPivotZDEListGet_C(tGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLPivotZDEListGet_C(tGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 0xFA);
@@ -1467,12 +1467,12 @@ tAINode* AI_EvalFunc_COLPivotZDEListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLPivotZDEListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLPivotZDEListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                       flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_COLPivotBVListGet_C(struct sGameObjectMain* gao, tAIObjRef* outList, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLPivotBVListGet_C(struct sGameObjectMain* gao, tAIObjOut* outList, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, 0,
                           WOR_gpst_CurrentWorld, outList, 252);
@@ -1494,7 +1494,7 @@ tAINode* AI_EvalFunc_COLPivotBVListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLPivotBVListGet_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLPivotBVListGet_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                      flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -1556,7 +1556,7 @@ tAINode* AI_EvalFunc_COLZDEBVCenterCollide(tAINode* node)
     return node + 1;
 }
 
-int AI_EvalFunc_COLZDEBVCenterListGet_C(tGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLZDEBVCenterListGet_C(tGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 0xEF);
@@ -1580,12 +1580,12 @@ tAINode* AI_EvalFunc_COLZDEBVCenterListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLZDEBVCenterListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLZDEBVCenterListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                          flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
 
-int AI_EvalFunc_COLBVCenterZDEListGet_C(tGameObjectMain* gao, tAIObjRef* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_COLBVCenterZDEListGet_C(tGameObjectMain* gao, tAIObjOut* outList, char zone, int flagMustHave, int flagMustNothave, int whatToTest)
 {
     return COL_ListCreate(gao, flagMustHave, flagMustNothave, whatToTest, zone,
                           WOR_gpst_CurrentWorld, outList, 0xEE);
@@ -1609,7 +1609,7 @@ tAINode* AI_EvalFunc_COLBVCenterZDEListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLBVCenterZDEListGet_C(gaoUltra, (tGameObjectMain**)var.ptr, zone,
+    AI_PutIntToStack(AI_EvalFunc_COLBVCenterZDEListGet_C(gaoUltra, (tAIObjOut*)var.ptr, zone,
                                                          flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -1734,7 +1734,7 @@ tAINode* AI_EvalFunc_COLSwapToSpecific(tAINode* node)
 
 // gao is unused: the list is built over the whole world, nearest first,
 // and maxCount caps it.
-int AI_EvalFunc_COLDistanceListGet_C(tGameObjectMain* gao, tAIObjRef* outList, Vec3* pos, float range, int flagMustHave, int flagMustNothave, int whatToTest, char maxCount)
+int AI_EvalFunc_COLDistanceListGet_C(tGameObjectMain* gao, tAIObjOut* outList, Vec3* pos, float range, int flagMustHave, int flagMustNothave, int whatToTest, char maxCount)
 {
     return COL_ListCreateDistance(flagMustHave, flagMustNothave, whatToTest,
                                   WOR_gpst_CurrentWorld, outList, pos, range, maxCount);
@@ -1762,7 +1762,7 @@ tAINode* AI_EvalFunc_COLDistanceListGet(tAINode* node)
     gaoUltra = AI_gpst_CurrentUltra;
     AI_gpst_CurrentUltra = AI_gpst_CurrentGameObject;
     AI_gpst_CurrentInstanceUltra = AI_gpst_CurrentInstance;
-    AI_PutIntToStack(AI_EvalFunc_COLDistanceListGet_C(gaoUltra, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_COLDistanceListGet_C(gaoUltra, (tAIObjOut*)var.ptr,
                                                       &pos, range, flagMustHave, flagMustNothave,
                                                       whatToTest, maxCount));
     return node + 1;
