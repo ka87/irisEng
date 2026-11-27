@@ -31,6 +31,8 @@ int tweak_water_smooth = 1;
 float tweak_water_smoothx;
 float tweak_water_smoothy;
 float tweak_water_min_bv;
+int tweak_memstat;
+int tweak_shadow = 1;
 
 /* Three of the tweaks are not variables of this module's: they are
    capability flags the renderer works out from the hardware when it
@@ -87,11 +89,21 @@ struct sTweakElem tweaks[] = {
        real scene, not something to be worked out from two APIs'
        conventions. */
     {"gl_water_flip", 0, &tweak_gl_water_flip},
+    /* The pool panel: 1 puts it up and leaves it up, 0 takes it
+       down. It reads the allocator's own accounting half a second at a
+       time rather than every frame, so what it shows is a sample and
+       not a per-frame figure. */
+    {"memstat", 0, &tweak_memstat},
     {"mipmaplodbias", 1, &tweak_mipmaplodbias},
     {"perf", 0, &tweak_perf},
     {"perf_fps", 0, &tweak_perf_fps},    
     {"perf_fps_min", 1, &tweak_perf_fps_min},
     {"perf_fps_target", 1, &tweak_perf_fps_target},
+    /* Whether anything draws shadows onto the object it is rendering:
+       1 as the game does, 0 not at all. The shadows are still gathered
+       and still follow their objects, so turning it back on needs no
+       reload. */
+    {"shadow", 0, &tweak_shadow},
     /* Sorted, and not by taste: the console finds a tweak by
        bsearching this table, so a name out of place is a tweak that
        cannot be set. water_min_bv sat above water_blur_normal and was

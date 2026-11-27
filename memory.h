@@ -99,6 +99,36 @@ void* MEM_GEO_p_Alloc(unsigned int size);
 void* MEM_p_ReallocAligned(void* ptr, unsigned int size, int alignment);
 void MEM_FreeAlign(void* ptr);
 void MEM_GetHolesStat(int* holesNum, int* sizeOfHoles);
+
+/* How many bands of size classes there are. A class is one of 2304,
+   which is too many to look at; the bands are the eighteen ranges
+   MEM_GetElemIDBySize divides a request into, 128 classes each, and
+   they are the grain something watching the pool can read. */
+#define MEM_STAT_BANDS 18
+
+typedef struct memPoolBandStat
+{
+    unsigned int smallest;   /* the band's first class's block size */
+    unsigned int largest;    /* and its last's */
+    unsigned int holes;      /* free blocks chained in the band */
+    unsigned int holeBytes;  /* what they come to, headers included */
+} memPoolBandStat;
+
+/* A snapshot for a watcher, taken under the allocator's own lock so it
+   cannot read a chain that is being relinked. */
+typedef struct memPoolStat
+{
+    unsigned int poolSize;      /* the whole arena */
+    unsigned int handedOut;     /* reached by the cursor, so never free again */
+    unsigned int byEngine;
+    unsigned int byTextures;
+    unsigned int total;
+    unsigned int holes;         /* every band's, summed */
+    unsigned int holeBytes;
+    memPoolBandStat bands[MEM_STAT_BANDS];
+} memPoolStat;
+
+void MEM_GetPoolStat(memPoolStat* out);
 BOOL MEM_Defrag(int onlyOneHole);
 void MEM_ResetTmpMemory();
 int MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(void* ptr);
