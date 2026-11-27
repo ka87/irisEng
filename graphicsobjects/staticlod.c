@@ -34,6 +34,24 @@ struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t dist
     return lod->geo[GEO_l_StaticLOD_GetIndex(lod, distance)];
 }
 
+/* The most vertices any one of the levels has. A caller holding one
+   per-vertex array for the whole set needs room for the largest, since
+   which level renders depends on the distance. */
+unsigned int GEO_ul_StaticLOD_MaxVertexNum(struct sGEOSTATICLOD* lod)
+{
+    unsigned int most = 0;
+    int i;
+
+    if (!lod)
+        return 0;
+    for (i = 0; i < lod->lodNum; i++)
+    {
+        if (lod->geo[i] && lod->geo[i]->vertexNum > most)
+            most = lod->geo[i]->vertexNum;
+    }
+    return most;
+}
+
 void GEO_StaticLOD_FreeContent(tGEOSTATICLOD* lod)
 {
     int i;

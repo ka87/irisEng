@@ -831,6 +831,34 @@ void WOR_World_AttachGameObject(struct sWorld* world, struct sGameObjectMain* ga
                         *newColors = gro->vertexNum;
                     }
                 }
+                else if (gro->intf->id == 8)
+                {
+                    /* Deliberate divergence: only a single geometry has
+                       its colours resized to match, and a static LOD has
+                       one array for up to six levels whose vertex counts
+                       differ. Whichever level the distance picks is then
+                       rendered against an array sized for another, and a
+                       level with more vertices reads past its end. Size
+                       it for the largest level so every one of them is
+                       covered, and clear what the file did not fill so
+                       the extra vertices are black rather than whatever
+                       the allocator held. */
+                    vertexNum = GEO_ul_StaticLOD_MaxVertexNum((tGEOSTATICLOD*)gro);
+                    if ((unsigned int)*rliColors < vertexNum)
+                    {
+                        unsigned int had = (unsigned int)*rliColors;
+
+                        DBG_OutputDebugString(
+                            "rli: %p has %u colours for %u vertices across"
+                            " %u levels, growing it\n",
+                            (void*)gao, had, vertexNum,
+                            (unsigned int)((tGEOSTATICLOD*)gro)->lodNum);
+                        newColors = (int*)MEM_p_Realloc(rliColors, 4 * vertexNum + 4);
+                        visual->RLIVertexColors = newColors;
+                        memset(newColors + 1 + had, 0, 4 * (vertexNum - had));
+                        *newColors = (int)vertexNum;
+                    }
+                }
             }
         }
         else
