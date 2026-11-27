@@ -90,11 +90,11 @@ int GAO_ModifierShadow_Load(struct sModifier* mdf, char* readPtr)
         if ((texElem = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, sdw->texKey)) != NULL)
         {
             sdw->shadowTextureIdx = texElem->textElemIdx;
-            return readPtr - readPtrOrig;
+            return (int)(readPtr - readPtrOrig);
         }
         sdw->shadowTextureIdx = TEX_w_List_AddTexture(&TEX_gst_GlobalList, sdw->texKey);
     }
-    return readPtr - readPtrOrig;
+    return (int)(readPtr - readPtrOrig);
 }
 
 void GAO_ModifierShadow_Apply(struct sModifier* mdf, void* unk1) {

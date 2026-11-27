@@ -137,11 +137,11 @@ void TAB_Ptable_Resize(tableDescStruct* table, unsigned int num)
     unsigned int i;
 
     oldPtr = (tableElemStructP*)table->firstElemPtr;
-    oldElemNum = (tableElemStructP*)table->lastElemPtr - oldPtr + 1;
+    oldElemNum = (unsigned int)((tableElemStructP*)table->lastElemPtr - oldPtr + 1);
     newElemNum = num;
     if (abs((int)(num - oldElemNum)) < 256)
         newElemNum = oldElemNum + 256;
-    usedElemNum = (tableElemStructP*)table->nextElemPtr - oldPtr;
+    usedElemNum = (unsigned int)((tableElemStructP*)table->nextElemPtr - oldPtr);
     if (newElemNum < 2)
         newElemNum = 2;
     newPtr = (tableElemStructP*)MEM_p_Alloc(sizeof(tableElemStructP) * newElemNum);
@@ -274,11 +274,11 @@ void TAB_PFtable_Resize(tableDescStruct* table, unsigned int size)
     unsigned int i;
 
     oldPtr = (tableElemStructPF*)table->firstElemPtr;
-    oldElemNum = ((tableElemStructPF*)(table->lastElemPtr)) - oldPtr + 1;
+    oldElemNum = (unsigned int)(((tableElemStructPF*)(table->lastElemPtr)) - oldPtr + 1);
     newElemNum = size;
     if (abs((int)(oldElemNum - size)) < 256)
         newElemNum = oldElemNum + 256;
-    usedElemNum = ((tableElemStructPF*)(table->nextElemPtr)) - oldPtr;
+    usedElemNum = (unsigned int)(((tableElemStructPF*)(table->nextElemPtr)) - oldPtr);
     if (newElemNum < 2)
         newElemNum = 2;
     newPtr = (tableElemStructPF*)MEM_p_Alloc(sizeof(tableElemStructPF) * newElemNum);

@@ -274,5 +274,5 @@ int GEO_ul_ModifierMorphing_Load(struct sModifier* mdf, char* data)
         }
     }
 
-    return data - start;
+    return (int)(data - start);
 }

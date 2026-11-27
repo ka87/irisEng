@@ -99,5 +99,5 @@ int GEO_ul_ModifierSymetrie_Load(struct sModifier* mdf, char* data)
     LOA_ReadLong(&data, 0, 2);
     sym->flags = LOA_ReadLong(&data, 0, 1);
     sym->i2 = LOA_ReadFloat(&data, 0, 1);
-    return data - start;
+    return (int)(data - start);
 }

@@ -88,7 +88,9 @@ struct sModifier* GAO_ModifierPhoto_Get(struct sGameObjectMain* gao, int wantSph
         return 0;
 
     cam = &WOR_gpst_CurrentWorld->viewPtr->displayData->ct.cam;
-    if (WOR_gpst_CurrentWorld->viewPtr->displayData == (tGdi_DisplayData*)0xFFFFFF30)
+    /* The same test the compiled code folds into a comparison of the
+       display data against the negated field offset. */
+    if (!cam)
         return 0;
 
     owner = gao;
@@ -208,7 +210,7 @@ int GAO_ModifierPhoto_Load(struct sModifier* mdf, char* data)
         photo->infoOffset.z = 0.0;
     }
     photo->radius = LOA_ReadFloat(&data, 0, 1);
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierPhoto_Apply(tModifier* mdf, void* unk1)

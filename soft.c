@@ -404,9 +404,9 @@ void SOFT_ZList_Draw()
                     {
                         if (ZList_V != GFX_gpst_Geo->vertices)
                         {
-                            GFX_gpst_Geo->vertexNum = ZList_V - GFX_gpst_Geo->vertices;
-                            GFX_gpst_Geo->uvNum = ZList_UVs - GFX_gpst_Geo->UVs;
-                            GFX_gpst_Geo->triangleChunks->triangleNum = ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+                            GFX_gpst_Geo->vertexNum = (uint32_t)(ZList_V - GFX_gpst_Geo->vertices);
+                            GFX_gpst_Geo->uvNum = (uint32_t)(ZList_UVs - GFX_gpst_Geo->UVs);
+                            GFX_gpst_Geo->triangleChunks->triangleNum = (uint32_t)(ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems);
                             gpst_DX_stDD->verticesCurrent = GFX_gpst_Geo->vertices;
                             MAT_DrawIndexedTriangle(GFX_gpst_Geo, ZList_Mat, GFX_gpst_Geo->triangleChunks);
                             ZList_T = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
@@ -457,9 +457,9 @@ void SOFT_ZList_Draw()
                         {
                             if (ZList_V != GFX_gpst_Geo->vertices)
                             {
-                                GFX_gpst_Geo->vertexNum = ZList_V - GFX_gpst_Geo->vertices;
-                                GFX_gpst_Geo->uvNum = ZList_UVs - GFX_gpst_Geo->UVs;
-                                GFX_gpst_Geo->triangleChunks->triangleNum = ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+                                GFX_gpst_Geo->vertexNum = (uint32_t)(ZList_V - GFX_gpst_Geo->vertices);
+                                GFX_gpst_Geo->uvNum = (uint32_t)(ZList_UVs - GFX_gpst_Geo->UVs);
+                                GFX_gpst_Geo->triangleChunks->triangleNum = (uint32_t)(ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems);
                                 gpst_DX_stDD->verticesCurrent = GFX_gpst_Geo->vertices;
                                 MAT_DrawIndexedTriangle(GFX_gpst_Geo, ZList_Mat, GFX_gpst_Geo->triangleChunks);
                                 ZList_T = GFX_gpst_Geo->triangleChunks->triangleChunkElems;
@@ -515,9 +515,9 @@ void SOFT_ZList_Draw()
     
     if (ZList_V != GFX_gpst_Geo->vertices)
     {
-        GFX_gpst_Geo->vertexNum = ZList_V - GFX_gpst_Geo->vertices;
-        GFX_gpst_Geo->uvNum = ZList_UVs - GFX_gpst_Geo->UVs;
-        GFX_gpst_Geo->triangleChunks->triangleNum = ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems;
+        GFX_gpst_Geo->vertexNum = (uint32_t)(ZList_V - GFX_gpst_Geo->vertices);
+        GFX_gpst_Geo->uvNum = (uint32_t)(ZList_UVs - GFX_gpst_Geo->UVs);
+        GFX_gpst_Geo->triangleChunks->triangleNum = (uint32_t)(ZList_T - GFX_gpst_Geo->triangleChunks->triangleChunkElems);
         gpst_DX_stDD->verticesCurrent = GFX_gpst_Geo->vertices;
         MAT_DrawIndexedTriangle(GFX_gpst_Geo, ZList_Mat, GFX_gpst_Geo->triangleChunks);
         ZList_T = GFX_gpst_Geo->triangleChunks->triangleChunkElems;

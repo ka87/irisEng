@@ -184,8 +184,8 @@ int GFX_i_Diaphragm_Render(tGfxDiaphragmData* iris)
         prevCorner = GFX_l_DiaphragmCorner(prev);
         curCorner = GFX_l_DiaphragmCorner(cur);
         if (prevCorner != curCorner)
-            tris = GFX_l_DiaphragmTriangle(tris, prev - verts, prevCorner, curCorner);
-        tris = GFX_l_DiaphragmTriangle(tris, prev - verts, curCorner, cur - verts);
+            tris = GFX_l_DiaphragmTriangle(tris, (int)(prev - verts), prevCorner, curCorner);
+        tris = GFX_l_DiaphragmTriangle(tris, (int)(prev - verts), curCorner, (int)(cur - verts));
         prev = cur;
     }
 

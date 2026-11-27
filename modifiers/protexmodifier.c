@@ -278,7 +278,7 @@ int PROTEX_ul_Modifier_Load(tModifier* mdf, char* data)
         protex->ptrCharArray2 = (char*)MEM_p_Alloc(protex->i2);
         LOA_ReadCharArray(&data, protex->ptrCharArray2, protex->i2, 1);
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void PROTEX_Modifier_Create(struct sGameObjectMain* gao, struct sModifier* mdf, void* initData)

@@ -843,20 +843,21 @@ void WOR_World_AttachGameObject(struct sWorld* world, struct sGameObjectMain* ga
                        covered, and clear what the file did not fill so
                        the extra vertices are black rather than whatever
                        the allocator held. */
-                    vertexNum = GEO_ul_StaticLOD_MaxVertexNum((tGEOSTATICLOD*)gro);
-                    if ((unsigned int)*rliColors < vertexNum)
+                    unsigned int most = GEO_ul_StaticLOD_MaxVertexNum((tGEOSTATICLOD*)gro);
+
+                    if ((unsigned int)*rliColors < most)
                     {
                         unsigned int had = (unsigned int)*rliColors;
 
                         DBG_OutputDebugString(
                             "rli: %p has %u colours for %u vertices across"
                             " %u levels, growing it\n",
-                            (void*)gao, had, vertexNum,
+                            (void*)gao, had, most,
                             (unsigned int)((tGEOSTATICLOD*)gro)->lodNum);
-                        newColors = (int*)MEM_p_Realloc(rliColors, 4 * vertexNum + 4);
+                        newColors = (int*)MEM_p_Realloc(rliColors, 4 * most + 4);
                         visual->RLIVertexColors = newColors;
-                        memset(newColors + 1 + had, 0, 4 * (vertexNum - had));
-                        *newColors = (int)vertexNum;
+                        memset(newColors + 1 + had, 0, 4 * (most - had));
+                        *newColors = (int)most;
                     }
                 }
             }
@@ -1349,7 +1350,7 @@ tWorld* WOR_pst_World_Load(tWorld* dest, int worldKey, int resolveAI)
                             {
                                 groCursorIdx = -1;
                                 if ((tableElemStructP*)(target->worldGROTable.nextElemPtr) > (tableElemStructP*)(groTable->lastElemPtr))
-                                    groCursorIdx = groCursor - (tableElemStructP*)(target->worldGROTable.firstElemPtr);
+                                    groCursorIdx = (int)(groCursor - (tableElemStructP*)(target->worldGROTable.firstElemPtr));
                                 TAB_PTable_AddElemToTable(&target->worldGROTable, lodGeo);
                                 lodGeo->intf->AddRef(lodGeo, 1);
                                 if (groCursorIdx != -1)

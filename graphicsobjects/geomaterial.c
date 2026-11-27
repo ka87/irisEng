@@ -8,7 +8,7 @@ tGEOMAT MAT_gst_DefaultSingleMaterial = {
     .intf = NULL,
     .usageCount = 0,
     .multiMaterialNumIfType4ThenAmbiantColor = 0xffffffff,
-    .multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)0xffffffff,
+    .multiMaterialPtrIfType4ThenDiffuseColor = (tGEOMAT**)(uintptr_t)0xffffffffu,
     .solidVertexColor = 0xffffffff,
     .unkFloat1 = 0.0f,
     .unkFloat2 = 1.0f,
@@ -73,7 +73,7 @@ void MAT_Validate_Single(struct sGEOMAT* mat)
 {
     int texIdx;
 
-    texIdx = mat->idxOrPtr;
+    texIdx = (int)mat->idxOrPtr;
     mat->validityFlag = 0x11;
     if (mat->unkFloat2 < 0.98000002
         || (texIdx != -1 && (TEX_gst_GlobalList.texElems[texIdx].texElemFlag & 8) != 0))
@@ -122,11 +122,11 @@ struct sGroGeneric* MAT_pst_CreateSingleFromBuffer(struct sGroGeneric* gro, char
 
     if (mat->idxOrPtr != -1)
     {
-        texElem = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, mat->idxOrPtr);
+        texElem = TEX_pst_List_FindTexture(&TEX_gst_GlobalList, (int)mat->idxOrPtr);
         if (texElem)
             mat->idxOrPtr = texElem->textElemIdx;
         else
-            mat->idxOrPtr = TEX_w_List_AddTexture(&TEX_gst_GlobalList, mat->idxOrPtr);
+            mat->idxOrPtr = TEX_w_List_AddTexture(&TEX_gst_GlobalList, (int)mat->idxOrPtr);
     }
     if (mat->negativeZeroOrOneUnknown > 1u)
         mat->negativeZeroOrOneUnknown = 0;
@@ -399,7 +399,7 @@ void MAT_TestUsedForMat(tGEOMAT* mat, char* used)
     switch (mat->intf->id)
     {
     case 3:
-        texIdx = mat->idxOrPtr;
+        texIdx = (int)mat->idxOrPtr;
         if (texIdx != -1)
             used[texIdx] = 1;
         break;

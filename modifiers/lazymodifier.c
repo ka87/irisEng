@@ -433,7 +433,7 @@ int GAO_ul_ModifierLazy_Load(tModifier* mdf, char* data)
         lazy->upperMax = 1.0;
         lazy->ff5 = 1.0;
         lazy->ff6 = 1.0;
-        return data - start;
+        return (int)(data - start);
     }
 
     lazy->ff1 = LOA_ReadFloat(&data, 0, 1);
@@ -448,7 +448,7 @@ int GAO_ul_ModifierLazy_Load(tModifier* mdf, char* data)
         if (version > 2)
             lazy->fff2 = LOA_ReadFloat(&data, 0, 1);
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierLazy_Unapply(struct sModifier* mdf, void* unk1)

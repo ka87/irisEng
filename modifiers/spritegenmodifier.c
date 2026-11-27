@@ -366,7 +366,7 @@ int SPG_ul_Modifier_Load(struct sModifier* mdf, char* readptr)
     // against the literal and a sign extended one would not match it
     spg->material = (struct sGEOMAT*)LOA_ref_FromMarker(0xffffffff);
 
-    return currReadPtr - readptr;
+    return (int)(currReadPtr - readptr);
 }
 
 void SPG_Modifier_Apply(tModifier* mdf, tGEOGRO* geogro)
