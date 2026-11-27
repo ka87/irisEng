@@ -2015,7 +2015,7 @@ void OBJ_ChangeIdentityFlags(tGameObjectMain* gao, unsigned int newFlags, int ol
     {
         if ((oldFlags & 0x40000) == 0)
         {
-            gao->extended->way = (tWay*)MEM_p_Alloc(8u);
+            gao->extended->way = (tWay*)MEM_p_Alloc(IRIS_SIZEOF(tWay, 8));
             way = gao->extended->way;
             way->wayElems = 0;
             way->wayElemNum = 0;

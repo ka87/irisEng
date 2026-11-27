@@ -20,7 +20,13 @@ CC=${CC:-gcc}
 # allocator was asked for -- the mock logs it -- so the rewrite has
 # to ask for the same thing, and the mock's own double headroom
 # covers the shortfall. The game build gets the real width.
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DMEM_PTR_BYTES=4"
+# IRIS_FROZEN_SIZES: the frozen copies ask the allocator for 8 for a
+# network and for the all-networks header, which is what each measures
+# where pointers are four, and they cannot be changed. This build pins
+# the rewrite to the same figures so the two agree on what was asked
+# for; common.h says what that macro is for, and the real size is
+# what every other build gets.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DMEM_PTR_BYTES=4 -DIRIS_FROZEN_SIZES"
 OUT=tests/build
 mkdir -p "$OUT"
 

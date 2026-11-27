@@ -79,7 +79,7 @@ tWayNetwork* WAY_ul_NetWorkCallback(uint32_t offset)
     int rootKey;
     int size;
 
-    network = (tWayNetwork*)MEM_p_Alloc(8u);
+    network = (tWayNetwork*)MEM_p_Alloc(IRIS_SIZEOF(tWayNetwork, 8));
     network->gao = 0;
     network->flags = 0;
     data = (char*)BIG_pc_ReadFileTmp(offset, &size);
@@ -101,7 +101,7 @@ tWayAllNetworks* WAY_ul_AllNetWorksCallback(uint32_t offset)
     int size;
     int i;
 
-    allNetworks = (tWayAllNetworks*)MEM_p_Alloc(8u);
+    allNetworks = (tWayAllNetworks*)MEM_p_Alloc(IRIS_SIZEOF(tWayAllNetworks, 8));
     allNetworks->networks = 0;
     allNetworks->networkNum = 0;
     data = (char*)BIG_pc_ReadFileTmp(offset, &size);
