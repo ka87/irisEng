@@ -25,7 +25,14 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Werror=implicit-function-declaration -DIRIS_MEM_DEBUG -Itests/stub -Itests -Ithirdparty/SDL3/include"
+# No -w, which this used to carry. It defeated the -Werror beside it --
+# -w suppresses the warning before the -Werror= can promote it, and an
+# explicit -Wimplicit-function-declaration after it does not bring it
+# back -- so the one thing these flags ask for was never enforced. A
+# renamed pool function called before its definition went unnoticed
+# here for that reason, and only MSVC said so. Nothing else in this
+# configuration warns, so the noise -w was hiding was the fault.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -Werror=implicit-function-declaration -DIRIS_MEM_DEBUG -Itests/stub -Itests -Ithirdparty/SDL3/include"
 OUT=tests/build
 mkdir -p "$OUT"
 
