@@ -17,6 +17,14 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="DebugWithASAN|Win32">
+      <Configuration>DebugWithASAN</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DebugWithASAN|x64">
+      <Configuration>DebugWithASAN</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -53,6 +61,22 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|Win32'" Label="Configuration">
+    <!-- A debugging build with the sanitizer and the debugging
+         allocator, kept apart from Debug so that Debug stays a plain
+         debugging build: this one is several times slower and cannot
+         carry edit and continue. -->
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -70,6 +94,12 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -77,9 +107,7 @@
     <LibraryPath>C:\BinkSDK;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <!-- Off because AddressSanitizer will not link beside it; see the
-         note on EnableASAN below. -->
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -87,6 +115,17 @@
     <LibraryPath>C:\BinkSDK;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|Win32'">
+    <!-- Off because the sanitizer will not link beside it; see the note
+         on EnableASAN below. -->
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\BinkSDK;$(DXSDK_DIR)Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\BinkSDK;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|x64'">
+    <!-- Off for the same reason as the Win32 one above. -->
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -127,13 +166,92 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\SDL3\include;$(ProjectDir)thirdparty\ffmpeg\x64\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <!-- Windows, as the Win32 configurations are: main.c has a
+           WinMain under _WIN32 and no main at all, which MSVC
+           defines on x64 too. A Console link looks for main and
+           does not find one. -->
+      <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;d3d9.lib;opengl32.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x64\bin\*.dll" "$(OutDir)"</Command>
+      <Message>Copying the libav DLLs next to the exe</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
       <!-- IRIS_MEM_DEBUG puts the pool allocator aside and gives every
            engine block its own allocation, so a write past one lands in
-           the C library's own guard rather than in the next engine
+           the sanitizer's red zone rather than in the next engine
            object, and a block handed back twice is named where it
-           happens. It is on here because this is the configuration
-           something is debugged in; take it out of the list for a
-           debugging build that runs at the pool's speed. -->
+           happens. -->
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;IRIS_MEM_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <!-- AddressSanitizer, which is where the red zone after each
+           block, the quarantine on freed ones and the stacks of the
+           allocation, the free and the access come from. The three
+           below are not preferences: it will not build beside any of
+           them. Edit and continue writes a different kind of debug
+           information, the runtime checks instrument the same frames
+           the sanitizer does, and an incremental link leaves thunks it
+           cannot see through. -->
+      <EnableASAN>true</EnableASAN>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\SDL3\include;$(ProjectDir)thirdparty\ffmpeg\x32\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- The prebuilt libav libraries carry no safe exception handler
+           table, and on x86 the linker refuses any object that cannot
+           contribute to the one it is building for the image. The table
+           is a property of the whole image, so the only answer is to
+           not ask for one. Debug|Win32 carries this for the same
+           reason; here it is not optional either way, because the link
+           is not incremental and so would build the table. -->
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\x32\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>winmm.lib;dxguid.lib;d3d9.lib;opengl32.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <!-- As the x64 one, with the 32-bit runtime. Which host directory
+           holds it depends on the toolchain the IDE is running, so both
+           are tried before giving up. -->
+      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x32\bin\*.dll" "$(OutDir)"
+if exist "$(VCToolsInstallDir)bin\Hostx64\x86\clang_rt.asan_dynamic-i386.dll" (
+  copy /y "$(VCToolsInstallDir)bin\Hostx64\x86\clang_rt.asan_dynamic-i386.dll" "$(OutDir)" &gt;nul
+) else if exist "$(VCToolsInstallDir)bin\Hostx86\x86\clang_rt.asan_dynamic-i386.dll" (
+  copy /y "$(VCToolsInstallDir)bin\Hostx86\x86\clang_rt.asan_dynamic-i386.dll" "$(OutDir)" &gt;nul
+) else (
+  echo NOTE: clang_rt.asan_dynamic-i386.dll is not in this toolchain, so AddressSanitizer is not installed.
+  echo       Add "C++ AddressSanitizer" in the Visual Studio Installer, or clear Enable Address Sanitizer
+  echo       for this configuration. IRIS_MEM_DEBUG alone still separates every block.
+)</Command>
+      <Message>Copying the libav DLLs and the sanitizer runtime next to the exe</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugWithASAN|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <!-- IRIS_MEM_DEBUG puts the pool allocator aside and gives every
+           engine block its own allocation, so a write past one lands in
+           the sanitizer's red zone rather than in the next engine
+           object, and a block handed back twice is named where it
+           happens. -->
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;IRIS_MEM_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <!-- AddressSanitizer, which is where the red zone after each
@@ -150,10 +268,10 @@
       <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\SDL3\include;$(ProjectDir)thirdparty\ffmpeg\x64\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <!-- Windows, as the Win32 configurations are: main.c has a
-           WinMain under _WIN32 and no main at all, which MSVC
-           defines on x64 too. A Console link looks for main and
-           does not find one. -->
+      <!-- Windows, as the other configurations are: main.c has a
+           WinMain under _WIN32 and no main at all, which MSVC defines
+           on x64 too. A Console link looks for main and does not find
+           one. -->
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(ProjectDir)thirdparty\ffmpeg\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>winmm.lib;dxguid.lib;d3d9.lib;opengl32.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
