@@ -3166,15 +3166,21 @@ void pcSND_ref_ReleaseTrackSB(tSndSoundBufferElem* oneChannel,
     HDL_Release(two);
 }
 
-void pcSND_ref_CreateTrackSB(tSndSoundBufferElem** stereo,
-                                    tSndSoundBufferElem** mono)
+/* The order is the creator's: the first out-param takes the
+   one-channel buffer and the second the two-channel one, which is what
+   the compiled engine does and what its caller expects. The parameters
+   were named the other way round, which reads as a crossing and is
+   not one -- see the note on tTrackResourceElem, whose two fields
+   carry the same inversion. */
+void pcSND_ref_CreateTrackSB(tSndSoundBufferElem** oneChannel,
+                                    tSndSoundBufferElem** twoChannel)
 {
-    tSndSoundBufferElem* s = NULL;
-    tSndSoundBufferElem* m = NULL;
+    tSndSoundBufferElem* mono = NULL;
+    tSndSoundBufferElem* stereo = NULL;
 
-    pcSND_CreateTrackSB(&s, &m);
-    *stereo = SND_ref_FromBuffer(s);
-    *mono = SND_ref_FromBuffer(m);
+    pcSND_CreateTrackSB(&mono, &stereo);
+    *oneChannel = SND_ref_FromBuffer(mono);
+    *twoChannel = SND_ref_FromBuffer(stereo);
 }
 
 void pcSND_ref_StreamGetMonoToStereo(tSndSoundBufferElem** track,
