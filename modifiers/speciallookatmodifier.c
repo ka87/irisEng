@@ -177,7 +177,7 @@ int GAO_ModifierSpecialLookAt_Load(struct sModifier* mdf, char* data)
         sla->f2 = LOA_ReadFloat(&data, 0, 1);
         sla->f3 = LOA_ReadFloat(&data, 0, 1);
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierSpecialLookAt_Unapply(struct sModifier* mdf, void* unk1)

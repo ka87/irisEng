@@ -161,7 +161,7 @@ int GAO_ModifierExplode_Load(struct sModifier* mdf, char* data)
     start = data;
     mdf->modifierFlags |= 0x1000000u;
     LOA_ReadLong(&data, 0, 2);
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierExplode_Reinit(struct sModifier* mdf)

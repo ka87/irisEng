@@ -1399,12 +1399,12 @@ tAIVars* AI_ul_CallbackLoadVars(uint32_t offset)
             {
                 if (varUnkData[i].i1)
                 {
-                    len = strlen(currReadPtr) + 1;
+                    len = (unsigned int)(strlen(currReadPtr) + 1);
                     LOA_ReadString(&currReadPtr, 0, len, 2);
                 }
                 if (varUnkData[i].i2)
                 {
-                    len = strlen(currReadPtr) + 1;
+                    len = (unsigned int)(strlen(currReadPtr) + 1);
                     LOA_ReadString(&currReadPtr, 0, len, 2);
                 }
             }

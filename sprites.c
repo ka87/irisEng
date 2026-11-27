@@ -102,7 +102,7 @@ void SPG_SerialSpriter(tSpgVertexElem* pos, tSpgVertexElem* step, int num)
     rnd = &f_RandomTable[gvBase];
     if (end > &SPG_gvStack[256])
     {
-        batches = ((char*)end - (char*)&SPG_gvStack[256] - 1) / (256 * sizeof(Vec3)) + 1;
+        batches = (unsigned int)(((char*)end - (char*)&SPG_gvStack[256] - 1) / (256 * sizeof(Vec3)) + 1);
         end -= 256 * batches;
         do
         {
@@ -121,7 +121,7 @@ void SPG_SerialSpriter(tSpgVertexElem* pos, tSpgVertexElem* step, int num)
             SPG_PackAndAddData(cur++, pos, step, rnd++);
         while (cur < end);
     }
-    gvBase = cur - SPG_gvStack;
+    gvBase = (unsigned int)(cur - SPG_gvStack);
 }
 
 static void SPG_l_DivideVertexAndColor(tSpgVertexElem* elem, int shift)

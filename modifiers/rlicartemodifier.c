@@ -154,7 +154,7 @@ int GEO_ul_ModifierRLICarte_Load(struct sModifier* mdf, char* data)
     {
         rli->indicesPtr = 0;
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void GEO_ModifierRLICarte_Reinit(struct sModifier* mdf)

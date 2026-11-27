@@ -88,5 +88,5 @@ int GEO_ul_ModifierSTP_Load(struct sModifier* mdf, char* data)
         stp->verticesStored = (Vec3*)MEM_p_Alloc(sizeof(Vec3) * count);
     else
         stp->verticesStored = 0;
-    return data - start;
+    return (int)(data - start);
 }

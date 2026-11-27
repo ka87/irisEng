@@ -150,7 +150,7 @@ int MDF_ul_Modifier_Load(struct sModifier** slot, char* currReaderPtr, int chain
         if (mdf->nextElem)
             mdf->nextElem->prevElem = mdf;
     }
-    return currReaderPtr - start;
+    return (int)(currReaderPtr - start);
 }
 
 struct sModifier* MDF_pst_GetByType(struct sGameObjectMain* gao, int mdfId)

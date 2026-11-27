@@ -108,5 +108,5 @@ int GEO_ul_ModifierSnap_Load(struct sModifier* mdf, char* data)
         snap->ptr[i].vec1Idx = LOA_ReadLong(&data, 0, 1);
         snap->ptr[i].vec2Idx = LOA_ReadLong(&data, 0, 1);
     }
-    return data - start;
+    return (int)(data - start);
 }

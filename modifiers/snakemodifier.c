@@ -198,7 +198,7 @@ int GAO_ModifierSNAKE_Load(struct sModifier* mdf, char* data)
     snake->f3 = LOA_ReadFloat(&data, 0, 1);
     for (i = 0; i < 20; i++)
         snake->ranks[i] = LOA_ReadLong(&data, 0, 1);
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierSNAKE_Reinit(struct sModifier* mdf)

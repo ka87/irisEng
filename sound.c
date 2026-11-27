@@ -1027,7 +1027,7 @@ int SND_i_AllocSound()
     if (SND_gst_Params.allocatedSoundsMaxNum)
         grown = (tSndSoundElem*)MEM_p_Realloc(SND_gst_Params.allocatedSounds, size);
     else
-        grown = (tSndSoundElem*)MEM_p_Alloc(size);
+        grown = (tSndSoundElem*)MEM_p_Alloc((unsigned int)size);
     oldMaxNum = SND_gst_Params.allocatedSoundsMaxNum;
     SND_gst_Params.allocatedSounds = grown;
     memset(&grown[SND_gst_Params.allocatedSoundsMaxNum], 0, sizeof(tSndSoundElem) * 1000);
@@ -1489,7 +1489,7 @@ int SND_i_GetWaveInfo(intptr_t Offset, tSndWavHdrStruct* wavHdrStructDest, int r
         fileStartOffset = (int)Offset;
         wawHdrRaw = DstBuf;
         if (!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2)
-            BIG_ReadNoSeek(Offset, DstBuf, 46u);
+            BIG_ReadNoSeek((int)Offset, DstBuf, 46u);
         if (LOA_gb_SpeedMode && BIG_gi_ReadMode == 2)
         {
             fetched = LOA_FetchBuffer(46);
@@ -4598,7 +4598,7 @@ void SND_AutoStop(struct sSoundInstanceElem* inst)
         if ((status & 1) != 0)
         {
             trackFlag = (inst->flags & 0x20000);
-            SND_StopRq((((char*)inst - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)));
+            SND_StopRq((int)(((char*)inst - (char*)SND_gst_Params.soundInstances) / sizeof(tSoundInstanceElem)));
             muteFlags = inst->muteFactorFlags | 4;
             inst->flags |= trackFlag; // fixed: was (unsigned int)a1
             inst->muteFactorFlags = muteFlags;
@@ -5540,7 +5540,7 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
             if (SND_gi_AndFamillyListSize)
                 grown = (tSoundFamilyStruct*)MEM_p_Realloc(SND_gast_AndFamillyList, size);
             else
-                grown = (tSoundFamilyStruct*)MEM_p_Alloc(size);
+                grown = (tSoundFamilyStruct*)MEM_p_Alloc((unsigned int)size);
             SND_gast_AndFamillyList = grown;
             memset(&grown[SND_gi_AndFamillyNb], 0,
                    SND_FAMILY_GROWN_CLEAR(SND_gi_AndFamillyListSize));
@@ -5565,7 +5565,7 @@ tSoundFamilyStruct* SND_pst_GetOrArray(int mask, int bits)
         if (oldInnerNum)
             grownInners = (tSoundFamilyInnerStruct**)MEM_p_Realloc(familly->unkIntArrPtr, innerSize);
         else
-            grownInners = (tSoundFamilyInnerStruct**)MEM_p_Alloc(innerSize);
+            grownInners = (tSoundFamilyInnerStruct**)MEM_p_Alloc((unsigned int)innerSize);
         innerNumBefore = familly->innerNum;
         familly->unkIntArrPtr = grownInners;
         /* The one element the array just grew by, and not the whole

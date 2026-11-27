@@ -132,7 +132,7 @@ void MEM_InitDynamic(SIZE_T dwBytes)
     MEM_gst_MemoryInfo.usedMemoryByTextures = 0;
     MEM_gst_MemoryInfo.totalUsedMemory = 0;
     MEM_gst_MemoryInfo.nextFreeMemoryPointer = MEM_gst_MemoryInfo.memoryStartPointer;
-    MEM_gst_MemoryInfo.memorySize = dwBytes;
+    MEM_gst_MemoryInfo.memorySize = (int)(dwBytes);
 }
 
 void MEM_InitModule()
@@ -741,7 +741,7 @@ BOOL MEM_Defrag(int onlyOneHole)
 
 void* MEM_MoveToTempMem(void* ptr, size_t Size)
 {
-    void *newPtr = MEM_p_AllocTmp(Size);
+    void *newPtr = MEM_p_AllocTmp((int)Size);
     MEM_Free(ptr);
     memcpy(newPtr, ptr, Size);
     return newPtr;
@@ -784,12 +784,12 @@ void* MEM_p_Realloc(void* Src, size_t Size)
     if (tmpPtr >= MEM_gst_MemoryInfo.memoryStartPointer && tmpPtr < MEM_gst_MemoryInfo.nextFreeMemoryPointer
         && (tmpPtr & MEM_WORD_MASK) == 0 && v3Tmp[-2] == MEM_MARK_ALIGNED)      // aligned alloc
     {
-        return MEM_p_ReallocAligned(Src, Size, (int)MEM_TMP_ALIGN);
+        return MEM_p_ReallocAligned(Src, (unsigned int)Size, (int)MEM_TMP_ALIGN);
     }
     newSize = MEM_GetElemIDBySize((unsigned int)tmpPtr);
-    if (MEM_gst_MemoryInfo.memInfoElems[newSize].size == MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize(Size)].size)
+    if (MEM_gst_MemoryInfo.memInfoElems[newSize].size == MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize((unsigned int)Size)].size)
         return Src;
-    newBlock = MEM_p_Alloc(Size);
+    newBlock = MEM_p_Alloc((unsigned int)Size);
     MEM_Word* newBlockTmp = (MEM_Word*)newBlock;
     origBlockSize = MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize((unsigned int)tmpSrc[-1])].size;
     newBlockSize = MEM_gst_MemoryInfo.memInfoElems[MEM_GetElemIDBySize((unsigned int)newBlockTmp[-1])].size;

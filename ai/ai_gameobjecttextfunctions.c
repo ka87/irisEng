@@ -1087,7 +1087,7 @@ tAINode* AI_EvalFunc_TEXTLength(tAINode* node)
     char* str;
 
     str = AI_GetStringFromStack();
-    AI_PutIntToStack(AI_EvalFunc_TEXTLength_C(str));
+    AI_PutIntToStack((int)AI_EvalFunc_TEXTLength_C(str));
     return node + 1;
 }
 

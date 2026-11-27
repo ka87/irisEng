@@ -159,7 +159,7 @@ int BIG_fseekAndRead(FILE* fp, int offset, void** dst, unsigned int size)
 {
     BIG_fseek(fp, offset, 0);
     
-    return fread(*dst, 1, size, fp);
+    return (int)fread(*dst, 1, size, fp);
 }
 
 int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
@@ -189,7 +189,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
     fromPreloadedBin = 0;
 
     if (BIG_gi_ReadMode != 2)
-        return fread(dstBuf, 1, sizeToRead, fp) / (int)sizeToRead;
+        return (int)(fread(dstBuf, 1, sizeToRead, fp) / sizeToRead);
 
     sizeLeft = sizeToRead;
     if (!BIG_gp_ReadBuffer)
@@ -203,7 +203,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
             AI_EvalFunc_DbgTraceInt_C();
         if (gi_TestBin == -1                         // a testbin 0 ha pályát töltünk be
             || gi_TestBin > gi_CurBin
-            || (cachedSize = gai_CurSize[gi_TestBin]) == 0
+            || (cachedSize = (int)gai_CurSize[gi_TestBin]) == 0
             || (preloaded = gap_FirstPointer[gi_TestBin], (MEM_Word)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO FIXME
         {
             BIG_fseek(fp, BIG_gul_ReadPos, 0);
@@ -214,7 +214,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
         else
         {
             blockSize = *((uint32_t*)preloaded - 0x2800);
-            preloadedSize = gai_CurSize[gi_TestBin];
+            preloadedSize = (int)(gai_CurSize[gi_TestBin]);
             BIG_si_BinFileSize = blockSize;
             if (cachedSize > blockSize)
                 preloadedSize = blockSize;
@@ -261,7 +261,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
         block.src = BIG_gp_CompressedBuffer + 4;
         block.dest = BIG_gp_ReadBuffer;
         BIG_sp_CompressedNextBlock = BIGcomp_DecodeBlocks(&block, 1);
-        BIG_gi_RealSeek = BIG_sp_CompressedNextBlock - BIG_gp_CompressedBuffer;
+        BIG_gi_RealSeek = (int)(BIG_sp_CompressedNextBlock - BIG_gp_CompressedBuffer);
         BIG_si_DecompressedSize = block.totalSize;
         BIG_ul_CachePos = BIG_si_CompressedSize + BIG_gul_ReadPos - 2048;
     }
@@ -295,10 +295,10 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
         for (;;)
         {
             if (!BIGcomp_CheckBlock(BIG_sp_CompressedNextBlock,
-                                    BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock))
+                                    (int)(BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock)))
             {
-                keptSize = ((BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock + BIG_si_CompressedSize) / 2048) << 11;
-                restSize = BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock - keptSize;
+                keptSize = (int)(((BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock + BIG_si_CompressedSize) / 2048) << 11);
+                restSize = (int)(BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock - keptSize);
 
                 BIGcomp_i_CompressedSize(BIG_sp_CompressedNextBlock);
 
@@ -369,7 +369,7 @@ int BIG_fread(char* dstBuf, unsigned int sizeToRead, FILE* fp)
             block.i4 = 0;
             block.dest = &BIG_gp_ReadBuffer[BIG_si_DecompressedSize];
             BIG_sp_CompressedNextBlock = BIGcomp_DecodeBlocks(&block, 1);
-            BIG_gi_RealSeek += BIG_sp_CompressedNextBlock - block.src;
+            BIG_gi_RealSeek += (int)(BIG_sp_CompressedNextBlock - block.src);
             BIG_si_DecompressedSize += block.totalSize;
             // preserved: the block is counted twice in this test, where the twin in BIG_SpeedMode_fread tests the sum before the increment
             if (block.totalSize + BIG_si_DecompressedSize >= sizeLeft)
@@ -420,7 +420,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
             AI_EvalFunc_DbgTraceInt_C();
         if (gi_TestBin == -1
             || gi_TestBin > gi_CurBin
-            || (cachedSize = gai_CurSize[gi_TestBin]) == 0
+            || (cachedSize = (int)gai_CurSize[gi_TestBin]) == 0
             || (preloaded = gap_FirstPointer[gi_TestBin], (MEM_Word)&preloaded[-cachedSize] <= MEM_gp_MaxBlock)) // ??? TODO
         {
             BIG_fseek(fp, BIG_gul_ReadPos, 0);
@@ -430,7 +430,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
         else
         {
             blockSize = *((uint32_t*)preloaded - 0x2800);
-            preloadedSize = gai_CurSize[gi_TestBin];
+            preloadedSize = (int)(gai_CurSize[gi_TestBin]);
             fromPreloadedBin = 1;
         }
         BIG_si_BinFileSize = blockSize;
@@ -475,7 +475,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
         block.src = BIG_gp_CompressedBuffer + 4;
         block.dest = BIG_gp_ReadBuffer;
         BIG_sp_CompressedNextBlock = BIGcomp_DecodeBlocks(&block, 1);
-        BIG_gi_RealSeek = BIG_sp_CompressedNextBlock - BIG_gp_CompressedBuffer;
+        BIG_gi_RealSeek = (int)(BIG_sp_CompressedNextBlock - BIG_gp_CompressedBuffer);
         BIG_si_DecompressedSize = block.totalSize;
         BIG_ul_CachePos = BIG_si_CompressedSize + BIG_gul_ReadPos - 2048;
     }
@@ -498,10 +498,10 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
         for (;;)
         {
             if (!BIGcomp_CheckBlock(BIG_sp_CompressedNextBlock,
-                                    BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock))
+                                    (int)(BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock)))
             {
-                keptSize = ((BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock + BIG_si_CompressedSize) / 2048) << 11;
-                restSize = BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock - keptSize;
+                keptSize = (int)(((BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock + BIG_si_CompressedSize) / 2048) << 11);
+                restSize = (int)(BIG_si_CompressedSize + BIG_gp_CompressedBuffer - BIG_sp_CompressedNextBlock - keptSize);
 
                 BIGcomp_i_CompressedSize(BIG_sp_CompressedNextBlock);
 
@@ -565,7 +565,7 @@ int BIG_SpeedMode_fread(char** currOffset, int size, FILE* fp)
             block.dest = &BIG_gp_ReadBuffer[BIG_si_DecompressedSize];
             BIG_sp_CompressedNextBlock = BIGcomp_DecodeBlocks(&block, 1u);
             more = block.totalSize + BIG_si_DecompressedSize < size;
-            BIG_gi_RealSeek += BIG_sp_CompressedNextBlock - block.src;
+            BIG_gi_RealSeek += (int)(BIG_sp_CompressedNextBlock - block.src);
             BIG_si_DecompressedSize += block.totalSize;
             if (!more)
                 break;
@@ -723,11 +723,11 @@ void* BIG_p_RequestBuffer(size_t size)
 
     if ((int)size <= BIG_gi_GlobalBufferSize)
         return BIG_gp_GlobalBuffer;
-    BIG_gi_GlobalBufferSize = size;
+    BIG_gi_GlobalBufferSize = (int)(size);
     if (BIG_gp_GlobalBuffer)
         ret = MEM_p_Realloc(BIG_gp_GlobalBuffer, size);
     else
-        ret = MEM_p_AllocTmp(size);
+        ret = MEM_p_AllocTmp((int)size);
 
     BIG_gp_GlobalBuffer = ret;
 
@@ -739,7 +739,7 @@ int BIG_SeekAndRead(FILE* fp, int offset, void** dest, unsigned int size)
     BIG_fseek(fp, offset, 0);
 
     // preserved: the read lands on the caller's pointer variable rather than on what it points at
-    return fread(dest, 1, size, fp);
+    return (int)fread(dest, 1, size, fp);
 }
 
 void BIG_ReadNoSeek(int pos, void* dest, unsigned int len)

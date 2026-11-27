@@ -857,7 +857,7 @@ int EVE_Event_AIFunction_Load(tGameObjectEventElem* key, char* src, void* elemPt
             LOA_ReadAINode(&cursor, node++, 1);
         *((uint16_t*)(key->eptrdu.data)) = (uint16_t)(cursor - src);
     }
-    return cursor - src;
+    return (int)(cursor - src);
 }
 
 void EVE_Anim_ComputeInterpoledMatrix(tGameObjectMain* gao, Mtx4x4* dest, tGameObjectEventElem* key, tGameObjectEventElem* nextKey, float time)
@@ -2000,7 +2000,7 @@ int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* key, tGameObjectEventE
             dest += 2;
             memcpy(dest, &decompressed, sizeof(Quat4));
         }
-        return cursor - src;
+        return (int)(cursor - src);
     }
     if ((type & 0xF800) != 0)
     {
@@ -2055,10 +2055,10 @@ int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* key, tGameObjectEventE
             dest += 2;
             memcpy(dest, &delta, 12u);
         }
-        return cursor - src;
+        return (int)(cursor - src);
     }
     if ((type & 0x17) == 0)
-        return cursor - src;
+        return (int)(cursor - src);
     if ((flags & 0x2100) != 0)
     {
         key->eptrdu.size = (size << 1) | 0x1;
@@ -2112,7 +2112,7 @@ int EVE_Event_InterpolationKey_Load(tGameObjectEventElem* key, tGameObjectEventE
             dest += 4;
         }
     }
-    return cursor - src;
+    return (int)(cursor - src);
 }
 
 void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* readSize, int16_t flags)
@@ -2260,7 +2260,7 @@ void EVE_LoadListEvents(tGameObjectEventsListElem* track, char* src, uint32_t* r
             }
         }
     }
-    *readSize = src - start;
+    *readSize = (uint32_t)(src - start);
 }
 
 struct sGameObjectEventsList* EVE_ul_CallbackLoadListTracks(uint32_t Offset)

@@ -961,7 +961,7 @@ int GEO_SKN_Load(char* readPtr, tGEOGRO* geogro)
     }
 
     geogro->skinning = skn;
-    return currReadPtr - readPtr;
+    return (int)(currReadPtr - readPtr);
 }
 
 struct sGroGeneric* GEO_p_CreateFromBuffer(struct sGroGeneric* gro, char** readPtr, struct sWorld* world)

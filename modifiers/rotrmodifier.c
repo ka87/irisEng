@@ -116,7 +116,7 @@ int GAO_ModifierROTR_Load(struct sModifier* mdf, char* data)
     rotr->timeFactor2 = LOA_ReadFloat(&data, 0, 1);
     rotr->ff4 = LOA_ReadFloat(&data, 0, 1);
     rotr->gao = 0;
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierROTR_Reinit(struct sModifier* mdf)

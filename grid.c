@@ -797,7 +797,7 @@ int GRI_Compress(tWorldGridStruct* grid, char* capas, int tileX, int tileY, char
     }
     at = GRI_l_EmitRun(at, runLength, runValue);
 
-    length = (char*)at - dest;
+    length = (int)((char*)at - dest);
     *(int32_t*)dest = length;
 
     // a tile that is one run of nothing is not worth storing

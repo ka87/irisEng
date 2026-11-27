@@ -253,7 +253,7 @@ int GAO_ModifierXMEC_Load(struct sModifier* mdf, char* readPtr)
     }
     xmec->gao = mdf->gao;
     xmec->gao2 = mdf->gao;
-    return readPtr - startOffset;
+    return (int)(readPtr - startOffset);
 }
 
 void GAO_ModifierXMEC_Reinit(struct sModifier* mdf)
