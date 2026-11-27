@@ -1294,13 +1294,38 @@ int COL_ComputeReport(Vec3* localPoint, Vec3* localNormal, Vec3* worldPoint, Vec
                 flagsNow = *flags;
                 if ((*flags & 0xE) != 0)
                 {
-                    if ((flagsNow & 2) != 0)
+                    /* A triangle with no neighbour across an edge
+                       carries 0xFFFF for it, which this function sets
+                       itself when it builds the mesh and which the
+                       edge-normal reader below tests before it
+                       indexes. Here the index went in as it came, and
+                       so does it in the compiled engine -- there is no
+                       test there either, and the three arms read the
+                       normals array at 65535, which is 786,420 bytes
+                       past it.
+
+                       On a bump-allocated arena that is somebody
+                       else's live memory, so the dot product comes out
+                       as noise and whether the edge asks for a
+                       recomputation is decided by whatever happened to
+                       be there. Unlike the other read of this shape it
+                       is not harmless by luck: the answer is used.
+
+                       The face's own normal is what the function
+                       already uses when an edge is not involved at
+                       all, and an edge with nothing across it is that
+                       case. A deliberate divergence, and identical to
+                       the compiled engine wherever the index is a
+                       real one. */
+                    edgeNormal = worldNormal;
+                    if ((flagsNow & 2) != 0
+                        && colGlobal->cobMeshTriangleElem->proximity1 != 0xFFFF)
                         edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity1]);
-                    else
-                        edgeNormal = worldNormal;
-                    if ((flagsNow & 4) != 0)
+                    if ((flagsNow & 4) != 0
+                        && colGlobal->cobMeshTriangleElem->proximity2 != 0xFFFF)
                         edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity2]);
-                    if ((flagsNow & 8) != 0)
+                    if ((flagsNow & 8) != 0
+                        && colGlobal->cobMeshTriangleElem->proximity3 != 0xFFFF)
                         edgeNormal = &(((tCobMeshObjectMesh*)(colGlobal->collisionObjectPtr->objectPtrByType))->normals[colGlobal->cobMeshTriangleElem->proximity3]);
                     if (MATH_DotProduct(edgeNormal, localNormal) < 0.94999999)
                         COL_NeedRecomputation(colGlobal, colGlobal->colInstanceGao, 32);
