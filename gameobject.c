@@ -2982,8 +2982,22 @@ void OBJ_EyeFollow(struct sGameObjectMain* gao, Vec3* target, float weight, int 
         actionElem = &(actionElems[actionItem]);
         actions = (tAction**)(((char*)(actor->actionKit)) + sizeof(tActionKit));
         actionElems2 = (tActionElem*)(((char*)(actions[actor->animPtr[1]->actionForTransition])) + sizeof(tAction));
+        /* A blend animation carries 0xFF for its transition element
+           when there is no element to transition from: it is copied
+           straight out of the actor's own actionItem, which starts at
+           -1 and is a byte. The other reader of the field tests it and
+           stops -- see ANI_ChangeAction, which breaks on 0xFF -- and
+           this one indexed with it, as the compiled engine does: there
+           is no test there either, and the array is read at 255, which
+           is 8,187 bytes past it.
+
+           Nothing to transition from is nothing to take a ramp from,
+           so the second term contributes nothing and the first
+           decides. A deliberate divergence, and identical to the
+           compiled engine wherever the element is a real one. */
         rampNeeded = (actionElem->customBits & 4) == 0
-            || (actionElems2[actor->animPtr[1]->actionElemForTransition].customBits & 4) == 0;
+            || (actor->animPtr[1]->actionElemForTransition != 0xFF
+                && (actionElems2[actor->animPtr[1]->actionElemForTransition].customBits & 4) == 0);
     }
 
     if (rampNeeded)
