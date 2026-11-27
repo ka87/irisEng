@@ -479,16 +479,24 @@ void INT_SnP_UpdateAxisTable(tSnp* snp, int axis)
     // preserved: read even when the queue is empty, where it takes a stale entry
     queue->destPos = queue->elemIdxes[0];
 
+    /* The axis list is an array of elements, and these move runs
+       of it. Sixteen is what an element measures where a pointer
+       is four; at eight it is thirty-two, so each of these
+       carried half of every element and left the rest, and the
+       sorted index the collision queries walk stopped meaning
+       anything. */
     for (q = 0; q < lastQueued; q++)
     {
         memmove(&elems[queue->destPos], &elems[queue->elemIdxes[q] + 1],
-            16 * (queue->elemIdxes[q + 1] - queue->elemIdxes[q] - 1));
+            IRIS_SIZEOF(tSnpAxisElem, 16)
+                * (queue->elemIdxes[q + 1] - queue->elemIdxes[q] - 1));
         queue->destPos += queue->elemIdxes[q + 1] - queue->elemIdxes[q] - 1;
     }
 
     if (queue->queueNum)
         memmove(&elems[queue->destPos], &elems[queue->elemIdxes[lastQueued] + 1],
-            16 * (snp->currElemIdx - queue->elemIdxes[lastQueued] - 1));
+            IRIS_SIZEOF(tSnpAxisElem, 16)
+                * (snp->currElemIdx - queue->elemIdxes[lastQueued] - 1));
 }
 
 void INT_SnP_DetachObject(struct sGameObjectMain* gao, struct sWorld* world)
@@ -656,7 +664,8 @@ void INT_SnP_InsertionSort(struct sSnp* snp, int axisMode)
                         break;
                 }
 
-                memmove(&elems[pos + 2], &elems[pos + 1], 16 * (i - pos - 1));
+                memmove(&elems[pos + 2], &elems[pos + 1],
+                        IRIS_SIZEOF(tSnpAxisElem, 16) * (i - pos - 1));
                 elems[pos + 1].gao = movedGao;
                 elems[pos + 1].gaoSnPIndex = movedIndex;
                 elems[pos + 1].flags = movedFlags;
