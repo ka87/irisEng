@@ -573,9 +573,14 @@ void LOA_BeginSpeedMode(int key)
  * it. This prints what the engine consumes, in order, so the first file
  * whose length disagrees with the log can be named.
  *
- * Build with -DLOA_TRACE_BINSTREAM. It is off otherwise and costs
- * nothing. */
-#ifdef LOA_TRACE_BINSTREAM
+ * On by default. -DLOA_TRACE_BINSTREAM=0 turns it off, and then it
+ * costs nothing. It is a line per key resolved and a line per file
+ * fetched, so a world load is thousands of lines -- which is the
+ * point, since the sequence is what gets compared. */
+#ifndef LOA_TRACE_BINSTREAM
+#define LOA_TRACE_BINSTREAM 1
+#endif
+#if LOA_TRACE_BINSTREAM
 #define LOA_BINTRACE(...) DBG_OutputDebugString(__VA_ARGS__)
 #else
 #define LOA_BINTRACE(...) ((void)0)
