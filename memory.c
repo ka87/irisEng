@@ -36,6 +36,17 @@
 #define MEM_MemBlockSizeGetTmpAddressSpace MEMPOOL_MEM_MemBlockSizeGetTmpAddressSpace
 #define MEM_GetBlockSizeBySize MEMPOOL_MEM_GetBlockSizeBySize
 #define MEM_b_CheckBlockHasBeenFreed MEMPOOL_MEM_b_CheckBlockHasBeenFreed
+
+/* memory.h is included above these, so it declares the plain names and
+   nothing declares the renamed ones. That is only harmless while every
+   function in here is defined before the first call to it, which is
+   true of twenty-one of the twenty-two: this one is called from the
+   function immediately above its own definition, so the renamed name
+   reaches the call undeclared. MSVC assumes extern returning int --
+   which it does return, so it works and says so in a warning, and the
+   next function to need this would not be so lucky. Declaring it here
+   puts the renamed name in scope with the rest of them. */
+int MEM_MemBlockSizeGetAligned(void* ptr);
 #endif
 
 /* The lock around the allocator. A semaphore standing at one, which
