@@ -160,8 +160,26 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x64\bin\*.dll" "$(OutDir)"</Command>
-      <Message>Copying the libav DLLs next to the exe</Message>
+      <!-- The sanitizer's own runtime goes next to the exe as well. It
+           ships with the compiler rather than with the program, and
+           nothing puts it on the path: without it the exe does not
+           start at all, and the only thing said about it is that a
+           dependent DLL was not found.
+
+           Copied rather than relied upon, so that the exe also runs
+           from outside the IDE. If it is not there to copy, the
+           sanitizer component is not installed: the message below says
+           so, and the build still finishes, because IRIS_MEM_DEBUG on
+           its own is most of the point and needs nothing. -->
+      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x64\bin\*.dll" "$(OutDir)"
+if exist "$(VCToolsInstallDir)bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" (
+  copy /y "$(VCToolsInstallDir)bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" "$(OutDir)" &gt;nul
+) else (
+  echo NOTE: clang_rt.asan_dynamic-x86_64.dll is not in this toolchain, so AddressSanitizer is not installed.
+  echo       Add "C++ AddressSanitizer" in the Visual Studio Installer, or clear Enable Address Sanitizer
+  echo       for this configuration. IRIS_MEM_DEBUG alone still separates every block.
+)</Command>
+      <Message>Copying the libav DLLs and the sanitizer runtime next to the exe</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
