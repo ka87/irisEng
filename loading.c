@@ -10,6 +10,27 @@
 #include "settings.h"
 #include "datapath.h"
 
+/* A trace of the binarized stream, for lining up against a parse log.
+ *
+ * In speed mode BIG_ReadNoSeek does not seek -- the fseek is guarded by
+ * BIG_gi_ReadMode != 2 -- so the whole world is one ordered stream and a
+ * reader that consumes the wrong number of bytes shifts everything after
+ * it. This prints what the engine consumes, in order, so the first file
+ * whose length disagrees with the log can be named.
+ *
+ * On by default. -DLOA_TRACE_BINSTREAM=0 turns it off, and then it
+ * costs nothing. It is a line per key resolved and a line per file
+ * fetched, so a world load is thousands of lines -- which is the
+ * point, since the sequence is what gets compared. */
+#ifndef LOA_TRACE_BINSTREAM
+#define LOA_TRACE_BINSTREAM 1
+#endif
+#if LOA_TRACE_BINSTREAM
+#define LOA_BINTRACE(...) DBG_OutputDebugString(__VA_ARGS__)
+#else
+#define LOA_BINTRACE(...) ((void)0)
+#endif
+
 int LOA_gb_CompressBin = 1;
 
 char LOA_ReadChar(char** offset, char* retVal, char readMode)
@@ -565,26 +586,6 @@ void LOA_BeginSpeedMode(int key)
     }
 }
 
-/* A trace of the binarized stream, for lining up against a parse log.
- *
- * In speed mode BIG_ReadNoSeek does not seek -- the fseek is guarded by
- * BIG_gi_ReadMode != 2 -- so the whole world is one ordered stream and a
- * reader that consumes the wrong number of bytes shifts everything after
- * it. This prints what the engine consumes, in order, so the first file
- * whose length disagrees with the log can be named.
- *
- * On by default. -DLOA_TRACE_BINSTREAM=0 turns it off, and then it
- * costs nothing. It is a line per key resolved and a line per file
- * fetched, so a world load is thousands of lines -- which is the
- * point, since the sequence is what gets compared. */
-#ifndef LOA_TRACE_BINSTREAM
-#define LOA_TRACE_BINSTREAM 1
-#endif
-#if LOA_TRACE_BINSTREAM
-#define LOA_BINTRACE(...) DBG_OutputDebugString(__VA_ARGS__)
-#else
-#define LOA_BINTRACE(...) ((void)0)
-#endif
 
 char* LOA_FetchBuffer(int size)
 {
