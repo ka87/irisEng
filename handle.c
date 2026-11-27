@@ -244,6 +244,18 @@ void HDL_SetReporter(HDL_ReportFn fn)
     hdl_report = fn;
 }
 
+BOOL HDL_b_Issued(uint32_t handle)
+{
+    uint32_t idx = (handle >> HDL_IDX_SHIFT) & HDL_IDX_MASK;
+    uint32_t gen = (handle >> HDL_GEN_SHIFT) & HDL_GEN_MASK;
+
+    if (hdl_isReserved(handle))
+        return FALSE;
+    if (idx < HDL_FIRST_INDEX || idx >= hdl_slotUsed)
+        return FALSE;
+    return hdl_slots[idx].addr != NULL && hdl_slots[idx].gen == gen;
+}
+
 void* HDL_p_Pointer(uint32_t handle)
 {
     uint32_t idx, gen;

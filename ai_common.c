@@ -143,17 +143,17 @@ void AI_PutObjectToStack(void* obj, int16_t type)
        back off the stack as a number and be read through, far from
        whatever put it there -- so say it at the push, where the type
        is still in hand. */
-    if (AI_gast_Types[type].dataTypeSize == 4)
+    if (AI_b_IsARef(AI_gast_Types[type].funcid))
     {
         uint32_t w = *(uint32_t*)slot;
 
-        if (w > 2 && HDL_p_Pointer(w) == (void*)(uintptr_t)w
-            && AI_gl_RefSaid < 16)
+        if (w > 2 && !HDL_b_Issued(w) && AI_gl_RefSaid < 16)
         {
             ++AI_gl_RefSaid;
             DBG_OutputDebugString(
-                "AI: pushed %#x as type %d (entry %#x), and it is not a "
-                "handle\n", w, (int)type, AI_gast_Types[type].funcid);
+                "AI: pushed %#x as a reference (type %d, entry %#x) and it "
+                "is not a handle\n",
+                w, (int)type, AI_gast_Types[type].funcid);
         }
     }
     AI_gul_SizeGlobalStack += 32;

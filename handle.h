@@ -91,6 +91,11 @@ void HDL_CloseModule(void);
 typedef void (*HDL_ReportFn)(const char* text);
 void HDL_SetReporter(HDL_ReportFn fn);
 
+/* Whether this value is a handle the table issued, asked without
+   resolving it and without the layer saying anything. For a caller
+   that wants to test a value rather than use it. */
+BOOL HDL_b_Issued(uint32_t handle);
+
 #else
 
 #define HDL_ul_Handle(ptr)   ((uint32_t)(uintptr_t)(ptr))
