@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "loading.h"
 #include "time.h"
 #include "gameobject.h"
 #include "graphicsobjects/geo.h"
@@ -672,6 +673,12 @@ void GFX_Render(tGfxElem** list, int zlistLock)
             gpst_DX_stDD->flags = stateSorted;
         GFX_gpst_Current = elem;
         rendered = 1;
+        LOA_BINTRACE("gfx: elem %p type %d id %d flags %02x data %p "
+                     "prev %p mat %p gao %p\n",
+                     (void*)elem, (int)elem->type, (int)elem->id,
+                     (unsigned)elem->gfxFlags, elem->privateData,
+                     (void*)elem->prevGfxElem, (void*)elem->material,
+                     (void*)elem->aiGameObject);
         switch (elem->type)
         {
         case 1:

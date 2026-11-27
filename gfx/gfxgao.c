@@ -1,5 +1,6 @@
 #include "../memory.h"
 #include "gfxgao.h"
+#include "../loading.h"
 
 struct sGfxGaoData* GFX_Gao_Create(struct sGameObjectMain* gao)
 {
@@ -29,7 +30,15 @@ void GFX_Gao_Render(struct sGfxGaoData* gfx)
         gpst_DX_stDD->SetProjectionMatrix(&gpst_DX_stDD->ct.cam);
     }
 
-    if ((gfx->gao->flags2 & 2) != 0)
+    /* A game object is an allocation, so anything in the bottom page
+       or with its top bits clear is not one. Say so and skip it
+       rather than reading flags2 out of it. */
+    if ((uintptr_t)gfx->gao < 0x10000u || (uintptr_t)gfx->gao > ~0x10000u)
+    {
+        LOA_BINTRACE("gfx: gao of %p is %p, which is not an object\n",
+                     (void*)gfx, (void*)gfx->gao);
+    }
+    else if ((gfx->gao->flags2 & 2) != 0)
         GRO_Render(gfx->gao);
 
     if (overrideFocale)
