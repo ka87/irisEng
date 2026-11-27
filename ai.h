@@ -1,8 +1,43 @@
 #pragma once
 #include "common.h"
+#include "handle.h"
 #include "gameobject.h"
 #include "textget.h"
 #include "math.h"
+
+/* An array of objects in the AI language.
+ *
+ * The language's arrays are thirty-two bits wide whatever the build,
+ * so an element is a reference slot and not an address. Walking one as
+ * `tGameObjectMain**` steps twice as far on a wide build and reads two
+ * slots as one pointer, which is how a game object came out as six
+ * megabytes.
+ *
+ * It is a struct rather than a bare uint32_t so that the compiler
+ * refuses the old spelling: every place that takes one of these
+ * arrays had to be found, and a typedef of an integer would have let
+ * a missed one through. */
+typedef struct sAIObjRef
+{
+    uint32_t slot;
+} tAIObjRef;
+
+IRIS_STATIC_ASSERT(sizeof(tAIObjRef) == 4,
+                   "an AI array element is four bytes on every build");
+
+static __inline struct sGameObjectMain* AI_p_ObjFromRef(tAIObjRef ref)
+{
+    return (struct sGameObjectMain*)HDL_p_Pointer(ref.slot);
+}
+
+static __inline tAIObjRef AI_ref_FromObj(struct sGameObjectMain* gao)
+{
+    tAIObjRef ref;
+
+    ref.slot = HDL_ul_Handle(gao);
+    return ref;
+}
+
 
 struct sWorld;
 

@@ -23,7 +23,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# IRIS_FROZEN_SIZES: the frozen copy moves runs of the axis list by a
+# hardcoded sixteen bytes an element, which is what one measures
+# where a pointer is four. It cannot be changed, so the rewrite is
+# told the same figure here and the two shift the same bytes. Every
+# other build asks the compiler, which is the point of the change.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DIRIS_FROZEN_SIZES"
 OUT=tests/build
 mkdir -p "$OUT"
 

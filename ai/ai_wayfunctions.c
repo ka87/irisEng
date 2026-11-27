@@ -57,7 +57,7 @@ static float AI_l_ShortWayLinkCost(tWayElemInnerElem* link)
 // Dijkstra over the network from one waypoint to another, writing the
 // path into path as a walk back from the target. Returns its length,
 // or zero when there is none.
-unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayNetwork* network, struct sGameObjectMain** path, struct sGameObjectMain* from, struct sGameObjectMain* to)
+unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayNetwork* network, tAIObjRef* path, struct sGameObjectMain* from, struct sGameObjectMain* to)
 {
     tGameObjectMain** open;
     float* openCost;
@@ -164,7 +164,7 @@ unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayN
     {
         j = 0;
         for (i = closedNum - 1; i >= 0; i = closedFrom[i])
-            path[j++] = closed[i];
+            path[j++] = AI_ref_FromObj(closed[i]);
         closedNum = j;
     }
     else
@@ -357,7 +357,7 @@ tAINode* AI_EvalFunc_WAYRootGet(tAINode* node)
     return node + 1;
 }
 
-tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, tGameObjectMain** gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
+tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, tAIObjRef* gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
 {
     unsigned int i;
     int j;
@@ -376,7 +376,7 @@ tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, t
     if (OBJ_b_test_flag(gao, flagMustHave, flagMustNotHave, whatToTest))
     {
         ++okok;
-        *gaoList++ = gao;
+        *gaoList++ = AI_ref_FromObj(gao);
     }
 
     if (!gao->extended || !gao->extended->way)
@@ -393,7 +393,7 @@ tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, t
     return gaoList;
 }
 
-int AI_EvalFunc_WAYNetFill_C(struct sWayNetwork* network, struct sGameObjectMain* gao, struct sGameObjectMain** gaoList)
+int AI_EvalFunc_WAYNetFill_C(struct sWayNetwork* network, struct sGameObjectMain* gao, tAIObjRef* gaoList)
 {
     int actElemNumBak;
 
@@ -425,7 +425,7 @@ tAINode* AI_EvalFunc_WAYNetFill(tAINode* node)
     return node + 1;
 }
 
-int AI_EvalFunc_WAYGet_C(struct sWayNetwork* network, struct sGameObjectMain** gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
+int AI_EvalFunc_WAYGet_C(struct sWayNetwork* network, tAIObjRef* gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
 {
     okok = 0;    
     WAY_gst_Seen.actElemNum = 0;

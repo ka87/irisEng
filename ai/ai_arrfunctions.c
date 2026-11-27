@@ -16,7 +16,7 @@ static BOOL AI_l_ArrayObjectAlive(tGameObjectMain* gao)
 
 // The index of the array's object nearest to a point, or 0 when the
 // array holds none.
-int AI_EvalFunc_ARRObjNearestOfPoint_C(struct sGameObjectMain** objs, int num, Vec3* pos)
+int AI_EvalFunc_ARRObjNearestOfPoint_C(tAIObjRef* objs, int num, Vec3* pos)
 {
     tGameObjectMain* gao;
     Vec3 toObj;
@@ -29,7 +29,9 @@ int AI_EvalFunc_ARRObjNearestOfPoint_C(struct sGameObjectMain** objs, int num, V
     nearest = FLT_MAX;
     for (i = num - 1; i >= 0; --i)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!AI_l_ArrayObjectAlive(gao))
             continue;
 
@@ -164,7 +166,7 @@ tAINode* AI_EvalFunc_ARRObjCopyCB(tAINode* node)
 
 // The index of the object most nearly in the given direction from the
 // given point. A non-zero falloff trades angle against distance.
-int AI_EvalFunc_ARRObjBestSight_C(struct sGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float falloff)
+int AI_EvalFunc_ARRObjBestSight_C(tAIObjRef* objs, int num, Vec3* from, Vec3* direction, float falloff)
 {
     tGameObjectMain* gao;
     Vec3 sight;
@@ -181,7 +183,9 @@ int AI_EvalFunc_ARRObjBestSight_C(struct sGameObjectMain** objs, int num, Vec3* 
     bestScore = -FLT_MAX;
     for (i = num - 1; i >= 0; --i)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!AI_l_ArrayObjectAlive(gao))
             continue;
 
@@ -226,13 +230,13 @@ tAINode* AI_EvalFunc_ARRObjBestSight(tAINode* node)
     return node + 1;
 }
 
-int AI_EvalFunc_ARRObjSearch_C(struct sGameObjectMain** objs, int num, struct sGameObjectMain* gao)
+int AI_EvalFunc_ARRObjSearch_C(tAIObjRef* objs, int num, struct sGameObjectMain* gao)
 {
     int i;
 
     for (i = 0; i < num; ++i)
     {
-        if (objs[i] == gao)
+        if (AI_p_ObjFromRef(objs[i]) == gao)
             return i;
     }
     return -1;
@@ -536,7 +540,7 @@ tAINode* AI_EvalFunc_ARRBit4Test(tAINode* node)
 // ARRObjBestSight again, scored from each object's bounding-volume
 // centre rather than its pivot, and normalising the caller's direction
 // in place rather than into a local.
-int AI_EvalFunc_ARRObjBestSightBVCenter_C(tGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float falloff)
+int AI_EvalFunc_ARRObjBestSightBVCenter_C(tAIObjRef* objs, int num, Vec3* from, Vec3* direction, float falloff)
 {
     tGameObjectMain* gao;
     Vec3 center;
@@ -553,7 +557,9 @@ int AI_EvalFunc_ARRObjBestSightBVCenter_C(tGameObjectMain** objs, int num, Vec3*
     bestScore = -FLT_MAX;
     for (i = num - 1; i >= 0; --i)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!AI_l_ArrayObjectAlive(gao))
             continue;
 
@@ -657,16 +663,18 @@ tAINode* AI_EvalFunc_ARRGlobalIntFlagTest(tAINode* node)
 //
 // A null slot advances neither the cursor nor the range, so an array
 // with a hole in it does not terminate. Preserved as written.
-int AI_EvalFunc_ARRSortByFlags_C(struct sGameObjectMain** objs, int num, int flagMustHave, int flagMustNothave, int whatToTest)
+int AI_EvalFunc_ARRSortByFlags_C(tAIObjRef* objs, int num, int flagMustHave, int flagMustNothave, int whatToTest)
 {
-    tGameObjectMain* swap;
+    tAIObjRef swap;
     tGameObjectMain* gao;
     int i;
 
     i = 0;
     while (i < num)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!gao)
             continue;
 
@@ -708,7 +716,7 @@ tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* node)
 // sight direction; the second widens that angle by the tolerance and
 // returns the NEAREST object inside the widened cone, so a photo
 // subject in front wins over one merely better aligned.
-int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** objs, int num, Vec3* from, Vec3* direction, float toleranceDeg)
+int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(tAIObjRef* objs, int num, Vec3* from, Vec3* direction, float toleranceDeg)
 {
     tGameObjectMain* gao;
     Vec3 pivot;
@@ -728,7 +736,9 @@ int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** objs, int nu
     bestDot = -FLT_MAX;
     for (i = num - 1; i >= 0; --i)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!AI_l_ArrayObjectAlive(gao))
             continue;
 
@@ -750,7 +760,9 @@ int AI_EvalFunc_ARRObjBestSightInfoPhoto_C(struct sGameObjectMain** objs, int nu
     nearest = FLT_MAX;
     for (i = num - 1; i >= 0; --i)
     {
-        gao = objs[i];
+        /* The element is a reference slot, not an address: the
+           language's arrays are thirty-two bits wide. */
+        gao = AI_p_ObjFromRef(objs[i]);
         if (!AI_l_ArrayObjectAlive(gao))
             continue;
 

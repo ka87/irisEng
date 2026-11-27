@@ -400,7 +400,14 @@ void COL_OK3_Optimize(tCobOK3* ok3, void* object, int type)
                 box->num = 0;
                 break;
             }
-            memcpy(chunk, &chunk[1], 8 * (box->num - j) - 8);
+            /* Close the gap this empty chunk leaves. The length
+               was written as 8 a chunk, which is what one
+               measures where a pointer is four; at eight it is
+               sixteen, so half of each entry was left behind
+               and the box's triangles stopped being found. */
+            memcpy(chunk, &chunk[1],
+                   IRIS_SIZEOF(tCobOK3AABBoxElemChunkElem, 8)
+                       * (box->num - j - 1));
             --box->num;
         }
         if (box->chunkElems)

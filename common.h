@@ -67,6 +67,16 @@
 #define IRIS_SIZEOF(type, frozen) ((unsigned int)sizeof(type))
 #endif
 
+/* The same for a field's offset, and for the same reason: a table of
+   byte offsets written for four-byte pointers is compared against a
+   frozen copy that still carries the literals. The third argument is
+   the only record of what the offset used to be. */
+#ifdef IRIS_FROZEN_SIZES
+#define IRIS_OFFSETOF(type, member, frozen) ((unsigned int)(frozen))
+#else
+#define IRIS_OFFSETOF(type, member, frozen) ((unsigned int)offsetof(type, member))
+#endif
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define IRIS_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
 #else

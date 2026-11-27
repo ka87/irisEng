@@ -18,7 +18,12 @@ set -e
 cd "$(dirname "$0")/.."
 
 CC=${CC:-gcc}
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests"
+# IRIS_FROZEN_SIZES: the frozen copy carries the parameter tables as
+# literals, and one of them is a field offset that moves when a
+# pointer is eight bytes. The two tables are compared, so the
+# rewrite is told the old figure here. Every other build asks the
+# compiler, which is the point of the change.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -Itests/stub -Itests -DIRIS_FROZEN_SIZES"
 OUT=tests/build
 mkdir -p "$OUT"
 

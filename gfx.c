@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "loading.h"
+#include <stddef.h>
 #include "time.h"
 #include "gameobject.h"
 #include "graphicsobjects/geo.h"
@@ -57,6 +57,14 @@ int ga_Paramv_Number[] = { 0, 3, 3, 1, 2, 2, 2, 4, 1, 3, 2, 0, 0x14, 0x14, 0, 1,
 
 
 
+/* Byte offsets into each effect's private struct, by parameter.
+   They are the layout where a pointer is four bytes, and
+   retail/tools/gfxoffsets.py in the notes repository resolves every
+   one of them to the field it names and reports which move at eight.
+   One does: the gfx gao effect's focale sits after a game object
+   pointer, so a literal 4 writes into the top half of that pointer.
+   The rest are either on a member that does not move or inside one
+   below where the struct's two layouts start to differ. */
 int16_t gaa_Paramf_Offset[] = {    0,    0,    0,    0,    0,    0,    0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                                 0x24,    0,    0,    0,    0,    0,    0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                                 0x24, 0x28, 0x2C, 0x30, 0x34, 0x38,    0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -74,7 +82,7 @@ int16_t gaa_Paramf_Offset[] = {    0,    0,    0,    0,    0,    0,    0, 0,0,0,
                                 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x24, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0,0,0,0,0,0,0,0,0,
                                    4, 8, 0x0C, 0x10, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                                 0x54, 0x58, 0x5C, 0x60, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                                  4, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                                  IRIS_OFFSETOF(tGfxGaoData, focale, 4), 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                                 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x24, 0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0x40, 0, 0, 0, 0, 0, 0, 0,
                                   0,    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                                 0x24, 0x28, 0x402C, 0x30, 0x34, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -673,12 +681,6 @@ void GFX_Render(tGfxElem** list, int zlistLock)
             gpst_DX_stDD->flags = stateSorted;
         GFX_gpst_Current = elem;
         rendered = 1;
-        LOA_BINTRACE("gfx: elem %p type %d id %d flags %02x data %p "
-                     "prev %p mat %p gao %p\n",
-                     (void*)elem, (int)elem->type, (int)elem->id,
-                     (unsigned)elem->gfxFlags, elem->privateData,
-                     (void*)elem->prevGfxElem, (void*)elem->material,
-                     (void*)elem->aiGameObject);
         switch (elem->type)
         {
         case 1:
