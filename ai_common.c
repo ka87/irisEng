@@ -129,6 +129,8 @@ void AI_GetVarFromStack(void* dest, tVarStackElem* vse)
    what the caller has is a C variable holding the object's address.
    The two cannot be one function: both arrive as a void*, and which
    one it is cannot be told from the pointer. */
+static int AI_gl_RefSaid;
+
 void AI_PutObjectToStack(void* obj, int16_t type)
 {
     tVarStackElem* elem;
@@ -136,6 +138,24 @@ void AI_PutObjectToStack(void* obj, int16_t type)
 
     slot = &AI_gac_GlobalStack[AI_gul_SizeGlobalStack];
     AI_gast_Types[type].funcptr(obj, &AI_gac_GlobalStack[AI_gul_SizeGlobalStack]);
+    /* A reference pushed here has to be a handle, nought, or one of
+       the two values that name a main actor. Anything else will come
+       back off the stack as a number and be read through, far from
+       whatever put it there -- so say it at the push, where the type
+       is still in hand. */
+    if (AI_gast_Types[type].dataTypeSize == 4)
+    {
+        uint32_t w = *(uint32_t*)slot;
+
+        if (w > 2 && HDL_p_Pointer(w) == (void*)(uintptr_t)w
+            && AI_gl_RefSaid < 16)
+        {
+            ++AI_gl_RefSaid;
+            DBG_OutputDebugString(
+                "AI: pushed %#x as type %d (entry %#x), and it is not a "
+                "handle\n", w, (int)type, AI_gast_Types[type].funcid);
+        }
+    }
     AI_gul_SizeGlobalStack += 32;
     elem = &AI_gast_GlobalVarStruct[AI_gul_SizeGlobalVarStack + 1];
     elem->type = type;
