@@ -541,9 +541,8 @@ void PAG_RenderCommon(struct sGameObjectMain* gao, struct sPAGStruct* pag)
                     up = *axisV;
                 }
                 spinIdx = spin >> 22;
-                // preserved: the sine index reaches 1024, one past the end of MATH_gf_TableSin[1024]
-                spinSin = MATH_gf_TableSin[spinIdx + 1];
-                spinCos = MATH_gf_TableSin[(spinIdx + 256) % 0x3FF + 1];
+                spinSin = MATH_GetSinFromIndex(spinIdx);
+                spinCos = MATH_GetCosFromIndex(spinIdx);
                 MATH_VecMultScalar(&spun, &right, spinCos);
                 MATH_AddScaleVector(&spun, &spun, &up, spinSin);
                 MATH_VecMultScalarWithoutBuffer(&up, spinCos);

@@ -549,7 +549,12 @@ static void sweepRenderDriving(void)
     TIM_gf_dt = 0.0f;
 }
 
-#define PARTICLE_EXPECTED_FLOAT_DIFFS 19637L
+/* 19637 until the spin lookup stopped adding one to the sine table
+   index. The frozen copy was re-frozen with the same correction, so
+   the two still agree on the index and the only differences are the
+   narrowing class below -- but one of them was a float that the old
+   index happened to narrow identically, hence 19636 and not 19637. */
+#define PARTICLE_EXPECTED_FLOAT_DIFFS 19636L
 
 int main(void)
 {
