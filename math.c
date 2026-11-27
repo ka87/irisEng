@@ -2127,6 +2127,21 @@ float MATH_GetSin(float f)
     return MATH_gf_TableSin[idx];
 }
 
+/* One step of the sine table, for a caller that counts steps rather
+   than radians: the table holds a full turn in 1024 of them. */
+float MATH_GetSinFromIndex(unsigned int index)
+{
+    return MATH_gf_TableSin[index];
+}
+
+/* The cosine of the same step. A quarter turn is 256 steps, but the
+   wrap is a remainder by 1023 rather than by the table's 1024, so for
+   the last 257 steps the entry read is one past the quarter turn. */
+float MATH_GetCosFromIndex(unsigned int index)
+{
+    return MATH_gf_TableSin[(index + 256) % 0x3FF];
+}
+
 float MATH_GetSqrt(float f)
 {
     int ret = MATH_gl_TableRacine[ ((*((int32_t*)&f)) >> 13) & 0x7FF] + (((((*((uint32_t*)&f)) & 0x7F800000) + 0x3F800000) >> 1) & 0x7F800000);

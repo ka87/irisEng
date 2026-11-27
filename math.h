@@ -176,6 +176,11 @@ void MATH_VecRotate(Vec3* dest, Vec3* axis, Vec3* src, float angle);
 BOOL MATH_b_TypeIsCorrect(Mtx4x4* mtx);
 float MATH_GetSin(float f);
 float MATH_GetCos(float f);
+/* The same two lookups for a caller that already holds a step index
+   into the table instead of an angle. The index must be below 1024;
+   neither of them masks it. */
+float MATH_GetSinFromIndex(unsigned int index);
+float MATH_GetCosFromIndex(unsigned int index);
 float MATH_GetInverseSqrt(float f);
 void MATH_AddScaleVector(Vec3* dest, Vec3* src1, Vec3* src2, float scale);
 void MATH_VecMultScalarWithoutBuffer(Vec3* vec, float scalar);
