@@ -991,7 +991,7 @@ int SND_l_GetSoundIndex(int soundKEy)
 int SND_i_AllocSound()
 {
     int idx;
-    unsigned int* flagsPtr;
+    tSndSoundElem* sound;
     tSndSoundElem* grown;
     int oldMaxNum;
     size_t size;
@@ -999,20 +999,31 @@ int SND_i_AllocSound()
     idx = 0;
     if (SND_gst_Params.allocatedSoundsMaxNum > 0)
     {
-        // preserved: the scan steps by a hardcoded 56 bytes, which is
-        // sizeof(tSndSoundElem) only in the engine's own 32-bit build
-        flagsPtr = &SND_gst_Params.allocatedSounds->flags;
-        while ((*flagsPtr & 0x400) != 0)
+        /* The scan used to step a word pointer by fourteen, which is
+           fifty-six bytes: the element's size only where a pointer is
+           four. Everything else that walks this array steps by the
+           element, so a free slot was found at the wrong place and
+           sounds were handed the same index over and over.
+
+           Written as a byte step rather than ++sound so that the
+           frozen copy, which cannot be changed and still steps
+           fifty-six, can be compared against. */
+        sound = SND_gst_Params.allocatedSounds;
+        while ((sound->flags & 0x400) != 0)
         {
             ++idx;
-            flagsPtr += 14;
+            sound = (tSndSoundElem*)((char*)sound
+                                     + IRIS_SIZEOF(tSndSoundElem, 56));
             if (idx >= SND_gst_Params.allocatedSoundsMaxNum)
                 break;
         }
         if (idx < SND_gst_Params.allocatedSoundsMaxNum)
             return idx;
     }
-    size = 56 * (SND_gst_Params.allocatedSoundsMaxNum + 1000);
+    /* The block has to be as wide as what memset clears below it and
+       as what every other walk over this array steps by. */
+    size = IRIS_SIZEOF(tSndSoundElem, 56)
+         * (SND_gst_Params.allocatedSoundsMaxNum + 1000);
     if (SND_gst_Params.allocatedSoundsMaxNum)
         grown = (tSndSoundElem*)MEM_p_Realloc(SND_gst_Params.allocatedSounds, size);
     else

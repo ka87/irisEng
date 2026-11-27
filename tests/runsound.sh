@@ -32,7 +32,12 @@ CC=${CC:-gcc}
 # allocator was asked for -- the mock logs it -- so the rewrite has
 # to ask for the same thing, and the mock's own double headroom
 # covers the shortfall. The game build gets the real width.
-CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -no-pie -fno-pie -DHDL_TRANSLATES=0 -Itests/stub -Itests -DMEM_PTR_BYTES=4"
+# IRIS_FROZEN_SIZES: the frozen copy walks the sound array by a
+# hardcoded fifty-six bytes and asks the allocator for fifty-six a
+# slot, which is what an element measures where a pointer is four.
+# It cannot be changed, so the rewrite is told the same figure here
+# and the two walk the same array. Every other build gets sizeof.
+CFLAGS="-std=gnu99 -fcommon -fms-extensions -O0 -g -w -no-pie -fno-pie -DHDL_TRANSLATES=0 -Itests/stub -Itests -DMEM_PTR_BYTES=4 -DIRIS_FROZEN_SIZES"
 OUT=tests/build
 mkdir -p "$OUT"
 
