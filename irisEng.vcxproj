@@ -77,7 +77,9 @@
     <LibraryPath>C:\BinkSDK;$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
+    <!-- Off because AddressSanitizer will not link beside it; see the
+         note on EnableASAN below. -->
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -125,8 +127,26 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- IRIS_MEM_DEBUG puts the pool allocator aside and gives every
+           engine block its own allocation, so a write past one lands in
+           the C library's own guard rather than in the next engine
+           object, and a block handed back twice is named where it
+           happens. It is on here because this is the configuration
+           something is debugged in; take it out of the list for a
+           debugging build that runs at the pool's speed. -->
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;IRIS_MEM_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <!-- AddressSanitizer, which is where the red zone after each
+           block, the quarantine on freed ones and the stacks of the
+           allocation, the free and the access come from. The three
+           below are not preferences: it will not build beside any of
+           them. Edit and continue writes a different kind of debug
+           information, the runtime checks instrument the same frames
+           the sanitizer does, and an incremental link leaves thunks it
+           cannot see through. -->
+      <EnableASAN>true</EnableASAN>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <AdditionalIncludeDirectories>$(ProjectDir)thirdparty\SDL3\include;$(ProjectDir)thirdparty\ffmpeg\x64\include;$(ProjectDir)thirdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -140,8 +160,26 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x64\bin\*.dll" "$(OutDir)"</Command>
-      <Message>Copying the libav DLLs next to the exe</Message>
+      <!-- The sanitizer's own runtime goes next to the exe as well. It
+           ships with the compiler rather than with the program, and
+           nothing puts it on the path: without it the exe does not
+           start at all, and the only thing said about it is that a
+           dependent DLL was not found.
+
+           Copied rather than relied upon, so that the exe also runs
+           from outside the IDE. If it is not there to copy, the
+           sanitizer component is not installed: the message below says
+           so, and the build still finishes, because IRIS_MEM_DEBUG on
+           its own is most of the point and needs nothing. -->
+      <Command>xcopy /d /y "$(ProjectDir)thirdparty\ffmpeg\x64\bin\*.dll" "$(OutDir)"
+if exist "$(VCToolsInstallDir)bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" (
+  copy /y "$(VCToolsInstallDir)bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" "$(OutDir)" &gt;nul
+) else (
+  echo NOTE: clang_rt.asan_dynamic-x86_64.dll is not in this toolchain, so AddressSanitizer is not installed.
+  echo       Add "C++ AddressSanitizer" in the Visual Studio Installer, or clear Enable Address Sanitizer
+  echo       for this configuration. IRIS_MEM_DEBUG alone still separates every block.
+)</Command>
+      <Message>Copying the libav DLLs and the sanitizer runtime next to the exe</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -729,6 +767,7 @@
     <ClInclude Include="loading.h" />
     <ClInclude Include="materialanddraw.h" />
     <ClInclude Include="math.h" />
+    <ClInclude Include="memdebug.inc" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="thirdparty\minilzo\lzoconf.h" />
     <ClInclude Include="thirdparty\minilzo\lzodefs.h" />
