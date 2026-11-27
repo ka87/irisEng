@@ -511,6 +511,22 @@ typedef struct sTrackListElem
     uint8_t gap[20];
 } tTrackListElem;
 
+/* The two names are the wrong way round and are kept because a frozen
+   copy spells them, so read them as positions and not as descriptions.
+
+   The compiled engine's resource loop hands the creator the field at
+   +0 as its first out-param and the field at +4 as its second, and
+   the creator fills the first from a one-channel call and the second
+   from a two-channel one. So:
+
+       stereoSoundBuffer   the MONO buffer, which is the one a track
+                           plays to begin with
+       monoSoundBuffer     the STEREO buffer, held as the spare
+
+   Everything that reads them is consistent with that and so with the
+   compiled engine; it is only the two words that mislead. The same
+   inversion is in the names around them -- what switches a track onto
+   its spare is called SwitchToMono and moves it to the stereo buffer. */
 typedef struct sTrackResourceElem
 {
     struct sSndSoundBufferElem* stereoSoundBuffer;
