@@ -200,6 +200,15 @@ int SND_l_AddSModifierNoLoad(int soundKey, char** cursor)
         sound->flags = 0;
         return -1;
     }
+    LOA_BINTRACE("  smd %08x: speedMode %d, cursor %s, size %d (%#x)\n",
+                 soundKey, speedMode, cursor ? "yes" : "no", size, size);
+    if (size < 0 || size > 0x100000)
+    {
+        LOA_BINTRACE("  smd %08x: that size is not a size, stopping here\n",
+                     soundKey);
+        sound->flags = 0;
+        return -1;
+    }
     header = (int*)MEM_p_Alloc(size);
     memset(header, 0, size);
     if (!speedMode)

@@ -2092,6 +2092,8 @@ tSndBank* SND_ul_CallbackLoadBank(int Offset)
     data = BIG_pc_ReadFileTmp(Offset, &size);
     elemNum = (unsigned int)size >> 3;
     cursor = data;
+    LOA_BINTRACE("bank %08x: %d bytes, %u entries by size\n",
+                 LOA_ul_GetCurrentKey(), size, elemNum);
     if (!elemNum)
         return 0;
     bank = (tSndBank*)MEM_p_Alloc(sizeof(tSndBank));
@@ -2105,6 +2107,9 @@ tSndBank* SND_ul_CallbackLoadBank(int Offset)
         elemNum = LOA_ReadLong(&cursor, 0, 1);
     bank->elemNum = elemNum;
     bank->bankKey = LOA_ul_GetCurrentKey();
+    LOA_BINTRACE("bank %08x: %u entries declared, %d bytes left after them\n",
+                 bank->bankKey, elemNum,
+                 size - (int)(cursor - data) - (int)(elemNum * 8));
     indices = (int*)MEM_p_Alloc(4 * elemNum);
     bank->soundIndices = indices;
     if (indices)
@@ -2113,6 +2118,9 @@ tSndBank* SND_ul_CallbackLoadBank(int Offset)
     {
         soundKey = LOA_ReadLong(&cursor, 0, 1);
         LOA_ReadCharArray(&cursor, String1, 4u, 1);
+        LOA_BINTRACE("bank   [%u] at +%d key %08x ext %c%c%c%c\n",
+                     elemIdx, (int)(cursor - data) - 8, soundKey,
+                     String1[0], String1[1], String1[2], String1[3]);
         if (!soundKey || soundKey == -1)
             continue;
         if (!strncasecmp(String1, ".wad", 4u))
