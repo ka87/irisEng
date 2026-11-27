@@ -18,13 +18,48 @@
  * Liveness is answered from a table, never by reading a block that may
  * have been freed.
  */
-#if !defined(__SANITIZE_ADDRESS__)
-#error "IRIS_MEM_DEBUG needs AddressSanitizer (-fsanitize=address); use the CMake option IRIS_MEM_DEBUG, which adds it"
-#endif
+/* AddressSanitizer if the build has it, and the same allocator
+   without it if not.
+ *
+ * It used to refuse to compile without it, which kept this file off
+ * the one toolchain the game is actually built with: MSVC takes
+ * /fsanitize=address, but not alongside the edit-and-continue and
+ * runtime checks a Debug configuration turns on by default, so asking
+ * for both at once is a configuration change rather than a flag. The
+ * separation alone -- one malloc for every engine block -- is most of
+ * what this is for: a write past a block lands in the C library's own
+ * guard rather than in the next engine object, and a block handed back
+ * twice is reported here by name. The sanitizer adds the red zone, the
+ * quarantine and the three stacks, and is worth having where it can be
+ * had.
+ *
+ * __SANITIZE_ADDRESS__ is defined by both gcc and MSVC when the
+ * sanitizer is on. The stack-trace entry point is in a second header
+ * that not every toolchain ships, hence the separate test. */
+#if defined(__SANITIZE_ADDRESS__)
+#if !defined(__has_include)
 #include <sanitizer/asan_interface.h>
 #include <sanitizer/common_interface_defs.h>
+#define MDBG_HAVE_STACKS 1
+#else
+#if __has_include(<sanitizer/asan_interface.h>)
+#include <sanitizer/asan_interface.h>
+#endif
+#if __has_include(<sanitizer/common_interface_defs.h>)
+#include <sanitizer/common_interface_defs.h>
+#define MDBG_HAVE_STACKS 1
+#endif
+#endif
+#endif
 
-#define MDBG_HDR 24
+#ifndef ASAN_POISON_MEMORY_REGION
+#define ASAN_POISON_MEMORY_REGION(p, n)   ((void)(p), (void)(n))
+#define ASAN_UNPOISON_MEMORY_REGION(p, n) ((void)(p), (void)(n))
+#endif
+#ifndef MDBG_HAVE_STACKS
+#define __sanitizer_print_stack_trace() ((void)0)
+#endif
+
 #define MDBG_KIND_NORMAL  1
 #define MDBG_KIND_ALIGNED 2
 #define MDBG_KIND_TMP     3
@@ -38,6 +73,15 @@ typedef struct sMdbgHdr
     uint32_t         magic;     /* user[-2] */
     uint32_t         size;      /* user[-1] */
 } tMdbgHdr;
+
+/* The header is as big as it measures, which was written out as 24 --
+   its width where a pointer is four bytes. At eight it is 32, so the
+   user pointer was handed out eight bytes inside the header and the
+   pattern every allocation writes over its own payload landed on
+   `magic` and `size` instead. Every block corrupted its own
+   bookkeeping, which is a poor start for the thing that is supposed to
+   find corruption. */
+#define MDBG_HDR ((int)sizeof(tMdbgHdr))
 
 /* Open-addressed table of live user pointers. */
 #define MDBG_SLOTS (1u << 21)
@@ -89,8 +133,14 @@ static void MDBG_l_Insert(void* user, void* raw, uint32_t size, uint32_t kind)
     }
 }
 
+/* How many times this file has had something to say. A run that
+   reports nothing and a run whose reports went past unread look the
+   same otherwise, and a test cannot ask the difference. */
+unsigned MDBG_gul_Reports;
+
 static void MDBG_l_Report(const char* what, void* p)
 {
+    ++MDBG_gul_Reports;
     fprintf(stderr, "MEMDEBUG: %s %p\n", what, p);
     __sanitizer_print_stack_trace();
 }
@@ -140,7 +190,12 @@ static int MDBG_l_Free(void* user)
         return 0;
     raw = s->raw;
     kind = s->kind;
-    MEM_gst_MemoryInfo.usedMemoryByEngine -= s->size;
+    /* An aligned block is a view on the inner block it was carved
+       from, and only the inner one was ever counted in -- so counting
+       both of them out took the engine's byte total below zero, and
+       it is unsigned. */
+    if (kind != MDBG_KIND_ALIGNED)
+        MEM_gst_MemoryInfo.usedMemoryByEngine -= s->size;
     s->user = MDBG_TOMB;
     mdbg_live--;
     if (kind == MDBG_KIND_TMP)
@@ -148,7 +203,7 @@ static int MDBG_l_Free(void* user)
     if (kind == MDBG_KIND_ALIGNED)
     {
         /* the descriptor block it lives in */
-        void* inner = (void*)(size_t)((uint32_t*)user)[-1];
+        void* inner = (void*)(size_t)((MEM_Word*)user)[-1];
         return MDBG_l_Free(inner);
     }
     ((tMdbgHdr*)raw)->magic = 0xB0110270;
@@ -173,16 +228,28 @@ static void* MDBG_l_AllocAligned(int size, int alignment, uint32_t kind)
     if (alignment < 8)
         alignment = 8;
     /* an inner block, and the aligned pointer inside it with the inner
-       block's address in the word before it, as the pool did */
-    inner = (char*)MDBG_l_Alloc((unsigned)(size + alignment + 4), kind == MDBG_KIND_TMP ? MDBG_KIND_TMP : MDBG_KIND_NORMAL);
+       block's address in the word before it, as the pool does.
+
+       The word is a whole address: written as a uint32_t it kept the
+       low half, so every aligned block was freed through a truncated
+       pointer that the table did not know, and every one of them
+       leaked and was reported as a free of something that is not a
+       block. Aligned blocks are most of the geometry, so that was the
+       first thing this file would have said on a run. */
+    inner = (char*)MDBG_l_Alloc(
+        (unsigned)(size + alignment + (int)sizeof(MEM_Word)),
+        kind == MDBG_KIND_TMP ? MDBG_KIND_TMP : MDBG_KIND_NORMAL);
     if (!inner)
         return NULL;
-    user = (char*)(((size_t)inner + 4 + alignment - 1) & ~(size_t)(alignment - 1));
-    ((uint32_t*)user)[-1] = (uint32_t)(size_t)inner;
-    ((uint32_t*)inner)[-2] = 0xA0C0FFEE;
+    user = (char*)(((size_t)inner + sizeof(MEM_Word) + alignment - 1)
+                       & ~(size_t)(alignment - 1));
+    ((MEM_Word*)user)[-1] = (MEM_Word)(size_t)inner;
+    ((tMdbgHdr*)(inner - MDBG_HDR))->magic = 0xA0C0FFEE;
     ((tMdbgHdr*)(inner - MDBG_HDR))->aligned = user;
     /* the slack after the requested size is not the caller's */
-    ASAN_POISON_MEMORY_REGION(user + size, (inner + size + alignment + 4) - (user + size));
+    ASAN_POISON_MEMORY_REGION(
+        user + size,
+        (inner + size + alignment + (int)sizeof(MEM_Word)) - (user + size));
     MDBG_l_Insert(user, inner, (uint32_t)size, MDBG_KIND_ALIGNED);
     return user;
 }

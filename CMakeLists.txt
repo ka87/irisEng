@@ -401,16 +401,28 @@ endif()
 # happens. -fsanitize-recover lets a run report everything rather than
 # stop at the first. Use its own build directory: the binary it writes
 # is the same ./irisEng.
-option(IRIS_MEM_DEBUG "Replace the pool allocator with malloc under AddressSanitizer" OFF)
+option(IRIS_MEM_DEBUG "Replace the pool allocator with one malloc a block" OFF)
+# IRIS_MEM_SANITIZE adds AddressSanitizer on top, which is where the red
+# zone, the quarantine and the three stacks come from. It is separate
+# because the separation alone -- one malloc a block -- is most of the
+# value and needs no sanitizer, and because MSVC's sanitizer will not
+# stand beside the edit-and-continue and runtime checks a Debug
+# configuration turns on, so asking for both at once stops the build
+# that most needs the first.
+option(IRIS_MEM_SANITIZE "Add AddressSanitizer to IRIS_MEM_DEBUG" ON)
 if(IRIS_MEM_DEBUG)
-    if(NOT CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        message(FATAL_ERROR "IRIS_MEM_DEBUG needs GCC or Clang's AddressSanitizer")
-    endif()
     target_compile_definitions(irisEng PRIVATE IRIS_MEM_DEBUG)
-    target_compile_options(irisEng PRIVATE
-        -fsanitize=address -fsanitize-recover=address)
-    target_link_options(irisEng PRIVATE -fsanitize=address)
-    message(STATUS "irisEng: memory debugging build (pool replaced, AddressSanitizer on)")
+    if(IRIS_MEM_SANITIZE AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(irisEng PRIVATE
+            -fsanitize=address -fsanitize-recover=address)
+        target_link_options(irisEng PRIVATE -fsanitize=address)
+        message(STATUS "irisEng: memory debugging build (pool replaced, AddressSanitizer on)")
+    elseif(IRIS_MEM_SANITIZE AND MSVC)
+        target_compile_options(irisEng PRIVATE /fsanitize=address)
+        message(STATUS "irisEng: memory debugging build (pool replaced, AddressSanitizer on)")
+    else()
+        message(STATUS "irisEng: memory debugging build (pool replaced, no sanitizer)")
+    endif()
 endif()
 
 # The engine declares its globals in headers without extern. In C that
