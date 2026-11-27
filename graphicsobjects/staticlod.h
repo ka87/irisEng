@@ -15,4 +15,6 @@ typedef struct sGEOSTATICLOD
 
 int GEO_l_StaticLOD_GetIndex(struct sGEOSTATICLOD* lod, uint8_t distance);
 struct sGEOGRO* GEO_pst_StaticLOD_GetLOD(struct sGEOSTATICLOD* lod, uint8_t distance);
+/* The largest vertex count among the levels, 0 if there are none. */
+unsigned int GEO_ul_StaticLOD_MaxVertexNum(struct sGEOSTATICLOD* lod);
 void GEO_StaticLOD_Init();
