@@ -156,6 +156,16 @@ static void* WMOCK_Take(unsigned int size)
     return p;
 }
 
+/* The allocator's own account of an address. The engine's version
+   reads the block header the pool writes; this heap has none, so the
+   mock says only that it cannot tell -- which is all the resolver's
+   report needs of it, and that report is reached only on a fault
+   these cases do not produce. */
+void MEM_DescribeBlock(const void* ptr, char* out, unsigned int n)
+{
+    snprintf(out, n, ptr ? "not an arena this harness keeps" : "null");
+}
+
 void* MEM_p_Alloc(unsigned int size)
 {
     void* p = WMOCK_Take(size);

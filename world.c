@@ -796,7 +796,21 @@ void WOR_World_AttachGameObject(struct sWorld* world, struct sGameObjectMain* ga
         basic = gao->basic;
         visual = basic->actorObjectOrVisualObject;         // vigyázz mire van állítva, itt Visual kell
         gro = (tGEOGRO*)(((tGameObjectVisualObject*)(basic->actorObjectOrVisualObject))->GROGEOOrSomethingElse);
-        if (gro)
+        /* An object with no interface is not geometry, and following
+           the interface anyway is a fault with nothing to say about
+           where the pointer came from. Say what the allocator knows
+           about it and attach the object without it: the two lines
+           the loader and the resolver print carry the key. */
+        if (gro && !gro->intf)
+        {
+            char where[160];
+
+            MEM_DescribeBlock(gro, where, sizeof(where));
+            DBG_OutputDebugString(
+                "geo: %p has no interface, so %p keeps no geometry -- %s\n",
+                (void*)gro, (void*)gao, where);
+        }
+        else if (gro)
         {
             gro->intf->AddRef((tGroGeneric*)gro, 1);
             if (TAB_ul_Ptable_GetElemIndexWithPointer(&world->worldGROTable, gro) == -1)

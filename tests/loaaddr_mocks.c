@@ -17,6 +17,24 @@
 /* --- the allocator, which the key/value arrays use ----------------- */
 
 void* MEM_p_Alloc(unsigned int size) { return malloc(size ? size : 1u); }
+/* The allocator's own account of an address. The engine's version
+   reads the block header the pool writes; this heap has none, so the
+   mock says only that it cannot tell -- which is all the resolver's
+   report needs of it, and that report is reached only on a fault
+   these cases do not produce. */
+void MEM_DescribeBlock(const void* ptr, char* out, unsigned int n)
+{
+    snprintf(out, n, ptr ? "not an arena this harness keeps" : "null");
+}
+
+/* Named by the resolver's report, which compares it against the
+   reference's own callback and never calls it. */
+struct sGroGeneric* GEO_ul_Load_ObjectCallback(uint32_t offset)
+{
+    (void)offset;
+    return 0;
+}
+
 void* MEM_p_Realloc(void* src, size_t size) { return realloc(src, size ? size : 1u); }
 void MEM_Free(void* ptr) { free(ptr); }
 void MEM_FreeFromEnd(void* ptr) { free(ptr); }

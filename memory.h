@@ -105,4 +105,9 @@ int MEM_MemBlockSizeGetAlignedWithTempMemoryAddressSpaceCheck(void* ptr);
 int MEM_MemBlockSizeGetAligned(void* ptr);
 int MEM_MemBlockSizeGetTmpAddressSpace(void* ptr);
 BOOL MEM_b_CheckBlockHasBeenFreed(void* ptr);
+/* Whether an address is the start of a block this allocator handed
+   out, and how big it was, written into out as a line of text. For a
+   pointer that turned out to be wrong, this is what separates a
+   block that was overwritten from an address that was never one. */
+void MEM_DescribeBlock(const void* ptr, char* out, unsigned int n);
 BOOL MEM_CloseModule();
