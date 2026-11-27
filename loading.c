@@ -371,6 +371,8 @@ void LOA_Resolve()
         }
         else
         {
+            LOA_BINTRACE("binstream: key %08x at %d, seek %d\n",
+                         currElem->key, position, BIG_gi_ReadSeek);
             stored = LOA_ul_SearchAddress(position);
             if (stored == LOA_ADDRESS_NOT_FOUND)
             {
@@ -563,6 +565,22 @@ void LOA_BeginSpeedMode(int key)
     }
 }
 
+/* A trace of the binarized stream, for lining up against a parse log.
+ *
+ * In speed mode BIG_ReadNoSeek does not seek -- the fseek is guarded by
+ * BIG_gi_ReadMode != 2 -- so the whole world is one ordered stream and a
+ * reader that consumes the wrong number of bytes shifts everything after
+ * it. This prints what the engine consumes, in order, so the first file
+ * whose length disagrees with the log can be named.
+ *
+ * Build with -DLOA_TRACE_BINSTREAM. It is off otherwise and costs
+ * nothing. */
+#ifdef LOA_TRACE_BINSTREAM
+#define LOA_BINTRACE(...) DBG_OutputDebugString(__VA_ARGS__)
+#else
+#define LOA_BINTRACE(...) ((void)0)
+#endif
+
 char* LOA_FetchBuffer(int size)
 {
     char* currOffset;
@@ -586,6 +604,8 @@ char* LOA_FetchFile(int* sizeRet)
     BIG_SpeedMode_fread(&currOffset, 4, BIG_gst.CLibFileHandle);
     LOA_ReadBinFileHeader(&currOffset, &size, 8);
     *sizeRet = size;
+    LOA_BINTRACE("binstream: file at seek %d (real %d) says %d bytes\n",
+                 BIG_gi_ReadSeek, BIG_gi_RealSeek, size);
     return LOA_FetchBuffer(size);
 }
 
