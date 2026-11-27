@@ -32,6 +32,8 @@
 
 /* memory.h does not declare it. */
 int MEM_GetBlockSizeBySize(void* ptr);
+unsigned int MEM_GetElemIDBySize(unsigned int size);
+BOOL MEM_Defrag(int onlyOneHole);
 
 static int failures;
 
@@ -293,6 +295,91 @@ static void check_hole_reuse(void)
    the head of a list of one, and a count of holes, a reuse and a
    pattern check all come out right while every earlier hole has been
    lost. */
+/* The two sides of the hole bookkeeping have to agree on which chain
+   a freed block sits on.
+
+   MEM_Free chains it on the class of the size it was asked for.
+   MEM_Defrag has only the block's own length to go on, so it recovers
+   the class from that -- which works exactly as long as a class's size
+   looks that class up again. Where it does not, defrag credits the
+   neighbour, the neighbour's count claims a hole that is not on its
+   chain, and the walk that looks for it runs off the end. */
+static void check_size_class_round_trip(void)
+{
+    unsigned int e, reached = 0, wrong = 0, firstWrong = 0;
+    unsigned int size;
+
+    printf("-- a class's size looks up that same class\n");
+    for (size = 1; size <= 4u * 1024u * 1024u; ++size)
+    {
+        e = MEM_GetElemIDBySize(size);
+        if (e >= 2304)
+            continue;
+        ++reached;
+        if (MEM_GetElemIDBySize(
+                (unsigned int)MEM_gst_MemoryInfo.memInfoElems[e].size) != e)
+        {
+            if (!wrong)
+                firstWrong = size;
+            ++wrong;
+        }
+        /* one request per class is enough */
+        size = (unsigned int)MEM_gst_MemoryInfo.memInfoElems[e].size;
+    }
+    if (wrong)
+    {
+        printf("  FAIL %u class(es) do not, first reached by a request of "
+               "%u bytes: class %u, size %d, which looks up as class %u\n",
+               wrong, firstWrong, MEM_GetElemIDBySize(firstWrong),
+               MEM_gst_MemoryInfo.memInfoElems[
+                   MEM_GetElemIDBySize(firstWrong)].size,
+               MEM_GetElemIDBySize((unsigned int)MEM_gst_MemoryInfo.memInfoElems[
+                   MEM_GetElemIDBySize(firstWrong)].size));
+        ++failures;
+    }
+}
+
+/* Churn with defrag running through it, which is how the engine gets
+   there: a world load allocates and frees small blocks for a long time
+   and defrags as it goes. This is the shape that crashed -- it faults
+   in MEM_Defrag with the chain walked to its end -- and it does so
+   within a few hundred rounds, so the count here is generous. */
+static void check_defrag_under_churn(void)
+{
+    enum { SLOTS = 256, ROUNDS = 40000 };
+    static void* live[SLOTS];
+    unsigned int rng = 12345u;
+    int round, i;
+
+    printf("-- defrag survives churn in the smallest size classes\n");
+    for (round = 0; round < ROUNDS; ++round)
+    {
+        rng = rng * 1103515245u + 12345u;
+        i = (int)((rng >> 16) % SLOTS);
+        if (live[i])
+        {
+            MEM_Free(live[i]);
+            live[i] = 0;
+        }
+        else
+        {
+            rng = rng * 1103515245u + 12345u;
+            live[i] = MEM_p_Alloc(16u + ((rng >> 16) % 200u));
+        }
+        if ((round % 97) == 0)
+        {
+            rng = rng * 1103515245u + 12345u;
+            MEM_Defrag((int)((rng >> 16) % 2u));
+        }
+    }
+    for (i = 0; i < SLOTS; ++i)
+        if (live[i])
+        {
+            MEM_Free(live[i]);
+            live[i] = 0;
+        }
+}
+
 static void check_hole_chain(void)
 {
     enum { CHAIN = 6 };
@@ -679,6 +766,8 @@ int main(void)
     check_churn();
     check_hole_reuse();
     check_hole_chain();
+    check_size_class_round_trip();
+    check_defrag_under_churn();
     check_realloc();
     check_aligned();
     check_tmp();
