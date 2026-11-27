@@ -376,6 +376,9 @@ tAINode* AI_EvalFunc_SAVEPhotoDecal(tAINode* node)
     return node + 1;
 }
 
+/* How many slots SAV_gst_Data holds. */
+#define SAV_DATA_SLOT_NUM ((int)(sizeof(SAV_gst_Data) / sizeof(SAV_gst_Data[0])))
+
 /* The save slot accessor the menus read every field through.
 
    Selectors below 100 are one field of the slot's index record each.
@@ -400,6 +403,33 @@ int AI_EvalFunc_SAVEDataGet_C(int slot, int field)
     int posBack, bitBack, wordBack;
     int bitValue, bitValueBack;
     int i;
+
+    /* Deliberate divergence: everything below indexes SAV_gst_Data
+       with the slot unchecked, so a slot past the end reads whatever
+       global follows the array. Refuse the read instead and report
+       it, with the AI instance whose variable block supplied the
+       index: no script writes a slot out of range, so the block
+       either was overwritten or was read from the wrong base, and
+       the instance says which. The report stops after a few, so a
+       behaviour that runs every frame cannot flood the log. */
+    if (slot < 0 || slot >= SAV_DATA_SLOT_NUM)
+    {
+        static int reported;
+
+        if (reported < 8)
+        {
+            ++reported;
+            DBG_OutputDebugString(
+                "SAVEDataGet: slot %d out of 0..%d, field %d"
+                " (instance %p, vars %p)\n",
+                slot, SAV_DATA_SLOT_NUM - 1, field,
+                (void*)AI_gpst_CurrentInstance,
+                (void*)(AI_gpst_CurrentInstance
+                            ? AI_gpst_CurrentInstance->instanceVarDataCurrent
+                            : 0));
+        }
+        return 0;
+    }
 
     if (field < 100)
     {
