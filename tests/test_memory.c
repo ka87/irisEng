@@ -512,6 +512,56 @@ static void check_aligned(void)
         }
 }
 
+/* How many lines the allocator has reported, kept by the mocks so
+   that a case can ask whether it said anything. */
+extern int mock_reports;
+
+/* A block handed back twice.
+ *
+ * The second free used to read the block's own recorded length, which
+ * a freed block no longer holds -- it holds its chain link, and the
+ * link is zero while the chain is empty. A length of zero looked up as
+ * class 0x3FFFFFFF against an array of 2304. That index wraps where a
+ * pointer is four bytes and the element is sixteen, so the compiled
+ * engine reads the fields in front of the array and carries on with a
+ * wrong class; at eight it lands twenty-three gigabytes out and the
+ * read faults.
+ *
+ * So the case asks for both: that the allocator says something, and
+ * that the arena is untouched afterwards. Without the check in
+ * MEM_Free the second free either faults or chains the block twice,
+ * and check_all_live finds the damage either way. */
+static void check_double_free(void)
+{
+    int a, b, twice;
+    void* p;
+
+    printf("-- a block handed back twice is refused, not chained again\n");
+
+    /* A size no other case here asks for, so that its class's hole
+       chain is empty and the link the freed block keeps is zero --
+       which is the length the second free used to look up. A class
+       that has already had a hole holds an arena address there
+       instead, which lands in the last band and comes back as class
+       zero: wrong, but in range and not a fault. */
+    a = take(996);
+    twice = take(996);
+    b = take(996);
+    if (a < 0 || b < 0 || twice < 0)
+        fail("the arena would not give the three blocks this case wants");
+
+    p = live[twice].ptr;
+    drop(twice);
+    mock_reports = 0;
+    MEM_Free(p);
+    if (!mock_reports)
+        fail("the allocator took a block that was already free");
+
+    check_all_live("after a block was handed back twice");
+    drop(0);
+    drop(1);
+}
+
 static void check_too_big(void)
 {
     void* p;
@@ -772,6 +822,7 @@ int main(void)
     check_aligned();
     check_tmp();
     check_too_big();
+    check_double_free();
 
     if (failures)
     {

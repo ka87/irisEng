@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <SDL3/SDL_mutex.h>
 
 static int mock_unreachable(const char* what)
@@ -77,3 +78,20 @@ void PLT_Message(const char* title, const char* text, int error)
     (void)title; (void)text; (void)error;
 }
 void AI_EvalFunc_DbgTraceInt_C() { }
+
+/* The allocator says one thing: that it was handed something
+   which is not a live block. No case here does that, so a line
+   from it is a finding and goes where the runner shows it. */
+int mock_reports;
+
+void DBG_OutputDebugString(char* format, ...)
+{
+    va_list args;
+
+    ++mock_reports;
+
+    printf("  the allocator reported: ");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}

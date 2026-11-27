@@ -1901,7 +1901,19 @@ tSndBank* SND_ul_CallbackLoadMetaBank(int Offset)
     }
     if (!SND_gul_MetaBankUserNb)
     {
-        slots = (tSndMetaBank*)MEM_p_Alloc(128u);
+        /* Sixteen slots, which is what the count grows by below and
+           what the memset and the realloc beside it both measure. It
+           was written out as 128, the sixteen slots of a build whose
+           pointers are four bytes; the memset that follows has always
+           measured the slot, so the first sixteen were cleared across
+           twice the memory that had been asked for.
+
+           Through IRIS_SIZEOF because the frozen copy carries the 128
+           and the differential compares the allocator's call log, so
+           the two sides have to ask for the same number of bytes.
+           That runner is pinned to the frozen figure and is therefore
+           blind to this one site. */
+        slots = (tSndMetaBank*)MEM_p_Alloc(16 * IRIS_SIZEOF(tSndMetaBank, 8));
         SND_gax_MetaBankUserList = slots;
     }
     else
