@@ -187,6 +187,25 @@ BOOL MEM_b_CheckBlockHasBeenFreed(void* ptr)
 
 unsigned int MEM_GetElemIDBySize(unsigned int size)
 {
+    /* The size classes step in fours, and MEM_InitDynamic rounds each
+       class's own size up to a whole word so that a freed block of it
+       can hold its link, its length and its footer at word offsets.
+       Where a word is eight that rounding moves half of the first
+       band's sizes into the next class's size -- a twenty-byte
+       request is class 4, whose size is 24, and 24 looks up as class
+       5 -- and the two sides of the hole bookkeeping stop agreeing:
+       MEM_Free chains a hole on the class of the size it was asked
+       for, while MEM_Defrag recovers the class from the block's own
+       length and so credits the neighbour. The neighbour's count then
+       says there is a hole to unlink that is not on its chain, and
+       the walk that looks for it runs off the end of the chain.
+
+       Rounding the size here puts both sides on the same class again,
+       because every class that a request can now reach has a size
+       that looks up as itself. Where a word is four it moves no
+       request at all: each band's range already ends on a multiple of
+       four. */
+    size = (size + MEM_WORD_MASK) & ~MEM_WORD_MASK;
     if (size <= 512)
         return (size - 1) >> 2;
     if (size <= 1536)
