@@ -1,5 +1,6 @@
 #pragma once
 #include "../common.h"
+#include "../ai.h"
 #include "../gameobject.h"
 
 int okok;
@@ -9,8 +10,8 @@ float AI_WAYgfBest;
 struct sGameObjectMain* AI_EvalFunc_WAYNearestWPOfObj_C(struct sGameObjectMain* gao, struct sWayNetwork* network, int flagMustHave, int flagMustNothave, int whatToTest);
 struct sWayNetwork* AI_EvalFunc_WAYNetOfObj_C(struct sGameObjectMain* gao);
 struct sGameObjectMain* AI_EvalFunc_WAYNetNextWP_C(struct sGameObjectMain* gao, struct sWayNetwork* network, struct sGameObjectMain* wp, int type, int elemID);
-int AI_EvalFunc_WAYNetFill_C(struct sWayNetwork* network, struct sGameObjectMain* gao, struct sGameObjectMain** gaoList);
-unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayNetwork* network, struct sGameObjectMain** path, struct sGameObjectMain* from, struct sGameObjectMain* to);
+int AI_EvalFunc_WAYNetFill_C(struct sWayNetwork* network, struct sGameObjectMain* gao, tAIObjRef* gaoList);
+unsigned int AI_EvalFunc_WAYShortWay_C(struct sGameObjectMain* gao, struct sWayNetwork* network, tAIObjRef* path, struct sGameObjectMain* from, struct sGameObjectMain* to);
 struct sGameObjectMain* AI_EvalFunc_WAYRootGet_C(struct sWayNetwork* network);
 
 tAINode* AI_EvalFunc_WAYNetNextWP(tAINode* node);
