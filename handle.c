@@ -1,6 +1,24 @@
 #include "common.h"
 #include "handle.h"
 
+/* A stack for the report below, where the toolchain can give one. The
+   value alone cannot name the caller, and the report is reached from
+   many of them. */
+#if defined(__SANITIZE_ADDRESS__)
+#if !defined(__has_include)
+#include <sanitizer/common_interface_defs.h>
+#define HDL_HAVE_STACKS 1
+#else
+#if __has_include(<sanitizer/common_interface_defs.h>)
+#include <sanitizer/common_interface_defs.h>
+#define HDL_HAVE_STACKS 1
+#endif
+#endif
+#endif
+#ifndef HDL_HAVE_STACKS
+#define __sanitizer_print_stack_trace() ((void)0)
+#endif
+
 #if HDL_TRANSLATES
 
 /* One slot per address that has a handle. An empty slot has no
@@ -280,6 +298,9 @@ void* HDL_p_Pointer(uint32_t handle)
                      "it is not a reference, or it was encoded twice.\n",
                      handle, idx, gen, hdl_slotUsed);
             hdl_report(line);
+            /* Which caller it was is the whole question, and the value
+               cannot answer it. */
+            __sanitizer_print_stack_trace();
         }
         return (void*)(uintptr_t)handle;
     }
