@@ -4,6 +4,7 @@
 #include "basic_array.h"
 #include "sound.h"
 #include "dbg.h"
+#include "graphicsobjects/gro_common.h"
 #include "textget.h"
 #include "loading.h"
 #include "fileio.h"
@@ -389,6 +390,28 @@ void LOA_Resolve()
                    finds the address itself and reads nothing. */
                 if ((currElem->flags & 8) != 0)
                     addr = (void*)(currElem->funcPtr)(position);
+            }
+            /* A graphics object reached through a reference always
+               has an interface, so one without is not the object the
+               reference asked for. Naming the key here is half of it;
+               the other half is whether the address came out of the
+               store or off a fresh load, which is the difference
+               between a stale entry and a broken loader. */
+            if (currElem->funcPtr
+                    == (void* (*)(uint32_t))GEO_ul_Load_ObjectCallback
+                && addr && !((tGroGeneric*)addr)->intf)
+            {
+                char where[160];
+
+                MEM_DescribeBlock(addr, where, sizeof(where));
+                DBG_OutputDebugString(
+                    "gro ref: key %#x at position %#x resolved to %p with no "
+                    "interface -- %s (stored %#x), %s\n",
+                    currElem->key, position, addr,
+                    stored == LOA_ADDRESS_NOT_FOUND
+                        ? "freshly loaded"
+                        : "handed back by the store",
+                    (unsigned int)stored, where);
             }
             retValPtr = currElem->retValPtr;
             if (retValPtr)

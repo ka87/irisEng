@@ -1,4 +1,5 @@
 #include "../memory.h"
+#include "../dbg.h"
 #include "../loading.h"
 #include "../bigfiles.h"
 #include "../gdi.h"
@@ -136,7 +137,21 @@ struct sGroGeneric* GEO_ul_Load_ObjectCallback(uint32_t offset)
     data += GRO_l_Struct_Load(&gro, data);
 
     groStruct = gro.intf->CreateFromBuffer(&gro, &data, WOR_gpst_WorldToLoadIn);
-    
+
+    /* Every creator sets an interface before it returns, so an object
+       without one did not come from one of them. Said here, where the
+       key is still in hand: a reference to such an object faults a long
+       way from the load, with nothing left to say which file it was. */
+    if (!groStruct || !groStruct->intf)
+    {
+        char where[160];
+
+        MEM_DescribeBlock(groStruct, where, sizeof(where));
+        DBG_OutputDebugString(
+            "gro: key %#x at %#x loaded as %p, which has no interface -- %s\n",
+            LOA_ul_GetCurrentKey(), offset, (void*)groStruct, where);
+    }
+
     if ((!LOA_gb_SpeedMode || BIG_gi_ReadMode != 2) && gro.intf->id == 1)
     {
         COL_OK3_Build((tGameObjectMain*)groStruct, 0, 0);

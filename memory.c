@@ -159,6 +159,74 @@ void MEM_CloseLock(void)
     mem_lock = NULL;
 }
 
+/* What the allocator knows about an address, as one line of text.
+
+   A pointer that turned out to be wrong is one of two faults, and
+   they are chased in opposite directions: a block that was handed
+   out and has since been written over, or an address that was never
+   the start of a block at all. Only this file can tell them apart,
+   because only it knows where a block keeps its header -- so a
+   caller that finds a wrong pointer asks here before deciding which
+   fault it has.
+
+   Nothing is read through ptr itself: the header sits in front of
+   it, and it is reached only once the address has been placed inside
+   the arena. */
+void MEM_DescribeBlock(const void* ptr, char* out, unsigned int n)
+{
+    MEM_Word addr = (MEM_Word)(uintptr_t)ptr;
+    MEM_Word start = MEM_gst_MemoryInfo.memoryStartPointer;
+    MEM_Word end = MEM_gst_MemoryInfo.nextFreeMemoryPointer;
+    const MEM_Word* w = (const MEM_Word*)ptr;
+    MEM_Word marker, size;
+    const char* kind;
+
+    if (!ptr)
+    {
+        snprintf(out, n, "null");
+        return;
+    }
+    if (addr >= (MEM_Word)(uintptr_t)MEM_gp_AllocTmpFirst
+        && addr < (MEM_Word)(uintptr_t)MEM_gp_AllocTmpLast)
+    {
+        snprintf(out, n, "in the temporary arena");
+        return;
+    }
+    if (!start || addr < start + MEM_HEADER_BYTES || addr >= end)
+    {
+        snprintf(out, n, "outside the arena, which runs %#llx..%#llx",
+                 (unsigned long long)start, (unsigned long long)end);
+        return;
+    }
+    if ((addr & MEM_WORD_MASK) != 0)
+    {
+        snprintf(out, n, "%llu into the arena, but not on a word",
+                 (unsigned long long)(addr - start));
+        return;
+    }
+
+    marker = w[-2];
+    size = w[-1];
+    switch ((uint32_t)marker)
+    {
+    case MEM_MARK_BLOCK:         kind = "a live block"; break;
+    case MEM_MARK_ALIGNED:       kind = "an aligned block's descriptor"; break;
+    case MEM_MARK_HOLE:          kind = "a freed block"; break;
+    case MEM_MARK_FROMEND:       kind = "a block taken from the far end"; break;
+    case MEM_MARK_FROMEND_FREED: kind = "a freed far-end block"; break;
+    default:
+        snprintf(out, n,
+                 "%llu into the arena, and no block starts here "
+                 "(the two words in front read %#llx and %#llx)",
+                 (unsigned long long)(addr - start),
+                 (unsigned long long)marker, (unsigned long long)size);
+        return;
+    }
+    snprintf(out, n, "%s of %llu bytes, %llu into the arena",
+             kind, (unsigned long long)size,
+             (unsigned long long)(addr - start));
+}
+
 BOOL MEM_b_CheckBlockHasBeenFreed(void* ptr)
 {
     MEM_Word marker;
