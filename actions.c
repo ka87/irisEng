@@ -485,7 +485,7 @@ struct sAction* ACT_ul_ActionCallback(uint32_t Offset)
         if (!actionElems[i].transition)
             continue;
 
-        transition = (BASStruct*)MEM_p_Alloc(16u);
+        transition = (BASStruct*)MEM_p_Alloc(IRIS_SIZEOF(BASStruct, 16));
         LOA_ReadLong(&readPtr, 0, 2);
         transition->actElemNum = LOA_ReadLong(&readPtr, 0, 1);
         LOA_ReadLong(&readPtr, 0, 2);

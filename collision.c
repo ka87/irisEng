@@ -1661,7 +1661,7 @@ void COL_ColMap_AddCob(tGameObjectMain* gao, uint8_t type, void* src, Vec3* cent
 
     if (type == 2)
     {
-        shape = (tCobNormalObjectGeneric*)MEM_p_Alloc(8u);
+        shape = (tCobNormalObjectGeneric*)MEM_p_Alloc(sizeof(tCobNormalObjectGeneric));
         cob->objectPtrByType = shape;
         shape->enclosurePtr = 0;
         shape->gameMaterialElemID = 0;
