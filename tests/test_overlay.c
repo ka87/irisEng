@@ -29,6 +29,7 @@
    what the overlay read its viewport out of. */
 #include "../gdi.h"
 #include "../font.h"
+#include "../memory.h"
 
 static int ovt_beginCalls;
 static int ovt_endCalls;
@@ -161,6 +162,27 @@ int PRO_rasterDetailPage;
 /* The tweak that puts the after-effects list up, and the two
    parameter-driven effects the list reads straight. */
 int tweak_ae_view;
+/* The tweak that puts the pool panel up, and the two things that panel
+   asks the engine for. The clock is a harness value the test sets, so
+   the panel's half-second sample can be stepped deliberately rather
+   than waited for; the pool figures are the harness's too, so a row
+   printing the wrong field prints a number that belongs to another
+   row. */
+int tweak_memstat;
+float ovt_clock = 0.0f;
+memPoolStat ovt_pool;
+
+float TIM_f_Clock_TrueRead(void)
+{
+    return ovt_clock;
+}
+
+void MEM_GetPoolStat(memPoolStat* out)
+{
+    if (out)
+        *out = ovt_pool;
+}
+
 int PC_AE_MASTER;
 float brightnessParam = 0.5f;
 float colorBalanceParam1 = 0.5f;
@@ -266,6 +288,11 @@ static void resetAll(void)
     ovl_cmdLen = 0;
     ovl_cmdText[0] = 0;
     ovl_caretTick = 0;
+    tweak_memstat = 0;
+    ovl_memHave = 0;
+    ovl_memAt = 0.0f;
+    ovt_clock = 0.0f;
+    memset(&ovt_pool, 0, sizeof(ovt_pool));
     PRO_rasterWindowIsOn = 0;
     PRO_rasterDetailPage = 0;
     PRO_FirstRasterPtr = NULL;
@@ -1093,6 +1120,105 @@ static void placement(void)
 
 /* F1 steps the panel on, to the detail page, and off again. The old
    cycle alternated between the two pages for ever once it was up. */
+/* The pool panel: that the tweak is what puts it up, that the rows
+   carry the allocator's figures rather than each other's, that a band
+   with nothing free is not given a row, and that the figures are a
+   half-second sample rather than a per-frame read. The last is the only
+   part of the panel with any logic in it. */
+static void memStat(void)
+{
+    printf("-- the memory pool panel\n");
+
+    /* nothing up: the tweak is what puts it there */
+    resetAll();
+    OVL_Draw();
+    ok(!sawText("Memory pool"), "off, the panel is not drawn");
+    okEq(ovt_beginCalls, 0, "and nothing is drawn at all");
+
+    /* set, and it is up, with the figures it was given */
+    resetAll();
+    tweak_memstat = 1;
+    ovt_pool.poolSize = 8u * 1024u * 1024u;
+    ovt_pool.handedOut = 2u * 1024u * 1024u;
+    ovt_pool.byEngine = 1024u * 1024u;
+    ovt_pool.byTextures = 512u * 1024u;
+    ovt_pool.total = 1536u * 1024u;
+    OVL_Draw();
+    ok(sawText("Memory pool"), "set, the panel is up");
+    ok(sawText("pool"), "with the pool row");
+    ok(sawText("8.00 MB"), "and the pool's own size");
+    ok(sawText("2.00 MB"), "what has been handed out");
+    ok(sawText("1.00 MB"), "what the engine holds");
+    ok(sawText("512.0 KB"), "what the textures hold");
+    ok(sawText("25%"), "and a share of the pool beside a figure");
+
+    /* a band with holes gets a row, and one without does not */
+    resetAll();
+    tweak_memstat = 1;
+    ovt_pool.poolSize = 1024u * 1024u;
+    ovt_pool.bands[0].smallest = 8;
+    ovt_pool.bands[0].largest = 512;
+    ovt_pool.bands[0].holes = 3;
+    ovt_pool.bands[0].holeBytes = 600;
+    ovt_pool.holes = 3;
+    ovt_pool.holeBytes = 600;
+    OVL_Draw();
+    ok(sawText("by size class"), "the band list has a heading");
+    ok(sawText("8-512"), "a band with holes gets its row");
+    ok(sawText("x3"), "with how many are on its chain");
+    ok(!sawText("none free"), "and the empty message is not shown");
+
+    resetAll();
+    tweak_memstat = 1;
+    ovt_pool.poolSize = 1024u * 1024u;
+    OVL_Draw();
+    ok(sawText("none free"), "with no band holding anything, it says so");
+    ok(!sawText("8-512"), "and no band is given a row");
+
+    /* the sample: inside the period the figures do not move, past it
+       they do. This is what stops the panel reading the allocator
+       every frame, and nothing else in the file can see it. */
+    resetAll();
+    tweak_memstat = 1;
+    ovt_clock = 100.0f;
+    ovt_pool.poolSize = 1024u * 1024u;
+    OVL_Draw();
+    ok(sawText("1.00 MB"), "the first frame takes a sample");
+
+    resetAll();                       /* clears what was seen, not the sample */
+    tweak_memstat = 1;
+    ovl_memHave = 1;                  /* as the frame above left it */
+    ovl_memAt = 100.0f;
+    ovl_mem.poolSize = 1024u * 1024u;
+    ovt_clock = 100.25f;
+    ovt_pool.poolSize = 4u * 1024u * 1024u;   /* the pool has changed */
+    OVL_Draw();
+    ok(sawText("1.00 MB"), "a quarter second on, the sample is kept");
+    ok(!sawText("4.00 MB"), "so the new figure is not shown yet");
+
+    resetAll();
+    tweak_memstat = 1;
+    ovl_memHave = 1;
+    ovl_memAt = 100.0f;
+    ovl_mem.poolSize = 1024u * 1024u;
+    ovt_clock = 100.75f;
+    ovt_pool.poolSize = 4u * 1024u * 1024u;
+    OVL_Draw();
+    ok(sawText("4.00 MB"), "past the half second, it samples again");
+
+    /* a clock that has gone backwards -- a reset -- samples rather
+       than waiting out a period that will never pass */
+    resetAll();
+    tweak_memstat = 1;
+    ovl_memHave = 1;
+    ovl_memAt = 100.0f;
+    ovl_mem.poolSize = 1024u * 1024u;
+    ovt_clock = 1.0f;
+    ovt_pool.poolSize = 4u * 1024u * 1024u;
+    OVL_Draw();
+    ok(sawText("4.00 MB"), "a clock that went backwards samples again");
+}
+
 static void f1Cycle(void)
 {
     profilerRasterStructElem walked;
@@ -1251,6 +1377,7 @@ int main(void)
     placement();
     cornerStamp();
     afterEffects();
+    memStat();
     f1Cycle();
     panel();
     pass();

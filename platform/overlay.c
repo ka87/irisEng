@@ -1,6 +1,7 @@
 #include "overlay.h"
 #include "../font.h"
 #include "../gdi.h"
+#include "../memory.h"
 #include "../profiler.h"
 #include "../time.h"
 #include "../dbg.h"
@@ -25,6 +26,13 @@
    places text takes -- no cast at the call sites, and nothing for the
    warning sweep to find. */
 #define OVL_PANELW_AE  215.0f
+#define OVL_PANELW_MEM 250.0f
+#define OVL_MEM_NUMX   112      /* where the figures line up */
+#define OVL_MEM_SUBX   176      /* and the share beside them */
+/* Half a second, which is what the pool panel samples at. Any faster
+   and the figures move while they are being read; the allocator is not
+   polled every frame on purpose. */
+#define OVL_MEM_PERIOD 0.5f
 #define OVL_AE_STATEX  118
 #define OVL_AE_VALUEX  146
 
@@ -187,6 +195,11 @@ static void OVL_l_FlushText(void)
 // be up together.
 static int ovl_panelLeft = 0;
 
+/* Where the panel being drawn starts. The rasters and the
+   after-effects both begin at OVL_PANELY; the pool panel goes below
+   whichever of them is on its side. */
+static float ovl_panelTop = OVL_PANELY;
+
 static float OVL_l_PanelX(void)
 {
     float x;
@@ -206,7 +219,7 @@ static float OVL_l_PanelX(void)
 // the rasters window used.
 static void OVL_l_PanelText(const char* s, int x, int y, unsigned int color)
 {
-    OVL_l_Text(s, (int)OVL_l_PanelX() + x, (int)OVL_PANELY + y, color);
+    OVL_l_Text(s, (int)OVL_l_PanelX() + x, (int)ovl_panelTop + y, color);
 }
 
 // One raster, drawn the way the window drew it: a subgroup heading when
@@ -578,16 +591,134 @@ static int OVL_l_EffectRows(void)
 }
 
 // Down the left, so it does not fight the rasters panel on the right.
-static void OVL_l_AfterEffects(void)
+// Returns the screen Y just under the panel, so a second panel on the
+// same side can be placed without measuring it again.
+static float OVL_l_AfterEffects(void)
 {
     int bottom;
 
     ovl_panelLeft = 1;
+    ovl_panelTop = OVL_PANELY;
     bottom = OVL_l_EffectRows();
     OVL_l_PanelText("After-effects", 10, 6, OVL_GREEN);
-    OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY,
+    OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), ovl_panelTop,
                         OVL_PANELW_AE, (float)bottom + 2.0f, OVL_RADIUS);
     ovl_panelLeft = 0;
+    return ovl_panelTop + (float)bottom + 2.0f;
+}
+
+// ------------------------------------------------------------ the pool
+
+/* What the allocator says, sampled rather than read every frame: the
+   snapshot is kept here and refreshed when OVL_MEM_PERIOD has gone by
+   on the true clock, not on the frame delta, so a paused or stalled
+   frame does not freeze the figures with it. */
+static memPoolStat ovl_mem;
+static int   ovl_memHave = 0;
+static float ovl_memAt = 0.0f;
+
+static void OVL_l_MemPoll(void)
+{
+    float now = TIM_f_Clock_TrueRead();
+
+    if (ovl_memHave && now - ovl_memAt < OVL_MEM_PERIOD && now >= ovl_memAt)
+        return;
+    MEM_GetPoolStat(&ovl_mem);
+    ovl_memAt = now;
+    ovl_memHave = 1;
+}
+
+/* Bytes as something readable. The pool is megabytes and a band's
+   holes can be a few hundred bytes, so one unit for both is useless. */
+static void OVL_l_Bytes(char* out, size_t cap, unsigned int bytes)
+{
+    if (bytes >= 1024u * 1024u)
+        snprintf(out, cap, "%.2f MB", (double)bytes / (1024.0 * 1024.0));
+    else if (bytes >= 1024u)
+        snprintf(out, cap, "%.1f KB", (double)bytes / 1024.0);
+    else
+        snprintf(out, cap, "%u B", bytes);
+}
+
+static int OVL_l_MemRow(int y, const char* label, unsigned int bytes,
+                        unsigned int ofTotal, unsigned int color)
+{
+    char text[32];
+
+    OVL_l_PanelText(label, 10, y, color);
+    OVL_l_Bytes(text, sizeof(text), bytes);
+    OVL_l_PanelText(text, OVL_MEM_NUMX, y, color);
+    if (ofTotal)
+    {
+        snprintf(text, sizeof(text), "%u%%",
+                 (unsigned int)((double)bytes * 100.0 / (double)ofTotal + 0.5));
+        OVL_l_PanelText(text, OVL_MEM_SUBX, y, OVL_DIM);
+    }
+    return y + OVL_ROWHEIGHT;
+}
+
+static int OVL_l_MemRows(void)
+{
+    char text[48];
+    unsigned int i;
+    int y = 24;
+    int shown = 0;
+
+    y = OVL_l_MemRow(y, "pool", ovl_mem.poolSize, 0, OVL_TEXT);
+    y = OVL_l_MemRow(y, "handed out", ovl_mem.handedOut, ovl_mem.poolSize, OVL_TEXT);
+    y = OVL_l_MemRow(y, "engine", ovl_mem.byEngine, ovl_mem.poolSize, OVL_TEXT);
+    y = OVL_l_MemRow(y, "textures", ovl_mem.byTextures, ovl_mem.poolSize, OVL_TEXT);
+    y = OVL_l_MemRow(y, "total used", ovl_mem.total, ovl_mem.poolSize, OVL_TEXT);
+
+    OVL_l_PanelText("free holes", 10, y, OVL_TEXT);
+    OVL_l_Bytes(text, sizeof(text), ovl_mem.holeBytes);
+    OVL_l_PanelText(text, OVL_MEM_NUMX, y, OVL_TEXT);
+    snprintf(text, sizeof(text), "x%u", ovl_mem.holes);
+    OVL_l_PanelText(text, OVL_MEM_SUBX, y, OVL_DIM);
+    y += OVL_ROWHEIGHT;
+
+    /* One line per band of size classes, and only where something is
+       free in it -- eighteen empty rows say nothing, and which band is
+       holding the holes is the whole question. */
+    y += 4;
+    OVL_l_PanelText("by size class", 10, y, OVL_GREEN);
+    y += OVL_ROWHEIGHT;
+    for (i = 0; i < MEM_STAT_BANDS; i++)
+    {
+        const memPoolBandStat* b = &ovl_mem.bands[i];
+
+        if (!b->holes)
+            continue;
+        snprintf(text, sizeof(text), "%u-%u", b->smallest, b->largest);
+        OVL_l_PanelText(text, 10, y, OVL_TEXT);
+        OVL_l_Bytes(text, sizeof(text), b->holeBytes);
+        OVL_l_PanelText(text, OVL_MEM_NUMX, y, OVL_TEXT);
+        snprintf(text, sizeof(text), "x%u", b->holes);
+        OVL_l_PanelText(text, OVL_MEM_SUBX, y, OVL_DIM);
+        y += OVL_ROWHEIGHT;
+        shown++;
+    }
+    if (!shown)
+    {
+        OVL_l_PanelText("none free", 10, y, OVL_DIM);
+        y += OVL_ROWHEIGHT;
+    }
+    return y;
+}
+
+static void OVL_l_MemStat(float top)
+{
+    int bottom;
+
+    OVL_l_MemPoll();
+    ovl_panelLeft = 1;
+    ovl_panelTop = top;
+    bottom = OVL_l_MemRows();
+    OVL_l_PanelText("Memory pool", 10, 6, OVL_GREEN);
+    OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), ovl_panelTop,
+                        OVL_PANELW_MEM, (float)bottom + 2.0f, OVL_RADIUS);
+    ovl_panelLeft = 0;
+    ovl_panelTop = OVL_PANELY;
 }
 
 // ------------------------------------------------------ the corner stamp
@@ -636,13 +767,14 @@ void OVL_Draw(void)
     float height;
     int rastersOn;
     int bottom;
+    float leftTop;
     int drawW = 0;
     int drawH = 0;
 
     if (!gpst_DX_stDD || !gpst_DX_stDD->b_Ready())
         return;
     rastersOn = PRO_rasterDetailPage || PRO_rasterWindowIsOn;
-    if (!rastersOn && !ovl_cmdActive && !tweak_ae_view)
+    if (!rastersOn && !ovl_cmdActive && !tweak_ae_view && !tweak_memstat)
         return;
 
     gpst_DX_stDD->GetDrawingSize(&drawW, &drawH);
@@ -663,8 +795,12 @@ void OVL_Draw(void)
         OVL_l_RoundRectFill(OVL_BACKDROP, OVL_l_PanelX(), OVL_PANELY, OVL_PANELW,
                             height, OVL_RADIUS);
     }
+    // Both of these sit on the left, so the second starts under the first.
+    leftTop = OVL_PANELY;
     if (tweak_ae_view)
-        OVL_l_AfterEffects();
+        leftTop = OVL_l_AfterEffects() + OVL_PANELMARGIN;
+    if (tweak_memstat)
+        OVL_l_MemStat(leftTop);
     if (ovl_cmdActive)
     {
         OVL_l_CommandField();

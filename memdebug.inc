@@ -341,6 +341,19 @@ void MEM_GetHolesStat(int* holesNum, int* sizeOfHoles)
     if (sizeOfHoles) *sizeOfHoles = 0;
 }
 
+/* There is no pool in this build and so no size classes and no holes:
+   every block is its own allocation. What the engine has asked for is
+   still counted, so that much is answered and the rest is left zero --
+   a watcher then shows a pool of nothing, which is the truth here. */
+void MEM_GetPoolStat(memPoolStat* out)
+{
+    if (!out)
+        return;
+    memset(out, 0, sizeof(*out));
+    out->byEngine = MEM_gst_MemoryInfo.usedMemoryByEngine;
+    out->total = out->byEngine;
+}
+
 void* MEM_MoveToTempMem(void* ptr, size_t Size)
 {
     void* newPtr = MEM_p_AllocTmp((int)Size);

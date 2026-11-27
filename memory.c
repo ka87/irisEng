@@ -23,6 +23,7 @@
 #define MEM_ResetTmpMemory MEMPOOL_MEM_ResetTmpMemory
 #define MEM_Defrag MEMPOOL_MEM_Defrag
 #define MEM_GetHolesStat MEMPOOL_MEM_GetHolesStat
+#define MEM_GetPoolStat MEMPOOL_MEM_GetPoolStat
 #define MEM_MoveToTempMem MEMPOOL_MEM_MoveToTempMem
 #define MEM_GEO_p_Alloc MEMPOOL_MEM_GEO_p_Alloc
 #define MEM_GEO_p_AllocAlign MEMPOOL_MEM_GEO_p_AllocAlign
@@ -387,6 +388,61 @@ void MEM_GetHolesStat(int* holesNum, int* sizeOfHoles)
         }
         ++currMemInfoElem;
     } while (currMemInfoElem < &MEM_gst_MemoryInfo.memInfoElems[2304]);
+}
+
+/* The pool as a watcher sees it. The per-class counts are summed into
+   the eighteen bands rather than reported one class at a time: the hole
+   chains are what the classes are for, and a reader wants to know which
+   band is fragmenting, not which of its 128 classes.
+
+   holeChainElemCount is the count the allocator keeps as it chains and
+   unchains, so this does not walk the chains themselves -- walking 2304
+   of them every time something asks would cost more than the answer is
+   worth, and MEM_GetHolesStat above is there for the walk when the
+   count itself is in doubt.
+
+   No lock, which is deliberate and matches MEM_GetHolesStat above. The
+   allocator's lock is a binary semaphore rather than a recursive mutex,
+   so a caller that already held it would deadlock here, and the only
+   cost of going without is that a snapshot taken while another thread
+   is in the middle of relinking can be a few bytes out. A panel that
+   samples twice a second can be. Anything that needs the figures to
+   add up exactly has to stop the allocator itself. */
+void MEM_GetPoolStat(memPoolStat* out)
+{
+    const memoryInfoElem* elem;
+    unsigned int band;
+    unsigned int i;
+
+    if (!out)
+        return;
+    memset(out, 0, sizeof(*out));
+
+    out->poolSize   = (unsigned int)MEM_gst_MemoryInfo.memorySize;
+    out->byEngine   = MEM_gst_MemoryInfo.usedMemoryByEngine;
+    out->byTextures = MEM_gst_MemoryInfo.usedMemoryByTextures;
+    out->total      = MEM_gst_MemoryInfo.totalUsedMemory;
+    out->handedOut  = (unsigned int)((char*)MEM_gst_MemoryInfo.nextFreeMemoryPointer
+                                     - (char*)MEM_gst_MemoryInfo.memoryStartPointer);
+    for (band = 0; band < MEM_STAT_BANDS; band++)
+    {
+        memPoolBandStat* b = &out->bands[band];
+
+        elem = &MEM_gst_MemoryInfo.memInfoElems[band * 128u];
+        b->smallest = (unsigned int)elem[0].size;
+        b->largest  = (unsigned int)elem[127].size;
+        for (i = 0; i < 128u; i++)
+        {
+            unsigned int n = (unsigned int)elem[i].holeChainElemCount;
+
+            if (!n)
+                continue;
+            b->holes     += n;
+            b->holeBytes += n * ((unsigned int)elem[i].size + MEM_HEADER_BYTES);
+        }
+        out->holes     += b->holes;
+        out->holeBytes += b->holeBytes;
+    }
 }
 
 /*
@@ -948,6 +1004,7 @@ int MEM_MemBlockSizeGetTmpAddressSpace(void* ptr) {
 #undef MEM_ResetTmpMemory
 #undef MEM_Defrag
 #undef MEM_GetHolesStat
+#undef MEM_GetPoolStat
 #undef MEM_MoveToTempMem
 #undef MEM_GEO_p_Alloc
 #undef MEM_GEO_p_AllocAlign

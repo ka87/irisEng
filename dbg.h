@@ -44,6 +44,8 @@ extern int tweak_d3d_chrome;
    all, 2 the facing reversed. See the table in dbg.c. */
 extern int tweak_gl_cull;
 extern int tweak_gl_water_flip;
+extern int tweak_memstat;
+extern int tweak_shadow;
 
 void DBG_assert(int isError, char* sourceCodeInfo, int lineNo, char* sourceCodeLine, const char* error, const char* extra, int showMsgBox);
 void DBG_OutputDebugString(char* Format, ...);
