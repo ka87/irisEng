@@ -535,6 +535,7 @@ for one in tests/run_sdl3.sh \
            tests/glconvcheck.sh \
            tests/tweakcheck.sh \
            tests/warncheck.sh \
+           tests/run_memdebug.sh \
            tests/implicitcheck.sh
 do
     name=$(basename "$one" .sh)
