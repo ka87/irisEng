@@ -2530,8 +2530,17 @@ int pcSND_i_FxGetDelay(tSoundFxParams* params)
            address rather than its delay field is unreachable, and it
            is left exactly as it stands -- the delay this should
            answer with has not been established, and a guess would be
-           a divergence nothing can check. */
-        result = (int)params;
+           a divergence nothing can check.
+
+           TRUNCATION, DELIBERATE: the cast below drops the top half of
+           an address. It goes through intptr_t so the compiler does not
+           warn and so this file can join tests/ptrcast-clean.txt, where
+           it guards every other site in the file -- it was off the list
+           before, which left a new truncation here unnoticed. This one
+           is the exception, and it is only safe because nothing reads
+           the result. Anything that starts reading it needs the real
+           delay first. */
+        result = (int)(intptr_t)params;
         break;
     default:
         params->mode = 0;

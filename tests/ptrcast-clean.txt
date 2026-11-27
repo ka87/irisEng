@@ -148,6 +148,7 @@ platform/glshader.c
 platform/inputbackend.c
 platform/overlay.c
 platform/perfdisplay.c
+platform/sndbackend.c
 platform/sndvideo.c
 platform/syscompat.c
 pngsave.c

@@ -172,7 +172,7 @@ term_destination_jade(j_compress_ptr cinfo)
     int v2;
     int v3;
     
-    v2 = dest->pub.free_in_buffer;
+    v2 = (int)dest->pub.free_in_buffer;
     v3 = 4096 - v2;
     if (v2 != 4096)
     {
