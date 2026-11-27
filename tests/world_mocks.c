@@ -447,3 +447,22 @@ int LOA_ul_SearchAddress(int pos)
     WMOCK_Logf("LOA_ul_SearchAddress %d -> %d", pos, r);
     return r;
 }
+
+/* Pure, so it stands in rather than aborting: the attach path asks it
+   for the largest level of a static LOD before sizing that object's
+   RLI colours. */
+unsigned int GEO_ul_StaticLOD_MaxVertexNum(struct sGEOSTATICLOD* lod)
+{
+    unsigned int most = 0;
+    int i;
+
+    if (!lod)
+        return 0;
+    for (i = 0; i < lod->lodNum; i++)
+    {
+        if (lod->geo[i] && lod->geo[i]->vertexNum > most)
+            most = lod->geo[i]->vertexNum;
+    }
+    WMOCK_Logf("GEO_ul_StaticLOD_MaxVertexNum %u", most);
+    return most;
+}
