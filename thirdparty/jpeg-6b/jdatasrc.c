@@ -226,7 +226,7 @@ fill_input_buffer_jade(j_decompress_ptr cinfo)
     v5 = src->buffer;
     if ((lJADE_JPEG_INPOUT_FILE_LENGTH - 4096) < 0)
     {
-        v7 = (v4 + 4096) >> 2;
+        v7 = (unsigned int)((v4 + 4096) >> 2);
         memcpy(v5, ucJADE_JPEG_INPOUT_FILE, 4 * v7);
         memcpy(&v5[4 * v7], &v2[4 * v7], v4 & 3);
     }

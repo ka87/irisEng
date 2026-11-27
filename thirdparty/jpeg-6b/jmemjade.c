@@ -42,7 +42,7 @@ extern void free JPP((void *ptr));
 GLOBAL(void *)
 jpeg_get_small (j_common_ptr cinfo, size_t sizeofobject)
 {
-  return (void *) MEM_p_Alloc(sizeofobject);
+  return (void *) MEM_p_Alloc((unsigned int) sizeofobject);
 }
 
 GLOBAL(void)
@@ -62,7 +62,7 @@ jpeg_free_small (j_common_ptr cinfo, void * object, size_t sizeofobject)
 GLOBAL(void FAR *)
 jpeg_get_large (j_common_ptr cinfo, size_t sizeofobject)
 {
-  return (void FAR *) MEM_p_Alloc(sizeofobject);
+  return (void FAR *) MEM_p_Alloc((unsigned int) sizeofobject);
 }
 
 GLOBAL(void)
