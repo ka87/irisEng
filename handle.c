@@ -234,6 +234,16 @@ uint32_t HDL_ul_Handle(void* ptr)
          | ((slot->gen & HDL_GEN_MASK) << HDL_GEN_SHIFT);
 }
 
+/* How many unissued references to report before going quiet. */
+#define HDL_UNISSUED_SAY 8
+static unsigned int hdl_unissuedSaid;
+static HDL_ReportFn hdl_report;
+
+void HDL_SetReporter(HDL_ReportFn fn)
+{
+    hdl_report = fn;
+}
+
 void* HDL_p_Pointer(uint32_t handle)
 {
     uint32_t idx, gen;
@@ -247,9 +257,32 @@ void* HDL_p_Pointer(uint32_t handle)
     idx = (handle >> HDL_IDX_SHIFT) & HDL_IDX_MASK;
     gen = (handle >> HDL_GEN_SHIFT) & HDL_GEN_MASK;
 
-    /* Not a handle this table ever issued. */
+    /* Not a handle this table ever issued. The value is handed back
+       because a slot may legitimately hold something that is not a
+       reference at all -- but a caller that treats it as one is about
+       to dereference a number, and the fault will land somewhere with
+       nothing to say about where the number came from. So say it here,
+       where the value is still in hand.
+
+       The first few only: this is reached by design for a tagged slot
+       on a path that does not check the tag first, and a line per call
+       would bury the one that matters. */
     if (idx < HDL_FIRST_INDEX || idx >= hdl_slotUsed)
+    {
+        if (hdl_report && hdl_unissuedSaid < HDL_UNISSUED_SAY)
+        {
+            char line[192];
+
+            ++hdl_unissuedSaid;
+            snprintf(line, sizeof(line),
+                     "handle: %#x reads as a reference and was never issued "
+                     "(index %u, generation %u, %u issued). Whatever holds "
+                     "it is not a reference, or it was encoded twice.\n",
+                     handle, idx, gen, hdl_slotUsed);
+            hdl_report(line);
+        }
         return (void*)(uintptr_t)handle;
+    }
 
     slot = &hdl_slots[idx];
     if (!slot->addr)

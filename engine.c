@@ -829,6 +829,13 @@ void ENG_Loop()
     ENG_gb_EngineRunning = 0;
 }
 
+/* The handle layer formats its own line and knows nothing of the
+   engine's debug output, so this is the only thing that joins them. */
+static void ENG_l_HandleSays(const char* text)
+{
+    DBG_OutputDebugString("%s", (char*)text);
+}
+
 void ENG_InitApplication()
 {
     memset(MAI_gst_BIGFileName, 0, 260);
@@ -837,6 +844,7 @@ void ENG_InitApplication()
     MAI_gst_MainHandles.currentWorld = 0;
     BIG_gst.CLibFileHandle = 0;
     MAI_gst_MainHandles.displayData = 0;
+    HDL_SetReporter(ENG_l_HandleSays);
     MEM_InitModule();
     PRO_InitModule();
     BAS_InitModule();
