@@ -1230,7 +1230,9 @@ int SND_l_LoadData(int soundKEy)
         if (!buffer)
             return -1;
         soundElem->flags = 0x200401;
-        soundElem->sndSndBufElem = SND_ref_FromBuffer(buffer);
+        /* Already a slot: the interface entry encodes on the way
+           out, so what comes back is not a buffer to encode. */
+        soundElem->sndSndBufElem = buffer;
     }
     return soundIdx;
 }
@@ -3294,7 +3296,8 @@ int SND_l_LoadLoadingSoundData(int soundKEy)
             wavHdr.dataStartPos = sound->startDataPos;
             SND_gi_RasterCurrentFileId = 8;
             buffer = SND_gpst_Interface.win.Reload(SND_gst_Params.handles, SND_gst_LSGlobal.soundElemElem, &wavHdr, sound->startDataPos);
-            sound->sndSndBufElem = SND_ref_FromBuffer(buffer);
+            /* Already a slot, as from Create above. */
+            sound->sndSndBufElem = buffer;
             if (!buffer)
                 return -1;
             SND_gst_LSGlobal.soundElemElem = buffer;

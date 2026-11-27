@@ -81,6 +81,16 @@ int HDL_i_LiveCount(void);
 
 void HDL_CloseModule(void);
 
+/* Where the layer says something, when it has something to say.
+   Nothing is reported until one is set, so a harness that links this
+   file pulls in nothing of the engine's debug output. The one thing
+   it reports is a value that reads as a reference and was never
+   issued: the layer hands such a value back, because a slot may hold
+   something that is not a reference at all, but a caller that treats
+   it as one is about to dereference a number. */
+typedef void (*HDL_ReportFn)(const char* text);
+void HDL_SetReporter(HDL_ReportFn fn);
+
 #else
 
 #define HDL_ul_Handle(ptr)   ((uint32_t)(uintptr_t)(ptr))
@@ -88,6 +98,8 @@ void HDL_CloseModule(void);
 #define HDL_Release(ptr)     ((void)(ptr))
 #define HDL_i_LiveCount()    (0)
 #define HDL_CloseModule()    ((void)0)
+typedef void (*HDL_ReportFn)(const char* text);
+#define HDL_SetReporter(fn)  ((void)(fn))
 
 #endif
 

@@ -32,9 +32,23 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include "../handle.h"
 
 static int failures;
+
+/* The layer says so when it is handed a reference it never issued, so
+   that a slot holding the wrong thing is named where the value is
+   still in hand rather than where it is finally dereferenced. */
+static int dbgLines;
+static char dbgLast[512];
+
+static void sayHere(const char* text)
+{
+    ++dbgLines;
+    snprintf(dbgLast, sizeof(dbgLast), "%s", text);
+}
 
 static void fail(const char* what)
 {
@@ -232,6 +246,66 @@ int main(void)
             failn("handles issued before the table filled", issued, HDL_MAX_SLOTS - 1ull);
         if (last != HDL_NO_OBJECT)
             fail("the table never reported itself full");
+
+        HDL_CloseModule();
+    }
+
+    /* A value that reads as a reference and was never issued.
+       The layer hands it back -- a slot may hold something that is not
+       a reference at all -- but it says so first, because the caller
+       that treats it as one will dereference a number and fault
+       somewhere with nothing to say about where the number came from.
+       Encoding a slot a second time is how that happens: the result is
+       a perfectly good handle for a value that is not an address.    */
+    {
+        void* got;
+        uint32_t made;
+
+        HDL_CloseModule();
+        HDL_SetReporter(sayHere);
+        dbgLines = 0;
+        dbgLast[0] = '\0';
+
+        /* tag 0, index well past anything this table has issued */
+        made = (0x400u << HDL_IDX_SHIFT) | (1u << HDL_GEN_SHIFT);
+        got = HDL_p_Pointer(made);
+
+        if (got != (void*)(uintptr_t)made)
+            fail("a reference the table never issued did not come back "
+                 "as itself");
+        if (dbgLines != 1)
+            failn("lines said about a reference that was never issued",
+                  dbgLines, 1);
+        else if (!strstr(dbgLast, "never issued"))
+            fail("the layer said something else about it");
+
+        /* A handle it did issue says nothing. */
+        dbgLines = 0;
+        {
+            int anchor = 0;
+            uint32_t h = HDL_ul_Handle(&anchor);
+
+            if (HDL_p_Pointer(h) != &anchor)
+                fail("a live handle stopped resolving");
+            if (dbgLines != 0)
+                fail("a live handle was reported as never issued");
+        }
+
+        /* And a tagged slot, which is not a reference at all, goes
+           through without a word: that path is by design. */
+        dbgLines = 0;
+        (void)HDL_p_Pointer((2u << HDL_TAG_BITS) | 2u);
+        if (dbgLines != 0)
+            fail("a tagged slot was reported as a reference");
+
+        /* And with no reporter set it says nothing at all, which is
+           what lets a harness link this file and pull in none of the
+           engine's debug output. */
+        HDL_SetReporter(0);
+        dbgLines = 0;
+        (void)HDL_p_Pointer(made);
+        if (dbgLines != 0)
+            fail("the layer spoke with no reporter set");
 
         HDL_CloseModule();
     }
