@@ -9343,7 +9343,7 @@ void COL_ComputeJumpPoint(struct sGameObjectMain* gao, Vec3* outPoint, float mar
     hitWorld->rayCastNormalVec.y = 0;
     hitWorld->rayCastNormalVec.z = 0;
 }
-int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* world, struct sGameObjectMain** outList, Vec3* direction, int reportFilter)
+int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* world, tAIObjOut* outList, Vec3* direction, int reportFilter)
 {
     int count;
     int index;
@@ -9362,7 +9362,8 @@ int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* 
                 && fabs(direction->z) == 0.0f
                 || rec->normalVec.z * direction->z + direction->y * rec->normalVec.y + rec->normalVec.x * direction->x > 0.0f))
         {
-            outList[count] = rec->collisionInstanceGameObject;
+            /* An AI array holds reference slots, not addresses. */
+            outList[count] = AI_OBJ_OUT(rec->collisionInstanceGameObject);
             ++count;
         }
         ++rec;
@@ -9527,7 +9528,7 @@ int COL_Report_GetAllReportsNormal(struct sGameObjectMain* gao, struct sWorld* w
     return count;
 }
 
-int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest, struct sGameObjectMain** outList)
+int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest, tAIObjOut* outList)
 {
     tableElemStructPF* elem;
     tableElemStructPF* last;
@@ -9543,7 +9544,7 @@ int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flag
             && gao->distance
             && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
-            outList[count++] = gao;
+            outList[count++] = AI_OBJ_OUT(gao);
         }
     }
     return count;
@@ -10631,7 +10632,7 @@ BOOL COL_ZDE_ZDECollide(struct sGameObjectMain* gao1, uint8_t id1, uint8_t id2, 
     return result;
 }
 
-int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* world, struct sGameObjectMain** outList, char mode)
+int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* world, tAIObjOut* outList, char mode)
 {
     uint8_t count;
     tableElemStructPF* elem;
@@ -10696,7 +10697,7 @@ int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNo
         }
         if (hit)
         {
-            outList[count] = other;
+            outList[count] = AI_OBJ_OUT(other);
             ++count;
         }
     }
@@ -11076,7 +11077,7 @@ void COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id)
     ++instance->instElemNum;
 }
 
-int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* world, struct sGameObjectMain** outList, Vec3* pos, float range, char maxCount)
+int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* world, tAIObjOut* outList, Vec3* pos, float range, char maxCount)
 {
     tableElemStructPF* elem;
     tableElemStructPF* last;
@@ -11100,7 +11101,7 @@ int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest
 
                     if ((dx * dx + dy * dy + dz * dz) < (range * range))
                     {
-                        outList[count] = gao;
+                        outList[count] = AI_OBJ_OUT(gao);
                         ++count;
                         if (count >= (uint8_t)maxCount)
                             count = maxCount - 1;

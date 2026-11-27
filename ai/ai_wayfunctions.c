@@ -357,7 +357,7 @@ tAINode* AI_EvalFunc_WAYRootGet(tAINode* node)
     return node + 1;
 }
 
-tGameObjectMain** AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, tAIObjRef* gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
+tAIObjRef* AI_WAYNetFillRec(tWayNetwork* network, tGameObjectMain* gao, tAIObjRef* gaoList, int flagMustHave, int flagMustNotHave, int whatToTest)
 {
     unsigned int i;
     int j;
@@ -421,7 +421,7 @@ tAINode* AI_EvalFunc_WAYNetFill(tAINode* node)
     AI_GetVarFromStack(converted, &var);
     gao = (tGameObjectMain*)AI_GetObjectFromStack();
     network = (tWayNetwork*)AI_GetObjectFromStack();
-    AI_PutIntToStack(AI_EvalFunc_WAYNetFill_C(network, gao, (tGameObjectMain**)var.ptr));
+    AI_PutIntToStack(AI_EvalFunc_WAYNetFill_C(network, gao, (tAIObjRef*)var.ptr));
     return node + 1;
 }
 
@@ -452,12 +452,12 @@ tAINode* AI_EvalFunc_WAYGet(tAINode* node)
     AI_GetVarFromStack(converted, &var);
     network = (tWayNetwork*)AI_GetObjectFromStack();
 
-    AI_PutIntToStack(AI_EvalFunc_WAYGet_C(network, (tGameObjectMain**)var.ptr,
+    AI_PutIntToStack(AI_EvalFunc_WAYGet_C(network, (tAIObjRef*)var.ptr,
                                           flagMustHave, flagMustNotHave, whatToTest));
     return node + 1;
 }
 
-void AI_WAYNearestOfPosRec(tWayNetwork* network, tGameObjectMain* gao, Vec3* pos, int flagMustHave, int flagMustNothave, int whatToTest, tGameObjectMain** excludeGaoList, unsigned int excludeGaoListNum)
+void AI_WAYNearestOfPosRec(tWayNetwork* network, tGameObjectMain* gao, Vec3* pos, int flagMustHave, int flagMustNothave, int whatToTest, tAIObjRef* excludeGaoList, unsigned int excludeGaoListNum)
 {
     unsigned int i;
     int j;
@@ -468,7 +468,12 @@ void AI_WAYNearestOfPosRec(tWayNetwork* network, tGameObjectMain* gao, Vec3* pos
     {
         BAS_binsert(HDL_ul_Handle(gao), (int)HDL_ul_Handle(gao), &WAY_gst_Seen);
         
-        for (i = 0; i < excludeGaoListNum && excludeGaoList[i] != gao; i++);
+        /* The exclude list is the caller's AI array, so each entry
+           is a reference slot and has to be resolved to compare. */
+        for (i = 0;
+             i < excludeGaoListNum
+                 && AI_p_ObjFromRef(excludeGaoList[i]) != gao;
+             i++);
 
         if (i == excludeGaoListNum && OBJ_b_test_flag(gao, flagMustHave, flagMustNothave, whatToTest))
         {
@@ -537,7 +542,7 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObj(tAINode* node)
     return node + 1;
 }
 
-tGameObjectMain* AI_EvalFunc_WAYNearestWPOfObjExcl_C(tGameObjectMain* gao, tWayNetwork* network, int flagMustHave, int flagMustNothave, int whatToTest, tGameObjectMain** excludeGaoList, unsigned int excludeGaoListNum)
+tGameObjectMain* AI_EvalFunc_WAYNearestWPOfObjExcl_C(tGameObjectMain* gao, tWayNetwork* network, int flagMustHave, int flagMustNothave, int whatToTest, tAIObjRef* excludeGaoList, unsigned int excludeGaoListNum)
 {
     AI_WAYgpstBest = 0;
     WAY_gst_Seen.actElemNum = 0;
@@ -568,7 +573,7 @@ tAINode* AI_EvalFunc_WAYNearestWPOfObjExcl(tAINode* node)
     flagMustHave = AI_GetIntFromStack();
     network = (tWayNetwork*)AI_GetObjectFromStack();
     nearest = AI_EvalFunc_WAYNearestWPOfObjExcl_C(gaoUltra, network, flagMustHave, flagMustNothave,
-                                                  whatToTest, (tGameObjectMain**)var.ptr,
+                                                  whatToTest, (tAIObjRef*)var.ptr,
                                                   excludeGaoListNum);
     AI_PutRefToStack(nearest, AI_gaw_EnumLink[40]);
     return node + 1;
@@ -616,7 +621,7 @@ tAINode* AI_EvalFunc_WAYShortWay(tAINode* node)
     from = (tGameObjectMain*)AI_GetObjectFromStack();
     AI_GetVarFromStack(converted, &var);
     network = (tWayNetwork*)AI_GetObjectFromStack();
-    AI_PutIntToStack(AI_EvalFunc_WAYShortWay_C(gaoUltra, network, (tGameObjectMain**)var.ptr, from, to));
+    AI_PutIntToStack(AI_EvalFunc_WAYShortWay_C(gaoUltra, network, (tAIObjRef*)var.ptr, from, to));
     return node + 1;
 }
 

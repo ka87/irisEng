@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "aiobjref.h"
 
 struct sGameObjectCollMain;
 struct tableDescStruct;
@@ -294,13 +295,13 @@ float COL_GameMaterial_GetSlide(struct sGameObjectMain* gao, struct sWorld* worl
 float COL_GameMaterial_GetRebound(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter);
 uint8_t COL_GameMaterial_GetSound(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter);
 void COL_ComputeJumpPoint(struct sGameObjectMain* gao, Vec3* outPoint, float margin, int down, int useLastRayHit);
-int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* world, struct sGameObjectMain** outList, Vec3* direction, int reportFilter);
+int COL_Report_GetZDMGameObjectList(struct sGameObjectMain* gao, struct sWorld* world, tAIObjOut* outList, Vec3* direction, int reportFilter);
 void COL_RayCompute(Vec3* offsetOut, struct sWorld* world, struct sGameObjectMain* gao, Vec3* source, Vec3* direction, int flagMustHave, int flagMustNothave, int whatToTest, int skipRayCast, unsigned int* resultFlags);
 struct sGameObjectMain* COL_Report_GetBestWallGOInDirection(struct sGameObjectMain* gao, struct sWorld* world, Vec3* direction, float minCos, int* outRank);
 Vec3* COL_Report_GetCollidedPoint(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter);
 Vec3* COL_Report_GMat_GetCollidedPoint(struct sGameObjectMain* gao, struct sWorld* world, int gameMaterialMask, int* outRank);
 int COL_Report_GetAllReportsNormal(struct sGameObjectMain* gao, struct sWorld* world, Vec3* outNormals, int reportFilter);
-int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest, struct sGameObjectMain** outList);
+int COL_VisibleObjectListCreate(struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest, tAIObjOut* outList);
 int COL_Report_GetNumberOfReports(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter);
 void COL_Report_ComputeResultingNormal(struct sGameObjectMain* gao, struct sWorld* world, int reportFilter, Vec3* outNormal);
 struct sGameObjectMain* COL_Report_GetBestWallGOInDirectionSpecial(struct sGameObjectMain* gao, struct sWorld* world, Vec3* direction, float minCos, int* outRank);
@@ -316,10 +317,10 @@ BOOL COL_ZDE_BVCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObj
 int COL_ZDE_PivotCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObjectMain* gao2, int direction);
 int COL_ZDE_BVCenterCollide(struct sGameObjectMain* gao1, uint8_t id, struct sGameObjectMain* gao2, int direction);
 struct sGameObjectMain* COL_GetFirstObjectInRange(struct sWorld* world, Vec3* pos, float range, int flagMustHave, int flagMustNothave, int whatToTest);
-int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* world, struct sGameObjectMain** outList, char mode);
+int COL_ListCreate(struct sGameObjectMain* gao, int flagMustHave, int flagMustNothave, int whatToTest, char id, struct sWorld* world, tAIObjOut* outList, char mode);
 int COL_TriangleCollision(Vec3* corner1, Vec3* corner2, Vec3* corner3, Vec3* outPoint, struct sWorld* world, int flagMustHave, int flagMustNothave, int whatToTest);
 void COL_SwapToSpecific(struct sGameObjectMain* gao, uint8_t id);
-int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* world, struct sGameObjectMain** outList, Vec3* pos, float range, char maxCount);
+int COL_ListCreateDistance(int flagMustHave, int flagMustNothave, int whatToTest, struct sWorld* world, tAIObjOut* outList, Vec3* pos, float range, char maxCount);
 void COL_ZDx_SpecificPosSet(struct sGameObjectMain* gao, uint8_t id, Vec3* pos);
 void COL_ZDx_SpecificSizeSet(struct sGameObjectMain* gao, uint8_t id, Vec3* size);
 float COL_ZDx_SizeGet(struct sGameObjectMain* gao, uint8_t id);

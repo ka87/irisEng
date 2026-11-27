@@ -57,7 +57,7 @@ tAINode* AI_EvalFunc_ARRObjNearestOfPoint(tAINode* node)
     pos = (Vec3*)AI_PopStackSlot();
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRObjNearestOfPoint_C((tGameObjectMain**)var.ptr, num, pos));
+    AI_PutIntToStack(AI_EvalFunc_ARRObjNearestOfPoint_C((tAIObjRef*)var.ptr, num, pos));
     return node + 1;
 }
 
@@ -225,7 +225,7 @@ tAINode* AI_EvalFunc_ARRObjBestSight(tAINode* node)
     AI_GetVecFromStack(&from);
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSight_C((tGameObjectMain**)var.ptr, num,
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSight_C((tAIObjRef*)var.ptr, num,
                                                    &from, &direction, falloff));
     return node + 1;
 }
@@ -252,7 +252,7 @@ tAINode* AI_EvalFunc_ARRObjSearch(tAINode* node)
     gao = (tGameObjectMain*)AI_GetObjectFromStack();
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRObjSearch_C((tGameObjectMain**)var.ptr, num, gao));
+    AI_PutIntToStack(AI_EvalFunc_ARRObjSearch_C((tAIObjRef*)var.ptr, num, gao));
     return node + 1;
 }
 
@@ -595,7 +595,7 @@ tAINode* AI_EvalFunc_ARRObjBestSightBVCenter(tAINode* node)
     AI_GetVecFromStack(&from);
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightBVCenter_C((tGameObjectMain**)var.ptr, num,
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightBVCenter_C((tAIObjRef*)var.ptr, num,
                                                            &from, &direction, falloff));
     return node + 1;
 }
@@ -707,7 +707,7 @@ tAINode* AI_EvalFunc_ARRSortByFlags(tAINode* node)
     flagMustHave = AI_GetIntFromStack();
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRSortByFlags_C((tGameObjectMain**)var.ptr, num,
+    AI_PutIntToStack(AI_EvalFunc_ARRSortByFlags_C((tAIObjRef*)var.ptr, num,
                                                   flagMustHave, flagMustNothave, whatToTest));
     return node + 1;
 }
@@ -794,7 +794,7 @@ tAINode* AI_EvalFunc_ARRObjBestSightInfoPhoto(tAINode* node)
     AI_GetVecFromStack(&from);
     num = AI_GetIntFromStack();
     AI_GetVarFromStack(converted, &var);
-    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightInfoPhoto_C((tGameObjectMain**)var.ptr, num,
+    AI_PutIntToStack(AI_EvalFunc_ARRObjBestSightInfoPhoto_C((tAIObjRef*)var.ptr, num,
                                                             &from, &direction, toleranceDeg));
     return node + 1;
 }

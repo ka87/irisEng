@@ -212,3 +212,75 @@ if [ "$bad" -ne 0 ]; then
     exit 1
 fi
 echo "no new implicit declarations"
+
+# Pointer types that do not match, in the same sweep and for the same
+# reason: -w hides them too, and MSVC reports the mismatch as C4047,
+# a warning, so a build that allows warnings still produces an exe.
+#
+# It is here because a conversion of the AI object arrays to a type of
+# their own was announced as complete on the strength of "every source
+# compiles" -- which was run with -w, and grepped for "error". Twenty
+# sites were left passing a pointer array where a slot array is
+# wanted, among them the collision list builders that fill those
+# arrays. Nothing failed to build, and nothing said so.
+#
+# One engine source has one and keeps it: d3drow.c wires
+# D3D_DrawSprites, declared with a void* where the renderer table
+# says Vec3*, into that table. The two are the same at every call
+# site. Aligning the declaration is a one-word change and it
+# renames the symbol the d3drender differential compares, so the
+# frozen copy stops matching -- it is left as it is and listed.
+#
+# The six below are drivers and mocks that
+# wire a mock of a near-enough signature into a table -- a return of
+# int where the field says void, that sort of thing. They predate this
+# check and each is a deliberate shortcut in a harness rather than a
+# fault in the engine, so they are listed with their counts and the
+# check fails on anything new or worse. An entry that drops to zero is
+# reported too, so the list cannot quietly go stale.
+ptr_baseline='
+platform/d3drow.c:1
+tests/d3drender_mocks.c:2
+tests/gfxcore_mocks.c:1
+tests/test_glrender.c:1
+tests/test_profiler.c:6
+tests/test_xmenmodifier.c:1
+tests/winio_mocks.c:1
+'
+
+ptrbad=0
+ptrcurrent=$(
+for f in $files; do
+    n=$($CC $CFLAGS "$f" 2>&1 \
+        | grep -c -e 'incompatible pointer type' \
+                  -e 'incompatible types when assigning' \
+                  -e 'incompatible type for argument' || true)
+    [ "$n" != "0" ] && printf '%s:%s\n' "$f" "$n"
+done
+true
+)
+
+for line in $ptrcurrent; do
+    f=${line%%:*}
+    n=${line##*:}
+    was=$(printf '%s\n' $ptr_baseline | grep "^$f:" | cut -d: -f2)
+    if [ -z "$was" ]; then
+        printf 'PTR   %-28s %s mismatch(es), not in the baseline\n' "$f" "$n"
+        ptrbad=$((ptrbad + 1))
+    elif [ "$n" -gt "$was" ]; then
+        printf 'PTR   %-28s %s mismatch(es), was %s\n' "$f" "$n" "$was"
+        ptrbad=$((ptrbad + 1))
+    fi
+done
+
+for line in $ptr_baseline; do
+    f=${line%%:*}
+    printf '%s\n' $ptrcurrent | grep -q "^$f:" || \
+        printf 'PTR   %-28s is clean now -- take it off the list\n' "$f"
+done
+
+if [ "$ptrbad" -ne 0 ]; then
+    echo "$ptrbad file(s) pass a pointer of the wrong type"
+    exit 1
+fi
+echo "no mismatched pointer types"
