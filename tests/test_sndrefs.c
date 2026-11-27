@@ -48,6 +48,8 @@ void pcSND_SB_Stop(tSndSoundBufferElem* sbe);
 int pcSND_Stream_GetStatus(tSndSoundBufferElem* sndBufferElem, int* status);
 int pcSND_ref_SB_GetStatus(tSndSoundBufferElem* ref, int* status);
 void pcSND_ref_SB_SetVolume(tSndSoundBufferElem* ref, int att);
+void pcSND_ref_StreamGetMonoToStereo(tSndSoundBufferElem** track,
+                                     tSndSoundBufferElem** resource);
 void pcSND_ref_SB_SetFrequency(tSndSoundBufferElem* ref, int freq);
 void pcSND_ref_SB_Stop(tSndSoundBufferElem* ref);
 extern int SND_gi_StreamListSize;
@@ -453,6 +455,42 @@ static void check_stream_family_reads_an_index(void)
  * caller that hands it a raw address, so what is driven here is a slot
  * built the way the engine builds one -- a handle, which is nothing
  * like the buffer it stands for. */
+/* A getter that finds nothing leaves the caller's slots as they were.
+ *
+ * The streaming entry is an empty stub, and before these wrappers
+ * existed the interface was wired to it directly: a function that
+ * writes nothing left the two slots the caller passed exactly as they
+ * were. The wrapper converts a pointer into a slot on the way out, and
+ * converting unconditionally turned that stub into something that
+ * writes a nought into both of them.
+ *
+ * One of the two is a track resource list entry, and the next track to
+ * take that resource is handed it as its buffer -- so the engine went
+ * looking for the current position of a track with no buffer at all,
+ * and the stub was what had emptied it. */
+static void check_a_getter_that_finds_nothing_leaves_the_slots(void)
+{
+    tSndSoundBufferElem* track;
+    tSndSoundBufferElem* resource;
+
+    printf("-- a getter that hands back nothing leaves the slots alone\n");
+
+    memset(&buffers[0], 0, sizeof(buffers[0]));
+    memset(&buffers[1], 0, sizeof(buffers[1]));
+    track = (tSndSoundBufferElem*)SND_ref_FromBuffer(&buffers[0]);
+    resource = (tSndSoundBufferElem*)SND_ref_FromBuffer(&buffers[1]);
+
+    if (!track || !resource)
+        fail("the layer gave out no slot to start the case with");
+
+    pcSND_ref_StreamGetMonoToStereo(&track, &resource);
+
+    if (SND_p_BufferFromRef(track) != &buffers[0])
+        fail("a getter that found nothing emptied the track's slot");
+    if (SND_p_BufferFromRef(resource) != &buffers[1])
+        fail("a getter that found nothing emptied the resource's slot");
+}
+
 static void check_plain_family_reads_a_buffer(void)
 {
     int status;
@@ -547,6 +585,7 @@ int main(void)
     wsnd_mock_reset();
     make_voices();
     check_plain_family_reads_a_buffer();
+    check_a_getter_that_finds_nothing_leaves_the_slots();
     for (order = 0; order < 3; order++)
     {
         wsnd_mock_reset();
