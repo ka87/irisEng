@@ -3177,15 +3177,29 @@ void pcSND_ref_CreateTrackSB(tSndSoundBufferElem** stereo,
     *mono = SND_ref_FromBuffer(m);
 }
 
-void pcSND_ref_StreamGetMonoToStereo(tSndSoundBufferElem** x,
-                                            tSndSoundBufferElem** xx)
+void pcSND_ref_StreamGetMonoToStereo(tSndSoundBufferElem** track,
+                                            tSndSoundBufferElem** resource)
 {
     tSndSoundBufferElem* a = NULL;
     tSndSoundBufferElem* b = NULL;
 
     pcSND_StreamGetMonoToStereo(&a, &b);
-    *x = SND_ref_FromBuffer(a);
-    *xx = SND_ref_FromBuffer(b);
+
+    /* Only what the platform handed back. It hands back nothing today
+       -- the streaming entry is an empty stub -- and the interface
+       used to be wired to that stub directly, which left the caller's
+       two slots exactly as they were. Converting unconditionally
+       turned a function that did nothing into one that writes a
+       nought into both of them, and the one it writes into the track
+       resource list is what the next track to take that resource is
+       given as its buffer.
+
+       A getter that comes back with nothing has not found a better
+       buffer than the one already there, so the slot keeps it. */
+    if (a)
+        *track = SND_ref_FromBuffer(a);
+    if (b)
+        *resource = SND_ref_FromBuffer(b);
 }
 
 int SND_i_SoftInit()
