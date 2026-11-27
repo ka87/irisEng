@@ -926,8 +926,8 @@ void PAG_RenderCommon(struct sGameObjectMain* a1, struct sPAGStruct* a2)
                                         src2.z = v26;
                                     }
                                     v27 = v24 >> 22;
-                                    a4a = MATH_gf_TableSin[v27 + 1];
-                                    v44 = MATH_gf_TableSin[(v27 + 256) % 0x3FF + 1];
+                                    a4a = MATH_gf_TableSin[v27];
+                                    v44 = MATH_gf_TableSin[(v27 + 256) % 0x3FF];
                                     dest.x = v63.x * v44;
                                     dest.y = v63.y * v44;
                                     dest.z = v63.z * v44;
