@@ -168,11 +168,58 @@ static void check_the_list_grows(void)
     }
 }
 
+/* A free slot is found by stepping the element, not a number.
+ *
+ * SND_i_AllocSound used to walk the array as words, fourteen at a
+ * time, which is the element's size only where a pointer is four.
+ * Everywhere else -- SND_l_GetSoundIndex among them -- steps by the
+ * element, so the scan read `flags` out of the middle of its
+ * neighbours, stopped at the first thing that looked free, and handed
+ * the same slot out again. What that looks like from outside is a
+ * sound that cannot be found by the key it was just stored under. */
+static void check_a_slot_is_found_by_the_element(void)
+{
+    enum { SOUNDS = 8, KEY0 = 0x7A000 };
+    int idx[SOUNDS];
+    int i, k;
+
+    printf("-- each sound gets a slot of its own\n");
+    for (i = 0; i < SOUNDS; ++i)
+    {
+        idx[i] = SND_i_AllocSound();
+        if (idx[i] < 0 || idx[i] >= SND_gst_Params.allocatedSoundsMaxNum)
+        {
+            fail("a slot outside the array");
+            return;
+        }
+        /* 0x400 is what marks a slot taken, and what both the scan and
+           the lookup test. */
+        SND_gst_Params.allocatedSounds[idx[i]].flags = 0x400;
+        SND_gst_Params.allocatedSounds[idx[i]].soundKey = KEY0 + i;
+    }
+
+    for (i = 0; i < SOUNDS; ++i)
+        for (k = 0; k < i; ++k)
+            if (idx[k] == idx[i])
+            {
+                fail("two sounds were handed the same slot");
+                return;
+            }
+
+    for (i = 0; i < SOUNDS; ++i)
+        if (SND_l_GetSoundIndex(KEY0 + i) != idx[i])
+        {
+            fail("a sound is not where its key says it is");
+            return;
+        }
+}
+
 int main(void)
 {
     printf("=== the AND-family list, grown past its first block ===\n");
 
     check_the_list_grows();
+    check_a_slot_is_found_by_the_element();
 
     if (failures)
     {
