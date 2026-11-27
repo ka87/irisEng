@@ -1377,9 +1377,13 @@ void COL_DuplicateInstance(struct sGameObjectMain* dest, struct sGameObjectMain*
 
     if (srcInstance->instElemNum)
     {
-        destInstance->colInstElems = (tColInstanceElem*)MEM_p_Alloc(8 * srcInstance->instElemNum);
+        destInstance->colInstElems = (tColInstanceElem*)MEM_p_Alloc(
+            IRIS_SIZEOF(tColInstanceElem, 8) * srcInstance->instElemNum);
+        /* The running total stays in the figures the file is
+           written in, like the pointer array's 4 above it. */
         LOA_ul_FileTypeSize_38 += 8 * srcInstance->instElemNum;
-        memcpy(destInstance->colInstElems, srcInstance->colInstElems, 8 * srcInstance->instElemNum);
+        memcpy(destInstance->colInstElems, srcInstance->colInstElems,
+               IRIS_SIZEOF(tColInstanceElem, 8) * srcInstance->instElemNum);
 
         srcElem = srcInstance->colInstElems;
         srcEnd = &srcElem[srcInstance->instElemNum];
@@ -1530,7 +1534,7 @@ void COL_ColMap_AddGeometric(struct sColCollisionObject* cob, struct sGEOGRO* ge
         return;
 
     cob->objectType = 5;
-    mesh = (tCobMeshObjectMesh*)MEM_p_Alloc(0x1Cu);
+    mesh = (tCobMeshObjectMesh*)MEM_p_Alloc(IRIS_SIZEOF(tCobMeshObjectMesh, 28));
     cob->objectPtrByType = mesh;
     mesh->ok3 = 0;
     GEO_MRM_SetNumberOfPoints_Percent(geo, 2.0);
