@@ -533,6 +533,7 @@ int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* gao, uint8_t aiCanal)
     tGameObjectEventsList* tracks;
     tGameObjectMain* bone;
     tableElemStructPF* bones;
+    unsigned int boneNum;
     int i;
 
     bone = ANI_pst_GetObjectByAICanal(gao, aiCanal);
@@ -545,8 +546,29 @@ int AI_EvalFunc_ANIIsBoneAnimed_C(struct sGameObjectMain* gao, uint8_t aiCanal)
 
     tracks = actor->animPtr[0]->ptr->eventListStruct;
     bones = (tableElemStructPF*)(actor->skeletonGroup->tablePF->firstElemPtr);
+    boneNum = actor->skeletonGroup->tablePF->actElemNum;
     for (i = 0; i < tracks->num; ++i)
     {
+        /* A track that is not on a bone carries 0xFFFF, and the rest
+           of the engine tests for it: every other reader goes through
+           EVE_l_Bone, which refuses an id at or past the skeleton's
+           element count and hands back nothing.
+
+           This one indexed the table with whatever the track held,
+           and so did the compiled engine -- it has neither test, and
+           reads bones[0xFFFF] straight. That is half a megabyte past
+           the table where a pointer is four bytes and a whole one
+           where it is eight, which on a bump-allocated arena is
+           somewhere else's live memory: it reads a value, fails to
+           match, and answers correctly by luck. An allocator that
+           gives every block its own page says what it is instead.
+
+           A deliberate divergence, then, and the first one in here
+           that the compiled engine would disagree with. A track with
+           no bone is not a track on this bone, so the answer is the
+           same -- it is now the same for a reason. */
+        if (tracks->listElems[i].boneID >= boneNum)
+            continue;
         if (bone == bones[tracks->listElems[i].boneID].objectPtr)
             return 1;
     }
