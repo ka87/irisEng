@@ -2299,7 +2299,9 @@ struct sGameObjectMain* OBJ_GameObject_Duplicate(struct sWorld* world, struct sG
             srcMultiPart = srcGao->basic->multiPartData;
             if ((gao->flags & 0x1000000) != 0)
             {
-                gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices = MEM_p_Alloc(12 * gao->basic->multiPartData->elemNum);
+                gao->basic->multiPartData->multipartGaoObjectPartsOrMatrices =
+                    MEM_p_Alloc(IRIS_SIZEOF(tMultiPartGameObjectLinks, 12)
+                                * gao->basic->multiPartData->elemNum);
                 partBytes = sizeof(tMultiPartGameObjectLinks) * srcMultiPart->elemNum;
             }
             else

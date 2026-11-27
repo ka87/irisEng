@@ -409,7 +409,8 @@ void COL_OK3_Optimize(tCobOK3* ok3, void* object, int type)
         }
         else
         {
-            memmove(&ok3->aaBoxes[i], &ok3->aaBoxes[i + 1], 32 * (ok3->num - i - 1));
+            memmove(&ok3->aaBoxes[i], &ok3->aaBoxes[i + 1],
+                    IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * (ok3->num - i - 1));
             --ok3->num;
         }
     }
@@ -584,8 +585,10 @@ int COL_OK3_SubdivideBox(void* object, unsigned int boxIdx, int* forcedAxes, int
         sub->vec1 = lo;
         sub->vec2 = hi;
         sub->num = box->num;
-        sub->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(8 * sub->num);
-        memset(sub->chunkElems, 0, 8 * sub->num);
+        sub->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(
+            IRIS_SIZEOF(tCobOK3AABBoxElemChunkElem, 8) * sub->num);
+        memset(sub->chunkElems, 0,
+               IRIS_SIZEOF(tCobOK3AABBoxElemChunkElem, 8) * sub->num);
 
         if ((int)box->num > 0)
         {
@@ -621,7 +624,8 @@ int COL_OK3_SubdivideBox(void* object, unsigned int boxIdx, int* forcedAxes, int
         }
     }
 
-    saved = (char*)MEM_p_Alloc(32 * (ok3->num - subCount - boxIdx));
+    saved = (char*)MEM_p_Alloc(
+        IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * (ok3->num - subCount - boxIdx));
     for (i = 0; i < ok3->aaBoxes[boxIdx].num; ++i)
     {
         chunks = ok3->aaBoxes[boxIdx].chunkElems;
@@ -629,9 +633,12 @@ int COL_OK3_SubdivideBox(void* object, unsigned int boxIdx, int* forcedAxes, int
             MEM_Free(chunks[i].triangleChunkElemIDs);
     }
     MEM_Free(ok3->aaBoxes[boxIdx].chunkElems);
-    memcpy(saved, &ok3->aaBoxes[boxIdx + 1], 32 * (ok3->num - subCount - boxIdx));
-    memmove(&ok3->aaBoxes[boxIdx], &ok3->aaBoxes[ok3->num - subCount], 32 * subCount);
-    memcpy(&ok3->aaBoxes[subCount + boxIdx], saved, 32 * (ok3->num - subCount - boxIdx));
+    memcpy(saved, &ok3->aaBoxes[boxIdx + 1],
+           IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * (ok3->num - subCount - boxIdx));
+    memmove(&ok3->aaBoxes[boxIdx], &ok3->aaBoxes[ok3->num - subCount],
+            IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * subCount);
+    memcpy(&ok3->aaBoxes[subCount + boxIdx], saved,
+           IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * (ok3->num - subCount - boxIdx));
     MEM_Free(saved);
     // preserved: the first copy takes one box too many, and clearing the last
     // slot is what makes the duplicate it leaves there harmless
@@ -751,17 +758,20 @@ void COL_OK3_Build(void* object, int type, int rebuild)
         if (!(max.x - min.x >= 2.0 || max.y - min.y >= 2.0 || max.z - min.z >= 2.0))
             return;
 
-        ok3 = (tCobOK3*)MEM_p_Alloc(0xCu);
+        ok3 = (tCobOK3*)MEM_p_Alloc(IRIS_SIZEOF(tCobOK3, 12));
         tagBytes = (((unsigned int)mesh->faceCount >> 3) & 0x1FFFFFFC) + 4;
         mesh->ok3 = ok3;
         mesh->ok3->faceTagInts = (int*)MEM_p_Alloc(tagBytes);
         memset(mesh->ok3->faceTagInts, 0, 4 * ((unsigned int)mesh->faceCount >> 5) + 4);
         mesh->ok3->num = 1;
-        mesh->ok3->aaBoxes = (tCobOK3AABBoxElem*)MEM_p_Alloc(0x640u);
+        /* Fifty boxes, which is also what the array grows by. */
+        mesh->ok3->aaBoxes = (tCobOK3AABBoxElem*)MEM_p_Alloc(
+            IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * 50);
         mesh->ok3->aaBoxes->vec1 = min;
         mesh->ok3->aaBoxes->vec2 = max;
         mesh->ok3->aaBoxes->num = mesh->meshChunkElemNum;
-        mesh->ok3->aaBoxes->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(8 * mesh->meshChunkElemNum);
+        mesh->ok3->aaBoxes->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(
+            IRIS_SIZEOF(tCobOK3AABBoxElemChunkElem, 8) * mesh->meshChunkElemNum);
         meshChunk = mesh->meshChunkElems;
         chunk = mesh->ok3->aaBoxes->chunkElems;
         for (i = 0; i < mesh->meshChunkElemNum; ++i)
@@ -847,15 +857,18 @@ void COL_OK3_Build(void* object, int type, int rebuild)
     if (!(max.x - min.x >= 2.0 || max.y - min.y >= 2.0 || max.z - min.z >= 2.0))
         return;
 
-    ok3 = (tCobOK3*)MEM_p_Alloc(0xCu);
+    ok3 = (tCobOK3*)MEM_p_Alloc(IRIS_SIZEOF(tCobOK3, 12));
     geo->collisionPtr = ok3;
     ok3->faceTagInts = 0;
     geo->collisionPtr->num = 1;
-    geo->collisionPtr->aaBoxes = (tCobOK3AABBoxElem*)MEM_p_Alloc(0x640u);
+    /* Fifty boxes, which is also what the array grows by. */
+    geo->collisionPtr->aaBoxes = (tCobOK3AABBoxElem*)MEM_p_Alloc(
+        IRIS_SIZEOF(tCobOK3AABBoxElem, 32) * 50);
     geo->collisionPtr->aaBoxes->vec1 = min;
     geo->collisionPtr->aaBoxes->vec2 = max;
     geo->collisionPtr->aaBoxes->num = geo->triangleChunkCount;
-    geo->collisionPtr->aaBoxes->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(8 * geo->triangleChunkCount);
+    geo->collisionPtr->aaBoxes->chunkElems = (tCobOK3AABBoxElemChunkElem*)MEM_p_Alloc(
+        IRIS_SIZEOF(tCobOK3AABBoxElemChunkElem, 8) * geo->triangleChunkCount);
     geoChunk = geo->triangleChunks;
     chunk = geo->collisionPtr->aaBoxes->chunkElems;
     for (i = 0; i < geo->triangleChunkCount; ++i)

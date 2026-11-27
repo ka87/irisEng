@@ -28,7 +28,11 @@ defs() {
 }
 
 echo "=== ok3 ==="
-$CC $CFLAGS -c ok3.c -o "$OUT/ok3.new.o" $(defs NEW_ $ok3_syms)
+# IRIS_FROZEN_SIZES: the frozen copy sizes a bounding box at 32 bytes
+# and a chunk entry at 8, which is what they are where a pointer is
+# four. The rewrite asks the compiler instead, so the two only walk
+# the same arrays when it is told to use the frozen figures here.
+$CC $CFLAGS -DIRIS_FROZEN_SIZES -c ok3.c -o "$OUT/ok3.new.o" $(defs NEW_ $ok3_syms)
 $CC $CFLAGS -c tests/baseline_ok3.c -o "$OUT/ok3.base.o" $(defs BASE_ $ok3_syms)
 $CC $CFLAGS -c math.c -o "$OUT/ok3.math.o"
 $CC $CFLAGS -c tests/ok3_mocks.c -o "$OUT/ok3.mocks.o"
