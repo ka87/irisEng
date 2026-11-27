@@ -65,7 +65,7 @@ int MPAG_ul_Modifier_Load(tModifier* mdf, char* data)
     mpag = (tMPAGStruct*)mdf->mdfPrivateDataPtr;
     mpag->pag = (tPAGStruct*)PAG_p_CreateFromBuffer(NULL, &data, NULL);
     mdf->modifierFlags = 0x1000000;
-    return data - start;
+    return (int)(data - start);
 }
 
 void MPAG_Modifier_Unapply(tModifier* mdf, void* unk1)

@@ -43,7 +43,7 @@ static tFontData* STR_l_NewFont()
         if (STR_sgpst_Font)
             fonts = (tFontData*)MEM_p_Realloc(STR_sgpst_Font, size);
         else
-            fonts = (tFontData*)MEM_p_Alloc(size);
+            fonts = (tFontData*)MEM_p_Alloc((unsigned int)size);
         num = STR_sgl_NumberOfFont;
         STR_sgpst_Font = fonts;
     }
@@ -272,7 +272,7 @@ struct sFontData* STR_pst_GetFontDesc(struct sGEOMAT* mat, int matNum)
     texIdx = -1;
     if (mat->intf->id == 3)
     {
-        texIdx = mat->idxOrPtr;
+        texIdx = (int)mat->idxOrPtr;
     }
     else if (mat->intf->id == 5)
     {
@@ -1110,7 +1110,7 @@ void STR_ParseString(struct sGEOSTRStruct* geostr, int strIdx, struct sGEOSTRLet
                 global = STR_sz_GlobalGet(STRDataPtrStart);
                 break;
             case 13:
-                effectId = STR_i_EffectAdd(geostr, 0x80000013, strIdx, firstChar + (letter - dest), 1); // 19-es effect (0x13)
+                effectId = STR_i_EffectAdd(geostr, 0x80000013, strIdx, firstChar + (int)(letter - dest), 1); // 19-es effect (0x13)
                 if (effectId != -1)
                 {
                     STR_SetCurEffect(geostr, effectId);
@@ -1363,7 +1363,7 @@ void STR_RecomputePos(tGEOSTRStruct* str, tGEOSTRStringData* sd, int firstChar, 
 unsigned int STR_i_GlobalLength(int globalIdx)
 {
     if ((uint8_t)globalIdx < 24u)
-        return strlen(STR_sgaac_Global[globalIdx].str);
+        return (unsigned int)strlen(STR_sgaac_Global[globalIdx].str);
     return 0;
 }
 
@@ -2180,7 +2180,7 @@ void STR_EffectDel(struct sGameObjectMain* gao, int effectId)
     STR_SetCurEffect(str, effectId);
     if (STR_spst_CurEffect)
     {
-        at = ((char*)STR_spst_CurEffect - (char*)&str->effect[0]) / sizeof(tGEOSTREffectStruct);
+        at = (int)(((char*)STR_spst_CurEffect - (char*)&str->effect[0]) / sizeof(tGEOSTREffectStruct));
         last = str->effectsNum - 1;
         str->effectsNum = last;
         if (at < last)

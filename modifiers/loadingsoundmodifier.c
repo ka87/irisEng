@@ -189,7 +189,7 @@ int MDF_LoadingSound_Load(tModifier* mdf, char* data)
     lsmdf->sndIndex = SND_l_AddLoadingSound(lsmdf->i3);
     lsmdf->soundInstanceIndex = -1;
     mdf->modifierFlags = 0x4000000;
-    return data - start;
+    return (int)(data - start);
 }
 
 void MDF_LoadingSound_Reinit(struct sModifier* mdf)

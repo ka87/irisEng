@@ -1617,7 +1617,7 @@ void COL_ColMap_AddGeometric(struct sColCollisionObject* cob, struct sGEOGRO* ge
             continue;
 
         faceIndex = globalFace;
-        globalFace += ((char*)triEnd - (char*)destTri - 1) / 12 + 1; // TODO FIXME, ez undorito, megcsinálni
+        globalFace += (int)(((char*)triEnd - (char*)destTri - 1) / 12 + 1); // TODO FIXME, ez undorito, megcsinálni
         do
         {
             destTri->v1 = srcTri->v1;

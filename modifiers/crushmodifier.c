@@ -120,7 +120,7 @@ int GEO_ul_ModifierCrush_Load(struct sModifier* mdf, char *readPtr)
     crushMdf->factorDefault = (float)factor;
     crushMdf->factor = (float)factor;
     
-    return readPtr - readPtrBak;
+    return (int)(readPtr - readPtrBak);
 }
 
 void GEO_ModifierCrush_Reinit(struct sModifier* mdf)

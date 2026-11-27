@@ -944,14 +944,14 @@ void SAV_PhotoSet(int photo, void* src, size_t size)
         // preserved: elems[photo + 1] reads past the array for photo 99, where it lands on photoBufSize
         nextStart = SAV_gst_Photos.elems[photo + 1].startOffset;
         for (i = 99; i > photo; --i)
-            SAV_gst_Photos.elems[i].startOffset += size - oldSize;
+            SAV_gst_Photos.elems[i].startOffset += (int)(size - oldSize);
         memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[photo + 1].startOffset],
                &SAV_gst_Photos.photoBuf[nextStart],
                SAV_gst_Photos.usedSize - nextStart);
     }
-    SAV_gst_Photos.elems[photo].photoSize = size;
+    SAV_gst_Photos.elems[photo].photoSize = (int)(size);
     memcpy(&SAV_gst_Photos.photoBuf[SAV_gst_Photos.elems[photo].startOffset], src, size);
-    SAV_gst_Photos.usedSize += size - oldSize;
+    SAV_gst_Photos.usedSize += (int)(size - oldSize);
 }
 
 void SAV_PhotoDel(int photo)

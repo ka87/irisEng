@@ -122,8 +122,8 @@ void pcSND_AddSoundToThePlayList(BOOL notifyThread)
         }
         else
         {
-            sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc(bytes);
-            handles = (HANDLE*)MEM_p_Alloc(bytes);
+            sndPlayList = (tPcSndEventRelated*)MEM_p_Alloc((unsigned int)bytes);
+            handles = (HANDLE*)MEM_p_Alloc((unsigned int)bytes);
         }
         sndEventHandles = handles;
         memset(&sndPlayList[sndEventsNum], 0, sizeof(tPcSndEventRelated) * 200);

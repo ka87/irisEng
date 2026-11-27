@@ -138,7 +138,7 @@ int GEN_ModifierSoundFx_Load(tModifier* mdf, char* data)
             mdf->modifierFlags = 0x4000000;
         }
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void GEN_ModifierSoundFx_Reinit(struct sModifier* mdf)

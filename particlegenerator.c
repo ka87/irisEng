@@ -554,7 +554,7 @@ void PAG_RenderCommon(struct sGameObjectMain* gao, struct sPAGStruct* pag)
             colors[2] = color;
             colors[3] = color;
             colors += 4;
-            base = ((char*)vertex - (char*)GFX_gpst_Geo->vertices) / sizeof(Vec3);
+            base = (int)(((char*)vertex - (char*)GFX_gpst_Geo->vertices) / sizeof(Vec3));
             tri[0].v1 = base;
             tri[0].v2 = base + 1;
             tri[0].v3 = base + 2;

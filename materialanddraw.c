@@ -77,7 +77,7 @@ void MAT_SetRenderState(tGEOMAT* geomat, int materialNum)
         if (material->unkFloat2 > 0.98000002)
             flags = 39;
         if ((gpst_DX_stDD->drawMaskAllowedStuffCurrent & 1) != 0)
-            gpst_DX_stDD->TextureInit(material->idxOrPtr, flags, 0);
+            gpst_DX_stDD->TextureInit((int)material->idxOrPtr, flags, 0);
         else
             gpst_DX_stDD->TextureInit(-1, flags, 0);
     }

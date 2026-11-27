@@ -165,7 +165,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     start = data;
     version = LOA_ReadLong(&data, 0, 1);
     if (!gsm || version < 266 || version > 273)
-        return data - start;
+        return (int)(data - start);
 
     verIs266 = (version == 266);
     verUpTo267 = (version <= 267);
@@ -371,7 +371,7 @@ int GEN_ModifierSound_Load(tModifier* mdf, char* data)
     }
 
     mdf->modifierFlags = 0x4000000;
-    return data - start;
+    return (int)(data - start);
 }
 
 void GEN_ModifierSound_Reinit(tModifier* mdf)

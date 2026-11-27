@@ -164,5 +164,5 @@ int GEO_ul_ModifierOnduleTonCorps_Load(tModifier* mdf, char* data)
     otc->timeMultiplier = LOA_ReadFloat(&data, 0, 1);
     LOA_ReadLong(&data, 0, 2);
     otc->offset = 0.0;
-    return data - start;
+    return (int)(data - start);
 }

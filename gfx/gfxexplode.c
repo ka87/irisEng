@@ -614,10 +614,10 @@ BOOL GFX_i_Explode_Render(struct sGfxExplodeData* expl, struct sGEOMAT* material
             }
         }
 
-        GFX_gpst_Geo->triangleChunks[0].triangleNum = currTriangleChunkElemsOffsetPtr[0] - GFX_gpst_Geo->triangleChunks[0].triangleChunkElems;
-        GFX_gpst_Geo->triangleChunks[1].triangleNum = currTriangleChunkElemsOffsetPtr[1] - GFX_gpst_Geo->triangleChunks[1].triangleChunkElems;
-        GFX_gpst_Geo->triangleChunks[2].triangleNum = currTriangleChunkElemsOffsetPtr[2] - GFX_gpst_Geo->triangleChunks[2].triangleChunkElems;
-        GFX_gpst_Geo->triangleChunks[3].triangleNum = currTriangleChunkElemsOffsetPtr[3] - GFX_gpst_Geo->triangleChunks[3].triangleChunkElems;
+        GFX_gpst_Geo->triangleChunks[0].triangleNum = (uint32_t)(currTriangleChunkElemsOffsetPtr[0] - GFX_gpst_Geo->triangleChunks[0].triangleChunkElems);
+        GFX_gpst_Geo->triangleChunks[1].triangleNum = (uint32_t)(currTriangleChunkElemsOffsetPtr[1] - GFX_gpst_Geo->triangleChunks[1].triangleChunkElems);
+        GFX_gpst_Geo->triangleChunks[2].triangleNum = (uint32_t)(currTriangleChunkElemsOffsetPtr[2] - GFX_gpst_Geo->triangleChunks[2].triangleChunkElems);
+        GFX_gpst_Geo->triangleChunks[3].triangleNum = (uint32_t)(currTriangleChunkElemsOffsetPtr[3] - GFX_gpst_Geo->triangleChunks[3].triangleChunkElems);
 
         drawMaskBackup = gpst_DX_stDD->drawMaskAllowedStuffCurrent;
         gpst_DX_stDD->drawMaskAllowedStuffCurrent &= ~0x8000900;

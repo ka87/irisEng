@@ -36,7 +36,7 @@ int GAO_ModifierSemiLookAt_Load(tModifier* mdf, char* data)
     start = data;
     mdf->modifierFlags |= 0x1000000u;
     LOA_ReadLong(&data, 0, 2);
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierSemiLookAt_Destroy(struct sModifier* mdf)

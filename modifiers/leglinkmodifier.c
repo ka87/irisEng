@@ -258,7 +258,7 @@ int GAO_ModifierLegLink_Load(struct sModifier* mdf, char* data)
         GAO_l_ModifierLegLink_BindRef(&leg->gao1);
         GAO_l_ModifierLegLink_BindRef(&leg->gao2);
     }
-    return data - start;
+    return (int)(data - start);
 }
 
 void GAO_ModifierLegLink_Reinit(struct sModifier* mdf)

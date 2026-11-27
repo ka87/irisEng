@@ -856,7 +856,7 @@ void D3D_SetInitialTextureStageStates()
 void D3D_RastersDrawUPStream()
 {
     D3DRenderParams.d3dDev->lpVtbl->DrawPrimitiveUP(D3DRenderParams.d3dDev, D3DPT_TRIANGLELIST,
-        ((rastersDrawPrimitiveUPDataEnd - rastersDrawPrimitiveUPDataStart) >> 4) / 3,
+        (UINT)(((rastersDrawPrimitiveUPDataEnd - rastersDrawPrimitiveUPDataStart) >> 4) / 3),
         rastersDrawPrimitiveUPDataStart,
         16); // 16 = Vec3 + color (int), see D3DRenderParams.fvf
     rastersDrawPrimitiveUPDataEnd = rastersDrawPrimitiveUPDataStart;
