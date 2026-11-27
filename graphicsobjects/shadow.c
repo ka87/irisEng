@@ -1,4 +1,5 @@
 #include "../memory.h"
+#include "../dbg.h"
 #include "gro_common.h"
 #include "../modifiers/shadowmodifier.h"
 #include "shadow.h"
@@ -414,6 +415,13 @@ void SDW_DisplayShadowsOnCurrentObject(struct sGEOGRO* geogro)
 {
     int i;
     unsigned int flags = 0x204;
+
+    /* The console's shadow switch. Here rather than at the one call
+       site so that it covers whatever calls this next, and after the
+       gathering rather than before it, so the shadows stay attached to
+       their objects while they are not being drawn. */
+    if (!tweak_shadow)
+        return;
 
     if (gpst_DX_stDD->shadowStruct && gpst_DX_stDD->shadowStruct->maxShadowNum && (gpst_DX_stDD->drawMaskAllowedStuffCurrent & 0x10000) != 0
         && gpst_DX_stDD->currTargetGao != NULL && (gpst_DX_stDD->flags & 0x8000) == 0)
